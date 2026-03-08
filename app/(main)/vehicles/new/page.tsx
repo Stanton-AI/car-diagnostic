@@ -65,8 +65,10 @@ function NewVehicleContent() {
     setForm(prev => ({ ...prev, nickname: generateRandomNickname() }))
   }
 
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
   const validate = () => {
-    const errs: Record<string, string> = { ...errors }
+    const errs: Record<string, string> = {}
     if (!form.maker) errs.maker = '제조사를 선택해 주세요'
     if (!form.model.trim()) errs.model = '모델명을 입력해 주세요'
     if (!form.mileage || isNaN(Number(form.mileage))) errs.mileage = '주행거리를 입력해 주세요'
@@ -74,16 +76,29 @@ function NewVehicleContent() {
     if (!nick) errs.nickname = '차량 닉네임을 입력해 주세요'
     else if (nick.length < 2) errs.nickname = '닉네임은 최소 2자 이상이에요'
     else if (nick.length > 10) errs.nickname = '닉네임은 최대 10자까지 가능해요'
+    else if (errors.nickname) errs.nickname = errors.nickname // 중복 오류 유지
+    else if (!nicknameOk && !checkingNickname) errs.nickname = '닉네임 중복 확인이 필요해요'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
 
   const handleSubmit = async () => {
+    if (checkingNickname) return
     if (!validate()) return
     setSaving(true)
+    setSubmitError(null)
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/'); return }
+
+      // users 테이블에 레코드 없을 경우 생성 (OAuth 첫 로그인 안전망)
+      await supabase.from('users').upsert({
+        id: user.id,
+        email: user.email,
+        display_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
+        avatar_url: user.user_metadata?.avatar_url ?? null,
+        provider: user.app_metadata?.provider ?? 'unknown',
+      }, { onConflict: 'id', ignoreDuplicates: true })
 
       const { error } = await supabase.from('vehicles').insert({
         user_id: user.id,
@@ -95,10 +110,15 @@ function NewVehicleContent() {
         plate_number: form.plateNumber.trim() || null,
         nickname: form.nickname.trim(),
       })
-      if (error) throw error
+      if (error) {
+        console.error('Vehicle insert error:', error)
+        setSubmitError(`저장 실패: ${error.message}`)
+        return
+      }
       router.push('/main')
-    } catch (e) {
-      console.error(e)
+    } catch (e: any) {
+      console.error('handleSubmit error:', e)
+      setSubmitError(e?.message ?? '알 수 없는 오류가 발생했습니다.')
     } finally {
       setSaving(false)
     }
@@ -265,13 +285,18 @@ function NewVehicleContent() {
 
       {/* 저장 버튼 */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-5 pb-8 pt-4 bg-white border-t border-gray-100">
+        {submitError && (
+          <div className="mb-3 px-4 py-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+            ⚠️ {submitError}
+          </div>
+        )}
         <button
           onClick={handleSubmit}
-          disabled={saving || checkingNickname || !!errors.nickname}
+          disabled={saving || checkingNickname}
           className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {saving ? <span className="animate-spin">⟳</span> : null}
-          차량 등록 완료
+          {saving ? <span className="animate-spin inline-block">⟳</span> : null}
+          {checkingNickname ? '닉네임 확인 중...' : '차량 등록 완료'}
         </button>
       </div>
     </div>
