@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage, DiagnosticQuestion, DiagnosisResult, Vehicle } from '@/types'
-import { getOrCreateGuestSessionId, createMessage } from '@/lib/utils'
+import { createMessage } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import ChatHeader from '@/components/chat/ChatHeader'
 import MessageBubble from '@/components/chat/MessageBubble'
@@ -11,7 +11,6 @@ import QuestionChoices from '@/components/chat/QuestionChoices'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
-import LoginGateModal from '@/components/shared/LoginGateModal'
 
 export default function ChatPage() {
   const router = useRouter()
@@ -22,30 +21,30 @@ export default function ChatPage() {
   const [conversationId] = useState(() => uuidv4())
   const [currentQuestions, setCurrentQuestions] = useState<DiagnosticQuestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [showLoginGate, setShowLoginGate] = useState(false)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [vehicle, setVehicle] = useState<Partial<Vehicle> | null>(null)
   const [user, setUser] = useState<{ id: string } | null>(null)
-  const [pendingAnswers, setPendingAnswers] = useState<Record<string, string>>({})
 
   // 초기화
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) {
+        router.replace('/login?redirect=/chat')
+        return
+      }
+      setUser(authUser)
 
       // 등록된 차량 불러오기
-      if (user) {
-        const { data: vehicles } = await supabase
-          .from('vehicles')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-        if (vehicles && vehicles.length > 0) {
-          setVehicle(vehicles[0])
-        }
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('user_id', authUser.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+      if (vehicles && vehicles.length > 0) {
+        setVehicle(vehicles[0])
       }
 
       // AI 첫 인사 메시지
@@ -66,11 +65,11 @@ export default function ChatPage() {
 
   // 이미지 업로드
   const handleImageUpload = async (files: File[]) => {
-    const guestId = getOrCreateGuestSessionId()
+    if (!user) return []
     const urls: string[] = []
 
     for (const file of files.slice(0, 3)) {
-      const path = `${user?.id ?? guestId}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
+      const path = `${user.id}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
       const { data, error } = await supabase.storage
         .from('symptom-images')
         .upload(path, file)
@@ -89,17 +88,6 @@ export default function ChatPage() {
 
   // 메시지 전송 및 AI 호출
   const sendMessage = useCallback(async (content: string, type: 'text' | 'answer' = 'text', questionId?: string) => {
-    const guestId = getOrCreateGuestSessionId()
-
-    // 답변 누적
-    const newAnswers = questionId
-      ? { ...pendingAnswers, [questionId]: content }
-      : pendingAnswers
-
-    if (questionId) {
-      setPendingAnswers(newAnswers)
-    }
-
     const userMsg = createMessage('user', content, type, {
       questionId,
       selectedChoice: content,
@@ -111,21 +99,10 @@ export default function ChatPage() {
     setCurrentQuestions([])
     setIsLoading(true)
 
-    // 로그인 게이트: 2~3번째 질문 답변 후 표시
-    const answerCount = newMessages.filter(m => m.type === 'answer').length
-    if (answerCount >= 2 && !user && !showLoginGate) {
-      setShowLoginGate(true)
-      setIsLoading(false)
-      return
-    }
-
     try {
       const response = await fetch('/api/diagnose', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-guest-session-id': guestId,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId,
           vehicleInfo: vehicle,
@@ -136,25 +113,14 @@ export default function ChatPage() {
       })
 
       const data = await response.json()
-
-      if (!response.ok) {
-        if (data.error === 'GUEST_LIMIT_REACHED') {
-          setShowLoginGate(true)
-          setIsLoading(false)
-          return
-        }
-        throw new Error(data.error)
-      }
+      if (!response.ok) throw new Error(data.error)
 
       if (data.data.needsMoreInfo && data.data.additionalQuestions?.length > 0) {
-        // 추가 질문 표시
         const questions: DiagnosticQuestion[] = data.data.additionalQuestions
-        const questionText = `정확한 진단을 위해 몇 가지 더 확인해 드릴게요.`
-        const aiMsg = createMessage('assistant', questionText, 'question', {}) as ChatMessage
+        const aiMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 확인해 드릴게요.', 'question', {}) as ChatMessage
         setMessages(prev => [...prev, aiMsg])
         setCurrentQuestions(questions)
       } else {
-        // 최종 진단 결과
         const result: DiagnosisResult = data.data.result
         setDiagnosisResult(result)
         const resultMsg = createMessage('assistant', result.summary, 'result', { result }) as ChatMessage
@@ -167,7 +133,7 @@ export default function ChatPage() {
       setIsLoading(false)
       setUploadedImages([])
     }
-  }, [messages, pendingAnswers, user, vehicle, uploadedImages, conversationId, showLoginGate])
+  }, [messages, user, vehicle, uploadedImages, conversationId])
 
   // 자가점검 결과 재진단
   const handleSelfCheckSubmit = async (selfCheckResults: string) => {
@@ -177,13 +143,9 @@ export default function ChatPage() {
     setIsLoading(true)
 
     try {
-      const guestId = getOrCreateGuestSessionId()
       const response = await fetch('/api/diagnose', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-guest-session-id': guestId,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId,
           vehicleInfo: vehicle,
@@ -206,7 +168,7 @@ export default function ChatPage() {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <ChatHeader vehicle={vehicle} onBack={() => router.push('/')} />
+      <ChatHeader vehicle={vehicle} onBack={() => router.push('/main')} />
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-surface-50">
@@ -232,9 +194,7 @@ export default function ChatPage() {
           />
         )}
 
-        {/* 타이핑 인디케이터 */}
         {isLoading && <TypingIndicator />}
-
         <div ref={messagesEndRef} />
       </div>
 
@@ -246,39 +206,6 @@ export default function ChatPage() {
           uploadedImages={uploadedImages}
           onRemoveImage={(url) => setUploadedImages(prev => prev.filter(u => u !== url))}
           disabled={isLoading}
-        />
-      )}
-
-      {/* 로그인 게이트 모달 */}
-      {showLoginGate && (
-        <LoginGateModal
-          onLogin={() => router.push('/login?redirect=/chat')}
-          onSkip={() => {
-            setShowLoginGate(false)
-            // 게스트로 계속 진행
-            if (messages.length > 0) {
-              const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
-              if (lastUserMsg) {
-                setIsLoading(true)
-                // 진단 강제 실행
-                const guestId = getOrCreateGuestSessionId()
-                fetch('/api/diagnose', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'x-guest-session-id': guestId },
-                  body: JSON.stringify({ conversationId, vehicleInfo: vehicle, messages, symptomImages: uploadedImages }),
-                })
-                  .then(r => r.json())
-                  .then(data => {
-                    if (data.data?.result) {
-                      setDiagnosisResult(data.data.result)
-                      const msg = createMessage('assistant', data.data.result.summary, 'result', { result: data.data.result }) as ChatMessage
-                      setMessages(prev => [...prev, msg])
-                    }
-                  })
-                  .finally(() => setIsLoading(false))
-              }
-            }
-          }}
         />
       )}
     </div>

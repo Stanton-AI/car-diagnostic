@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { FuelType } from '@/types'
 
@@ -15,20 +15,65 @@ const FUEL_TYPES: { value: FuelType; label: string }[] = [
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i)
 
-export default function NewVehiclePage() {
+const ADJECTIVES = ['빠른', '멋진', '든든한', '날쌘', '튼튼한', '활발한', '강한', '씩씩한', '용감한', '믿음직한']
+const NOUNS = ['붕붕이', '터보', '엔진', '드라이버', '질주마', '달리기', '로켓', '바퀴', '스피드', '레이서']
+
+function generateRandomNickname(): string {
+  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
+  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
+  return `${adj}${noun}`
+}
+
+function NewVehicleContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isFirstTime = searchParams.get('first') === 'true'
   const supabase = createClient()
+
   const [form, setForm] = useState({
-    maker: '', model: '', year: CURRENT_YEAR, mileage: '', fuelType: 'gasoline' as FuelType, plateNumber: '', nickname: '',
+    maker: '', model: '', year: CURRENT_YEAR, mileage: '', fuelType: 'gasoline' as FuelType,
+    plateNumber: '', nickname: generateRandomNickname(),
   })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [checkingNickname, setCheckingNickname] = useState(false)
+  const [nicknameOk, setNicknameOk] = useState(false)
+
+  // 닉네임 중복 확인 (디바운스)
+  useEffect(() => {
+    setNicknameOk(false)
+    if (!form.nickname || form.nickname.length < 2 || form.nickname.length > 10) return
+    setCheckingNickname(true)
+    const timer = setTimeout(async () => {
+      const { count } = await supabase
+        .from('vehicles')
+        .select('*', { count: 'exact', head: true })
+        .eq('nickname', form.nickname)
+      setCheckingNickname(false)
+      if ((count ?? 0) > 0) {
+        setErrors(prev => ({ ...prev, nickname: '이미 사용 중인 닉네임이에요.' }))
+        setNicknameOk(false)
+      } else {
+        setErrors(prev => { const e = { ...prev }; delete e.nickname; return e })
+        setNicknameOk(true)
+      }
+    }, 600)
+    return () => { clearTimeout(timer); setCheckingNickname(false) }
+  }, [form.nickname])
+
+  const regenerateNickname = () => {
+    setForm(prev => ({ ...prev, nickname: generateRandomNickname() }))
+  }
 
   const validate = () => {
-    const errs: Record<string, string> = {}
+    const errs: Record<string, string> = { ...errors }
     if (!form.maker) errs.maker = '제조사를 선택해 주세요'
     if (!form.model.trim()) errs.model = '모델명을 입력해 주세요'
     if (!form.mileage || isNaN(Number(form.mileage))) errs.mileage = '주행거리를 입력해 주세요'
+    const nick = form.nickname.trim()
+    if (!nick) errs.nickname = '차량 닉네임을 입력해 주세요'
+    else if (nick.length < 2) errs.nickname = '닉네임은 최소 2자 이상이에요'
+    else if (nick.length > 10) errs.nickname = '닉네임은 최대 10자까지 가능해요'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -38,7 +83,7 @@ export default function NewVehiclePage() {
     setSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login?redirect=/vehicles/new'); return }
+      if (!user) { router.push('/'); return }
 
       const { error } = await supabase.from('vehicles').insert({
         user_id: user.id,
@@ -48,7 +93,7 @@ export default function NewVehiclePage() {
         mileage: Number(form.mileage),
         fuel_type: form.fuelType,
         plate_number: form.plateNumber.trim() || null,
-        nickname: form.nickname.trim() || null,
+        nickname: form.nickname.trim(),
       })
       if (error) throw error
       router.push('/main')
@@ -64,22 +109,69 @@ export default function NewVehiclePage() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 pt-14 pb-4">
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500">
-          ←
-        </button>
-        <h1 className="text-lg font-black text-gray-900">차량 등록</h1>
+      <header className="flex items-center gap-3 px-4 pt-14 pb-4 border-b border-gray-100">
+        {!isFirstTime && (
+          <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500">
+            ←
+          </button>
+        )}
+        <div className={isFirstTime ? 'pl-1' : ''}>
+          <h1 className="text-lg font-black text-gray-900">차량 등록</h1>
+          {isFirstTime && <p className="text-xs text-gray-400 mt-0.5">진단 정확도를 높이기 위해 차량을 먼저 등록해 주세요</p>}
+        </div>
         <div className="ml-auto">
           <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-medium">공공API 연동 예정</span>
         </div>
       </header>
 
-      <div className="flex-1 px-5 pb-32 space-y-5">
-        {/* 안내 */}
+      <div className="flex-1 px-5 pb-32 space-y-5 pt-5">
+
+        {/* 차량 닉네임 (필수) */}
         <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100">
-          <p className="text-xs text-primary-700 leading-relaxed">
-            <span className="font-bold">💡 차량번호 자동 조회 기능</span>이 준비 중입니다. 현재는 직접 입력해 주세요.
-            API 승인 완료 후 차량번호만 입력하면 자동으로 정보를 불러올 수 있습니다.
+          <label className="text-sm font-bold text-gray-800 mb-1 block">
+            차량 닉네임 <span className="text-red-500">*</span>
+            <span className="text-xs font-normal text-gray-400 ml-1">2~10자 · 전체 중복 불가</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-3">나만의 차량 이름을 정해 주세요. 🎲 버튼으로 랜덤 생성도 가능해요.</p>
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={form.nickname}
+                onChange={e => set('nickname', e.target.value)}
+                maxLength={10}
+                placeholder="예: 날쌘터보"
+                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none ${
+                  errors.nickname
+                    ? 'border-red-300 bg-red-50 focus:border-red-400'
+                    : nicknameOk
+                    ? 'border-green-300 bg-green-50 focus:border-green-400'
+                    : 'border-primary-200 focus:border-primary-400 bg-white'
+                }`}
+              />
+              {checkingNickname && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">확인 중...</span>
+              )}
+            </div>
+            <button
+              onClick={regenerateNickname}
+              type="button"
+              className="px-3 py-3 bg-white border border-primary-200 rounded-xl text-xl hover:bg-primary-50 transition-colors"
+              title="랜덤 닉네임 다시 생성"
+            >
+              🎲
+            </button>
+          </div>
+          {errors.nickname && <p className="text-xs text-red-500 mt-1.5">{errors.nickname}</p>}
+          {nicknameOk && !checkingNickname && (
+            <p className="text-xs text-green-600 mt-1.5 font-medium">✓ 사용 가능한 닉네임이에요</p>
+          )}
+        </div>
+
+        {/* 안내 */}
+        <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            <span className="font-bold text-gray-700">💡 차량번호 자동 조회 기능</span>이 준비 중입니다. 현재는 직접 입력해 주세요.
           </p>
         </div>
 
@@ -169,25 +261,13 @@ export default function NewVehiclePage() {
             className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400"
           />
         </div>
-
-        {/* 별명 (선택) */}
-        <div>
-          <label className="text-sm font-bold text-gray-700 mb-2 block">차량 별명 <span className="text-gray-400 font-normal">(선택)</span></label>
-          <input
-            type="text"
-            value={form.nickname}
-            onChange={e => set('nickname', e.target.value)}
-            placeholder="예: 내 첫 차, 회사 차량..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400"
-          />
-        </div>
       </div>
 
       {/* 저장 버튼 */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[480px] px-5 pb-8 pt-4 bg-white border-t border-gray-100">
         <button
           onClick={handleSubmit}
-          disabled={saving}
+          disabled={saving || checkingNickname || !!errors.nickname}
           className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {saving ? <span className="animate-spin">⟳</span> : null}
@@ -195,5 +275,13 @@ export default function NewVehiclePage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function NewVehiclePage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-10 h-10 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>}>
+      <NewVehicleContent />
+    </Suspense>
   )
 }
