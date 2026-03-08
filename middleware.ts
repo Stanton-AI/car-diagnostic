@@ -1,0 +1,47 @@
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+const PROTECTED_PATHS = ['/main', '/profile', '/history', '/vehicles']
+const ADMIN_PATHS = ['/admin']
+
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({ request })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const path = request.nextUrl.pathname
+
+  // 보호된 경로: 비로그인 시 홈으로
+  if (PROTECTED_PATHS.some(p => path.startsWith(p)) && !user) {
+    return NextResponse.redirect(new URL(`/login?redirect=${path}`, request.url))
+  }
+
+  // 어드민 경로: 별도 검사 (role은 API에서 확인)
+  if (ADMIN_PATHS.some(p => path.startsWith(p)) && !user) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  return supabaseResponse
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|api/).*)',
+  ],
+}

@@ -1,0 +1,89 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #5b4fcf;
+  --primary-light: #ede9ff;
+  --surface: #f8f7ff;
+  --dark: #1a1433;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: #f8f7ff;
+  color: #1a1433;
+  overscroll-behavior: none;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* 채팅 말풍선 */
+.bubble-user {
+  @apply bg-primary-600 text-white rounded-2xl rounded-br-sm px-4 py-3 max-w-[80%] ml-auto;
+}
+.bubble-ai {
+  @apply bg-white text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%] shadow-sm border border-gray-100;
+}
+.bubble-question {
+  @apply bg-primary-50 border border-primary-200 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[90%];
+}
+
+/* 선택지 버튼 */
+.choice-btn {
+  @apply flex items-center gap-2 w-full text-left px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:border-primary-400 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150 active:scale-[0.98];
+}
+.choice-btn.selected {
+  @apply border-primary-500 bg-primary-50 text-primary-700 font-medium;
+}
+
+/* 진단 결과 원인 카드 */
+.cause-card {
+  @apply relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm overflow-hidden;
+}
+.cause-bar {
+  @apply absolute bottom-0 left-0 h-1 bg-primary-500 rounded-b-2xl transition-all duration-700;
+}
+
+/* 긴급도 배지 */
+.urgency-high {
+  @apply bg-red-50 border border-red-200 text-red-700;
+}
+.urgency-mid {
+  @apply bg-amber-50 border border-amber-200 text-amber-700;
+}
+.urgency-low {
+  @apply bg-green-50 border border-green-200 text-green-700;
+}
+
+/* 타이핑 인디케이터 */
+.typing-dot {
+  @apply w-2 h-2 bg-primary-400 rounded-full;
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes pulseDot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* 모바일 최적화 */
+@media (max-width: 640px) {
+  .bubble-ai, .bubble-question { max-width: 92%; }
+  .bubble-user { max-width: 85%; }
+}
