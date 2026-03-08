@@ -96,7 +96,7 @@ export function getShareUrl(conversationId: string): string {
 // 카카오 공유 (클라이언트 사이드)
 export function shareToKakao(url: string, title: string, description: string) {
   if (typeof window === 'undefined' || !(window as Window & { Kakao?: { isInitialized: () => boolean; Share: { sendDefault: (opts: Record<string, unknown>) => void } } }).Kakao) return
-  const Kakao = (window as Window & { Kakao: { isInitialized: () => boolean; Share: { sendDefault: (opts: Record<string, unknown>) => void } } }).Kakao
+  const Kakao = (window as unknown as { Kakao: { isInitialized: () => boolean; Share: { sendDefault: (opts: Record<string, unknown>) => void } } }).Kakao
   if (!Kakao.isInitialized()) return
   Kakao.Share.sendDefault({
     objectType: 'feed',

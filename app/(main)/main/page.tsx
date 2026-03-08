@@ -3,16 +3,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import type { UserProfile, Vehicle, Conversation } from '@/types'
-import { formatKRW, formatDate } from '@/lib/utils'
-import { urgencyLabel } from '@/lib/claude/diagnose'
+import type { UserProfile, Vehicle } from '@/types'
+import { formatKRW, formatDate, urgencyLabel } from '@/lib/utils'
 
 export default function MainPage() {
   const router = useRouter()
   const supabase = createClient()
   const [user, setUser] = useState<UserProfile | null>(null)
   const [vehicle, setVehicle] = useState<Vehicle | null>(null)
-  const [recentConversations, setRecentConversations] = useState<Conversation[]>([])
+  const [recentConversations, setRecentConversations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

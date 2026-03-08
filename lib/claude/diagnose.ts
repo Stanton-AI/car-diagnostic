@@ -94,7 +94,7 @@ export async function requestDiagnosis(
 
   // 대화 내역 요약
   const conversationCtx = messages
-    .filter(m => m.type !== 'result' && m.type !== 'system')
+    .filter(m => m.type !== 'result' && (m.type as string) !== 'system')
     .map(m => {
       if (m.role === 'user') return `[사용자] ${m.content}`
       if (m.type === 'question') return `[AI 질문] ${m.content}`
@@ -156,7 +156,7 @@ ${conversationCtx}${reDiagCtx}
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1500,
     system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content }],
+    messages: [{ role: 'user', content: content as any }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '{}'

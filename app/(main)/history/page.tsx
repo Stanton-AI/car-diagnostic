@@ -3,8 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { getOrCreateGuestSessionId, formatDate, formatKRW } from '@/lib/utils'
-import { urgencyLabel } from '@/lib/claude/diagnose'
+import { getOrCreateGuestSessionId, formatDate, formatKRW, urgencyLabel } from '@/lib/utils'
 
 interface ConvoSummary {
   id: string
