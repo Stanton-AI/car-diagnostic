@@ -21,7 +21,7 @@ const SYSTEM_PROMPT = `당신은 한국의 자동차 중정비 전문 AI 진단 
 interface InformationCheckResponse {
   sufficient: boolean
   detectedCategory: string
-  suggestedQuestionIds: string[]  // 추가로 물어야 할 질문 ID 목록 (최대 5개)
+  suggestedQuestionIds: string[]  // 추가로 물어야 할 질문 ID 목록
   reasoning: string
 }
 
@@ -31,20 +31,26 @@ export async function checkInformationSufficiency(
   existingAnswers?: Record<string, string>,
   candidateQuestions?: DiagnosticQuestion[],  // 카테고리 필터링된 후보 질문
   categoryHint?: string,                       // 감지된 카테고리 ID
-  isEV?: boolean,                              // 전기차 여부
+  fuelType?: string,                           // 차량 연료타입 (gasoline/diesel/hybrid/electric/lpg)
   subSymptomHint?: string                      // 세부 증상 분류 힌트 (예: 조향 vs 변속)
 ): Promise<InformationCheckResponse> {
   const vehicleCtx = vehicleInfo
-    ? `차량: ${vehicleInfo.maker ?? ''} ${vehicleInfo.model ?? ''} ${vehicleInfo.year ?? ''}년식, ${vehicleInfo.mileage?.toLocaleString() ?? '?'}km, ${vehicleInfo.fuelType ?? ''}`
+    ? `차량: ${vehicleInfo.maker ?? ''} ${vehicleInfo.model ?? ''} ${vehicleInfo.year ?? ''}년식, ${vehicleInfo.mileage?.toLocaleString() ?? '?'}km, ${vehicleInfo.fuelType ?? fuelType ?? ''}`
     : '차량 정보 없음'
 
   const answersCtx = existingAnswers && Object.keys(existingAnswers).length > 0
     ? `\n기존 답변:\n${Object.entries(existingAnswers).map(([q, a]) => `- ${q}: ${a}`).join('\n')}`
     : ''
 
-  // EV 전용 주의사항 (내연기관 항목 제외 안내)
-  const evNote = isEV
-    ? '\n\n⚠️ 이 차량은 전기차(EV)입니다. 연료필터·엔진오일·변속기오일·점화플러그·크랭킹·겉벨트 등 내연기관 전용 항목은 해당 없으므로 관련 질문은 절대 선택하지 마세요.'
+  // 연료타입별 주의사항 (Claude에게 컨텍스트 제공)
+  const fuelNote = fuelType === 'electric'
+    ? '\n\n⚠️ 전기차(EV): 연료필터·엔진오일·변속기오일·점화플러그·크랭킹·겉벨트 등 내연기관 전용 항목은 해당 없습니다. 관련 질문은 절대 선택하지 마세요.'
+    : fuelType === 'diesel'
+    ? '\n\n🔧 디젤 차량: DPF·요소수·글로우플러그·EGR 등 디젤 특유 부품을 고려하세요.'
+    : fuelType === 'hybrid'
+    ? '\n\n🔋 하이브리드: 전기모터·고전압배터리·회생제동 관련 증상 가능성을 함께 고려하세요.'
+    : fuelType === 'lpg'
+    ? '\n\n⛽ LPG 차량: 베이퍼라이저·솔레노이드밸브·가스계통 특유 증상을 고려하세요.'
     : ''
 
   // 세부 증상 분류 힌트 (drive 카테고리 내 세부 방향 지시)
@@ -55,19 +61,19 @@ export async function checkInformationSufficiency(
   let prompt: string
 
   if (candidateQuestions && candidateQuestions.length > 0) {
-    // ── 카테고리 잠금 모드: 해당 카테고리 질문만 Claude에게 제공 ──────────
+    // ── 카테고리 잠금 모드: 해당 카테고리·연료타입 필터링된 질문만 제공 ──
     const questionList = candidateQuestions
       .map(q => `- ${q.id}: "${q.question}"\n  선택지: ${q.choices.slice(0, 5).join(' / ')}`)
       .join('\n')
 
     prompt = `${vehicleCtx}
 
-증상: "${symptomText}"${answersCtx}${evNote}${subHint}
+증상: "${symptomText}"${answersCtx}${fuelNote}${subHint}
 
 당신은 자동차 정비 전문가입니다. 위 증상과 수집된 정보를 바탕으로 판단하세요.
 
 이미 충분한 정보가 수집됐다면 sufficient: true를 반환하세요.
-더 필요하다면 아래 후보 질문 중 지금 가장 진단에 중요한 것을 최대 3개 선택하세요.
+더 필요하다면 아래 후보 질문 중 지금 가장 진단에 중요한 것을 1~2개 선택하세요.
 (자동차 메커닉 및 전기전자 관점에서 증상 원인 특정에 직접적으로 유용한 질문 우선)
 
 후보 질문:
@@ -77,42 +83,24 @@ JSON만 반환하세요 (설명 없이):
 {
   "sufficient": false,
   "detectedCategory": "${categoryHint ?? 'unknown'}",
-  "suggestedQuestionIds": ["ID1", "ID2"],
-  "reasoning": "이 질문들이 필요한 이유"
+  "suggestedQuestionIds": ["ID1"],
+  "reasoning": "이 질문이 필요한 이유"
 }`
   } else {
-    // ── 폴백: 카테고리 미감지 시 전체 ID 목록 제공 (기존 동작) ──────────
-    // EV이면 내연기관 전용 ID 명시적 제외 안내 포함
-    const evExcludeNote = isEV
-      ? '\n\n⚠️ 전기차이므로 D06·D07·V09·W07·ST02·ST03·ST05 는 선택하지 마세요.'
-      : ''
-
+    // ── 폴백: 후보 질문이 없으면 현재 정보로 진단 진행 ──────────────────
+    // (카테고리 미감지 시 META01이 먼저 처리되므로 이 분기는 드물게 도달)
     prompt = `${vehicleCtx}
 
-증상: "${symptomText}"${answersCtx}${evNote}${subHint}
+증상: "${symptomText}"${answersCtx}${fuelNote}
 
-위 증상을 진단하기 위해 추가 정보가 필요한지 판단하세요.
-
-다음 카테고리 중 가장 관련있는 것을 선택하세요:
-sound(소리), vibration(진동), warning(경고등), smell(냄새), start(시동), drive(주행성능), leak(누유누수), electric(전기전자), exterior(외관기타)
-
-추가 질문이 필요하다면 다음 질문 ID 목록에서 가장 유용한 것을 최대 3개 선택하세요:
-소리: S01,S02,S03,S04,S05,S06,S07,S08,S09,S10
-진동: V01,V02,V03,V04,V05,V06,V07,V08,V09
-경고등: W01,W02,W03,W04,W05,W06,W07,W08,W09
-냄새: SM01,SM02,SM03,SM04,SM05,SM06,SM07,SM08
-시동: ST01,ST02,ST03,ST04,ST05,ST06,ST07,ST08,ST09
-주행: D01,D02,D03,D04,D05,D06,D07,D08
-누유: L01,L02,L03,L04,L05,L06,L07,L08
-전기: E01,E02,E03,E04,E05,E06,E07,E08
-외관: O01,O02,O03,O04,O05,O06${evExcludeNote}
+현재 수집된 정보만으로 진단을 진행합니다.
 
 JSON만 반환하세요 (설명 없이):
 {
-  "sufficient": false,
-  "detectedCategory": "sound",
-  "suggestedQuestionIds": ["S01", "S02"],
-  "reasoning": "소리 위치와 성격을 알아야 원인을 좁힐 수 있습니다"
+  "sufficient": true,
+  "detectedCategory": "${categoryHint ?? 'other'}",
+  "suggestedQuestionIds": [],
+  "reasoning": "현재 정보로 진단 가능"
 }`
   }
 

@@ -24,6 +24,15 @@ export interface DiagnosticQuestion {
   input_type: string
   logic?: string
   causes?: string
+  /** 적용 연료타입 배열 (없거나 빈 배열이면 모든 연료타입에 적용) */
+  fuel_filter?: string[]
+  /** 특정 질문의 답변 키워드가 매칭될 때만 이 질문을 표시 */
+  conditional_on?: {
+    question_id: string
+    answer_keywords: string[]
+  }
+  /** 선택지 인덱스(0-based) → 다음 질문 ID 매핑 (D01 등에서 사용) */
+  conditional_next?: Record<string, string>
 }
 
 export interface DiagnosticCategory {
@@ -35,6 +44,8 @@ export interface DiagnosticCategory {
 }
 
 export interface DiagnosticQuestionsDB {
+  /** META01 등 범용 분류 질문 (카테고리 미감지 시 fallback) */
+  meta?: DiagnosticQuestion[]
   common: DiagnosticQuestion[]
   categories: DiagnosticCategory[]
 }
