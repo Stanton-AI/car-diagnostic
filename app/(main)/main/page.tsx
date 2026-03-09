@@ -3,48 +3,53 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { v4 as uuidv4 } from 'uuid'
-import type { ChatMessage, DiagnosticQuestion, DiagnosisResult, UserProfile, FuelType } from '@/types'
-import { createMessage, urgencyLabel } from '@/lib/utils'
+import type { ChatMessage, DiagnosticQuestion, UserProfile, FuelType } from '@/types'
+import { createMessage } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import MessageBubble from '@/components/chat/MessageBubble'
-import QuestionChoices from '@/components/chat/QuestionChoices'
-import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
 
+// ── 상수 ──────────────────────────────────────────────────────────────────
 const FUEL_LABELS: Record<string, string> = {
   gasoline: '가솔린', diesel: '디젤', hybrid: '하이브리드', electric: '전기', lpg: 'LPG',
 }
 const MAKERS = ['현대', '기아', '제네시스', 'KG 모빌리티', '르노코리아', 'GM 한국', 'BMW', '메르세데스-벤츠', '아우디', '볼보', '기타']
 const FUEL_TYPES: { value: FuelType; label: string }[] = [
-  { value: 'gasoline', label: '가솔린' },
-  { value: 'diesel', label: '디젤' },
-  { value: 'hybrid', label: '하이브리드' },
-  { value: 'electric', label: '전기' },
-  { value: 'lpg', label: 'LPG' },
+  { value: 'gasoline', label: '가솔린' }, { value: 'diesel', label: '디젤' },
+  { value: 'hybrid', label: '하이브리드' }, { value: 'electric', label: '전기' }, { value: 'lpg', label: 'LPG' },
 ]
 const CURRENT_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: CURRENT_YEAR - 1989 }, (_, i) => CURRENT_YEAR - i)
 
+// ── 타입 ──────────────────────────────────────────────────────────────────
+type Phase = 'car_type' | 'other_car_info' | 'no_vehicle' | 'symptom' | 'questioning' | 'done'
+interface Checkpoint {
+  messages: ChatMessage[]
+  question: DiagnosticQuestion
+  queue: DiagnosticQuestion[]
+}
+
+// ── 인사 감지 ─────────────────────────────────────────────────────────────
+const GREETING_WORDS = ['안녕', '하이', 'hi', 'hello', '반가', '안뇽', '헬로', '방가']
+const SYMPTOM_WORDS = ['소리', '이상', '오일', '엔진', '브레이크', '타이어', '진동', '냄새', '경고', '점등', '누유', '시동']
+function isGreeting(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (t.length > 30) return false
+  if (SYMPTOM_WORDS.some(w => t.includes(w))) return false
+  return GREETING_WORDS.some(w => t.includes(w))
+}
+
 // ── 차량 수정 모달 ────────────────────────────────────────────────────────
-function VehicleEditModal({ vehicle, onClose, onSave }: {
-  vehicle: any
-  onClose: () => void
-  onSave: (data: any) => Promise<void>
-}) {
+function VehicleEditModal({ vehicle, onClose, onSave }: { vehicle: any; onClose: () => void; onSave: (data: any) => Promise<void> }) {
   const [form, setForm] = useState({
-    maker: vehicle.maker ?? '',
-    model: vehicle.model ?? '',
-    year: vehicle.year ?? CURRENT_YEAR,
-    mileage: String(vehicle.mileage ?? ''),
-    fuelType: (vehicle.fuel_type ?? 'gasoline') as FuelType,
-    plateNumber: vehicle.plate_number ?? '',
-    nickname: vehicle.nickname ?? '',
+    maker: vehicle.maker ?? '', model: vehicle.model ?? '', year: vehicle.year ?? CURRENT_YEAR,
+    mileage: String(vehicle.mileage ?? ''), fuelType: (vehicle.fuel_type ?? 'gasoline') as FuelType,
+    plateNumber: vehicle.plate_number ?? '', nickname: vehicle.nickname ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = (key: string, value: unknown) => setForm(prev => ({ ...prev, [key]: value }))
-
   const validate = () => {
     const errs: Record<string, string> = {}
     if (!form.maker) errs.maker = '제조사를 선택해 주세요'
@@ -56,128 +61,51 @@ function VehicleEditModal({ vehicle, onClose, onSave }: {
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
-
   const handleSave = async () => {
     if (!validate()) return
     setSaving(true)
-    await onSave({
-      maker: form.maker,
-      model: form.model.trim(),
-      year: form.year,
-      mileage: Number(form.mileage),
-      fuel_type: form.fuelType,
-      plate_number: form.plateNumber.trim() || null,
-      nickname: form.nickname.trim(),
-    })
+    await onSave({ maker: form.maker, model: form.model.trim(), year: form.year, mileage: Number(form.mileage), fuel_type: form.fuelType, plate_number: form.plateNumber.trim() || null, nickname: form.nickname.trim() })
     setSaving(false)
   }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-[480px] bg-white rounded-t-3xl pt-5 pb-8 max-h-[90vh] overflow-y-auto"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* 핸들 */}
+      <div className="relative w-full max-w-[480px] bg-white rounded-t-3xl pt-5 pb-8 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
         <div className="px-5">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-black text-gray-900">차량 정보 수정</h2>
             <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
           </div>
-
           <div className="space-y-4">
-            {/* 닉네임 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">차량 닉네임 <span className="text-red-500">*</span></label>
-              <input
-                value={form.nickname}
-                onChange={e => set('nickname', e.target.value)}
-                maxLength={10}
-                placeholder="예: 날쌘터보"
-                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none ${errors.nickname ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`}
-              />
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">차량 닉네임 <span className="text-red-500">*</span></label>
+              <input value={form.nickname} onChange={e => set('nickname', e.target.value)} maxLength={10} placeholder="예: 날쌘터보" className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none ${errors.nickname ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`} />
               {errors.nickname && <p className="text-xs text-red-500 mt-1">{errors.nickname}</p>}
             </div>
-            {/* 제조사 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">제조사 <span className="text-red-500">*</span></label>
-              <div className="grid grid-cols-3 gap-2">
-                {MAKERS.map(m => (
-                  <button key={m} onClick={() => set('maker', m)}
-                    className={`py-2.5 px-3 text-sm rounded-xl border transition-all ${form.maker === m ? 'bg-primary-600 text-white border-primary-600 font-semibold' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'}`}>
-                    {m}
-                  </button>
-                ))}
-              </div>
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">제조사 <span className="text-red-500">*</span></label>
+              <div className="grid grid-cols-3 gap-2">{MAKERS.map(m => <button key={m} onClick={() => set('maker', m)} className={`py-2.5 px-3 text-sm rounded-xl border transition-all ${form.maker === m ? 'bg-primary-600 text-white border-primary-600 font-semibold' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'}`}>{m}</button>)}</div>
               {errors.maker && <p className="text-xs text-red-500 mt-1">{errors.maker}</p>}
             </div>
-            {/* 모델명 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">모델명 <span className="text-red-500">*</span></label>
-              <input
-                value={form.model}
-                onChange={e => set('model', e.target.value)}
-                placeholder="예: 아반떼, 소나타..."
-                className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none ${errors.model ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`}
-              />
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">모델명 <span className="text-red-500">*</span></label>
+              <input value={form.model} onChange={e => set('model', e.target.value)} placeholder="예: 아반떼, 소나타..." className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none ${errors.model ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`} />
               {errors.model && <p className="text-xs text-red-500 mt-1">{errors.model}</p>}
             </div>
-            {/* 연식 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">연식</label>
-              <select value={form.year} onChange={e => set('year', Number(e.target.value))}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white">
-                {YEARS.map(y => <option key={y} value={y}>{y}년식</option>)}
-              </select>
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">연식</label>
+              <select value={form.year} onChange={e => set('year', Number(e.target.value))} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white">{YEARS.map(y => <option key={y} value={y}>{y}년식</option>)}</select>
             </div>
-            {/* 연료 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">연료</label>
-              <div className="flex flex-wrap gap-2">
-                {FUEL_TYPES.map(f => (
-                  <button key={f.value} onClick={() => set('fuelType', f.value)}
-                    className={`px-4 py-2.5 text-sm rounded-xl border transition-all ${form.fuelType === f.value ? 'bg-primary-600 text-white border-primary-600 font-semibold' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'}`}>
-                    {f.label}
-                  </button>
-                ))}
-              </div>
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">연료</label>
+              <div className="flex flex-wrap gap-2">{FUEL_TYPES.map(f => <button key={f.value} onClick={() => set('fuelType', f.value)} className={`px-4 py-2.5 text-sm rounded-xl border transition-all ${form.fuelType === f.value ? 'bg-primary-600 text-white border-primary-600 font-semibold' : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'}`}>{f.label}</button>)}</div>
             </div>
-            {/* 주행거리 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">주행거리 <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={form.mileage}
-                  onChange={e => set('mileage', e.target.value)}
-                  placeholder="예: 85000"
-                  className={`w-full px-4 py-3 pr-12 rounded-xl border text-sm focus:outline-none ${errors.mileage ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">km</span>
-              </div>
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">주행거리 <span className="text-red-500">*</span></label>
+              <div className="relative"><input type="number" value={form.mileage} onChange={e => set('mileage', e.target.value)} placeholder="예: 85000" className={`w-full px-4 py-3 pr-12 rounded-xl border text-sm focus:outline-none ${errors.mileage ? 'border-red-300' : 'border-gray-200 focus:border-primary-400'}`} /><span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">km</span></div>
               {errors.mileage && <p className="text-xs text-red-500 mt-1">{errors.mileage}</p>}
             </div>
-            {/* 차량번호 */}
-            <div>
-              <label className="text-sm font-bold text-gray-700 mb-1.5 block">차량번호 <span className="text-gray-400 font-normal">(선택)</span></label>
-              <input
-                value={form.plateNumber}
-                onChange={e => set('plateNumber', e.target.value)}
-                placeholder="예: 123가 4567"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400"
-              />
+            <div><label className="text-sm font-bold text-gray-700 mb-1.5 block">차량번호 <span className="text-gray-400 font-normal">(선택)</span></label>
+              <input value={form.plateNumber} onChange={e => set('plateNumber', e.target.value)} placeholder="예: 123가 4567" className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400" />
             </div>
           </div>
-
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full mt-6 py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {saving ? <span className="animate-spin inline-block">⟳</span> : null}
-            수정 완료
+          <button onClick={handleSave} disabled={saving} className="w-full mt-6 py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+            {saving ? <span className="animate-spin inline-block">⟳</span> : null}수정 완료
           </button>
         </div>
       </div>
@@ -196,37 +124,46 @@ export default function MainPage() {
   const [vehicle, setVehicle] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showEditModal, setShowEditModal] = useState(false)
-
-  // 채팅 상태
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [conversationId] = useState(() => uuidv4())
-  const [currentQuestions, setCurrentQuestions] = useState<DiagnosticQuestion[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
-  const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [authUser, setAuthUser] = useState<{ id: string } | null>(null)
 
+  // 대화 상태
+  const [phase, setPhase] = useState<Phase>('car_type')
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [conversationId] = useState(() => uuidv4())
+  const [isLoading, setIsLoading] = useState(false)
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+
+  // 차량 정보 (이번 대화에 사용할 차량 정보)
+  const [activeVehicleInfo, setActiveVehicleInfo] = useState<any>(null)
+
+  // 남의 차 입력 폼
+  const [otherCarForm, setOtherCarForm] = useState({ maker: '', model: '', year: '', mileage: '' })
+
+  // 질문 상태
+  const [currentQuestion, setCurrentQuestion] = useState<DiagnosticQuestion | null>(null)
+  const [questionQueue, setQuestionQueue] = useState<DiagnosticQuestion[]>([])
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([])
+
+  // 기타 직접 입력 상태
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customInputValue, setCustomInputValue] = useState('')
+
+  // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
       const { data: { user: au } } = await supabase.auth.getUser()
       if (!au) { router.replace('/'); return }
       setAuthUser(au)
-
       const [{ data: profile }, { data: vehicles }] = await Promise.all([
         supabase.from('users').select('*').eq('id', au.id).single(),
         supabase.from('vehicles').select('*').eq('user_id', au.id).order('created_at', { ascending: false }).limit(1),
       ])
-
       setUser(profile)
       setVehicle(vehicles?.[0] ?? null)
       setLoading(false)
-
-      // AI 첫 인사
       setMessages([{
-        id: uuidv4(),
-        role: 'assistant',
-        type: 'text',
-        content: '안녕하세요! 저는 MIKY 자동차 진단 AI입니다. 🚗\n\n현재 차량의 어떤 증상이 불편하신가요? 최대한 자세히 알려주시면 더 정확하게 분석해 드릴 수 있어요.',
+        id: uuidv4(), role: 'assistant', type: 'text',
+        content: '안녕하세요! MIKY 자동차 진단 AI입니다. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
         timestamp: new Date().toISOString(),
       }])
     }
@@ -235,9 +172,9 @@ export default function MainPage() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isLoading])
+  }, [messages, isLoading, currentQuestion, phase])
 
-  // 이미지 업로드
+  // ── 이미지 업로드 ────────────────────────────────────────────────────
   const handleImageUpload = async (files: File[]) => {
     if (!authUser) return []
     const urls: string[] = []
@@ -253,45 +190,138 @@ export default function MainPage() {
     return urls
   }
 
-  // 메시지 전송
+  // ── 차량 타입 선택 ───────────────────────────────────────────────────
+  const handleCarType = useCallback((type: 'mine' | 'other') => {
+    const userMsg = createMessage('user', type === 'mine' ? '🚗 내 차' : '🔍 다른 분의 차', 'text') as ChatMessage
+    if (type === 'mine') {
+      if (!vehicle) {
+        const aiMsg = createMessage('assistant', '차고에 등록된 차량이 없네요. 차량을 먼저 등록하면 더 정확한 진단이 가능해요! 📋\n\n아니면 차량 정보를 직접 입력해도 됩니다.', 'text') as ChatMessage
+        setMessages(prev => [...prev, userMsg, aiMsg])
+        setPhase('no_vehicle')
+        return
+      }
+      const vInfo = {
+        id: vehicle.id, maker: vehicle.maker, model: vehicle.model,
+        year: vehicle.year, mileage: vehicle.mileage,
+        fuelType: vehicle.fuel_type, plateNumber: vehicle.plate_number, nickname: vehicle.nickname,
+      }
+      setActiveVehicleInfo(vInfo)
+      const label = vehicle.nickname ? `"${vehicle.nickname}"` : `${vehicle.maker} ${vehicle.model}`
+      const aiMsg = createMessage('assistant', `${label} 기준으로 진행할게요. 🚗\n\n어떤 증상이 있으신가요? 최대한 자세히 설명해 주시면 더 정확하게 분석해드릴 수 있어요.`, 'text') as ChatMessage
+      setMessages(prev => [...prev, userMsg, aiMsg])
+      setPhase('symptom')
+    } else {
+      const aiMsg = createMessage('assistant', '차량 정보를 알려주세요. 아래 양식을 채워주시면 됩니다 📋', 'text') as ChatMessage
+      setMessages(prev => [...prev, userMsg, aiMsg])
+      setPhase('other_car_info')
+    }
+  }, [vehicle])
+
+  // ── 남의 차 정보 제출 ────────────────────────────────────────────────
+  const handleOtherCarSubmit = useCallback(() => {
+    if (!otherCarForm.maker.trim() || !otherCarForm.model.trim()) return
+    const yearStr = otherCarForm.year ? ` (${otherCarForm.year}년식)` : ''
+    const mileStr = otherCarForm.mileage ? `, ${parseInt(otherCarForm.mileage).toLocaleString()}km` : ''
+    const infoText = `${otherCarForm.maker} ${otherCarForm.model}${yearStr}${mileStr}`
+    const userMsg = createMessage('user', `차량 정보 입력: ${infoText}`, 'text') as ChatMessage
+    const vInfo: any = {
+      maker: otherCarForm.maker.trim(), model: otherCarForm.model.trim(),
+      year: otherCarForm.year ? Number(otherCarForm.year) : undefined,
+      mileage: otherCarForm.mileage ? Number(otherCarForm.mileage.replace(/,/g, '')) : undefined,
+    }
+    setActiveVehicleInfo(vInfo)
+    const aiMsg = createMessage('assistant', `${otherCarForm.maker} ${otherCarForm.model} 기준으로 진행할게요. 🔍\n\n어떤 증상이 있으신가요?`, 'text') as ChatMessage
+    setMessages(prev => [...prev, userMsg, aiMsg])
+    setOtherCarForm({ maker: '', model: '', year: '', mileage: '' })
+    setPhase('symptom')
+  }, [otherCarForm])
+
+  // ── 뒤로가기 (이전 답변 수정) ────────────────────────────────────────
+  const handleGoBack = useCallback(() => {
+    if (checkpoints.length === 0) return
+    const last = checkpoints[checkpoints.length - 1]
+    setMessages(last.messages)
+    setCurrentQuestion(last.question)
+    setQuestionQueue(last.queue)
+    setCheckpoints(prev => prev.slice(0, -1))
+    setShowCustomInput(false)
+    setCustomInputValue('')
+    setPhase('questioning')
+  }, [checkpoints])
+
+  // ── 메시지 전송 / API 호출 ───────────────────────────────────────────
   const sendMessage = useCallback(async (content: string, type: 'text' | 'answer' = 'text', questionId?: string) => {
-    const vehicleInfo = vehicle ? {
-      id: vehicle.id, userId: vehicle.user_id, maker: vehicle.maker, model: vehicle.model,
-      year: vehicle.year, mileage: vehicle.mileage, fuelType: vehicle.fuel_type,
-      plateNumber: vehicle.plate_number, nickname: vehicle.nickname,
-    } : null
+    // 인사말 감지
+    if (type === 'text' && phase === 'symptom' && isGreeting(content)) {
+      const userMsg = createMessage('user', content, 'text') as ChatMessage
+      const aiMsg = createMessage('assistant', '안녕하세요! 😊 반갑습니다.\n\n차량에 이상한 증상이 있으시면 편하게 말씀해주세요. 어떤 부분이 불편하신가요?', 'text') as ChatMessage
+      setMessages(prev => [...prev, userMsg, aiMsg])
+      return
+    }
 
-    const userMsg = createMessage('user', content, type, {
-      questionId, selectedChoice: content,
-      images: type === 'text' ? uploadedImages : undefined,
-    }) as ChatMessage
+    // 답변형이면 체크포인트 저장 (뒤로가기용)
+    if (type === 'answer' && currentQuestion) {
+      setCheckpoints(prev => [...prev, {
+        messages: [...messages],
+        question: currentQuestion,
+        queue: [...questionQueue],
+      }])
+    }
 
+    const userMsg = createMessage('user', content, type, { questionId }) as ChatMessage
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
-    setCurrentQuestions([])
+    setCurrentQuestion(null)
+    setShowCustomInput(false)
+    setCustomInputValue('')
     setIsLoading(true)
 
+    // 대기 중인 질문이 있으면 API 호출 없이 다음 질문 표시
+    if (type === 'answer' && questionQueue.length > 0) {
+      const nextQ = questionQueue[0]
+      const remaining = questionQueue.slice(1)
+      setQuestionQueue(remaining)
+      const qMsg = createMessage('assistant', nextQ.question, 'question', { questionId: nextQ.id, choices: nextQ.choices }) as ChatMessage
+      setTimeout(() => {
+        setMessages(prev => [...prev, qMsg])
+        setCurrentQuestion(nextQ)
+        setIsLoading(false)
+      }, 400)
+      return
+    }
+
+    // API 호출
     try {
       const response = await fetch('/api/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId, vehicleInfo, messages: newMessages,
-          symptomImages: uploadedImages, isReDiagnosis: false,
+          conversationId, vehicleInfo: activeVehicleInfo,
+          messages: newMessages, symptomImages: uploadedImages, isReDiagnosis: false,
         }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error)
 
       if (data.data.needsMoreInfo && data.data.additionalQuestions?.length > 0) {
-        const aiMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 확인해 드릴게요.', 'question', {}) as ChatMessage
-        setMessages(prev => [...prev, aiMsg])
-        setCurrentQuestions(data.data.additionalQuestions)
+        const questions = data.data.additionalQuestions as DiagnosticQuestion[]
+        const firstQ = questions[0]
+        const restQ = questions.slice(1)
+
+        // 추가 질문 안내 메시지 + 첫 번째 질문을 메시지로 추가
+        const introMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 문의드려요.', 'text') as ChatMessage
+        const qMsg = createMessage('assistant', firstQ.question, 'question', { questionId: firstQ.id, choices: firstQ.choices }) as ChatMessage
+        setMessages(prev => [...prev, introMsg, qMsg])
+        setCurrentQuestion(firstQ)
+        setQuestionQueue(restQ)
+        setPhase('questioning')
       } else {
-        const result: DiagnosisResult = data.data.result
-        setDiagnosisResult(result)
-        const resultMsg = createMessage('assistant', result.summary, 'result', { result }) as ChatMessage
-        setMessages(prev => [...prev, resultMsg])
+        // 진단 완료 → 결과 페이지로 이동
+        const doneMsg = createMessage('assistant', '✅ 진단 분석이 완료되었습니다!\n잠시 후 결과 리포트를 확인하실 수 있어요.', 'text') as ChatMessage
+        setMessages(prev => [...prev, doneMsg])
+        setPhase('done')
+        setCheckpoints([])
+        setTimeout(() => router.push(`/diagnosis/${conversationId}`), 1500)
       }
     } catch {
       const errMsg = createMessage('assistant', '죄송합니다, 진단 처리 중 오류가 발생했습니다. 다시 시도해 주세요.', 'text') as ChatMessage
@@ -300,35 +330,9 @@ export default function MainPage() {
       setIsLoading(false)
       setUploadedImages([])
     }
-  }, [messages, authUser, vehicle, uploadedImages, conversationId])
+  }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, uploadedImages, conversationId, router])
 
-  // 자가점검 재진단
-  const handleSelfCheckSubmit = async (selfCheckResults: string) => {
-    const vehicleInfo = vehicle ? {
-      id: vehicle.id, maker: vehicle.maker, model: vehicle.model,
-      year: vehicle.year, fuelType: vehicle.fuel_type,
-    } : null
-    const reDiagMsg = createMessage('user', `자가점검 결과: ${selfCheckResults}`, 'self_check_input') as ChatMessage
-    const newMessages = [...messages, reDiagMsg]
-    setMessages(newMessages)
-    setIsLoading(true)
-    try {
-      const response = await fetch('/api/diagnose', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId, vehicleInfo, messages: newMessages, isReDiagnosis: true }),
-      })
-      const data = await response.json()
-      if (data.success) {
-        const result: DiagnosisResult = data.data.result
-        setDiagnosisResult(result)
-        const msg = createMessage('assistant', '자가점검 결과를 반영하여 진단을 업데이트했습니다.', 're_diagnosis', { result }) as ChatMessage
-        setMessages(prev => [...prev, msg])
-      }
-    } finally { setIsLoading(false) }
-  }
-
-  // 차량 수정 저장
+  // ── 차량 수정 저장 ───────────────────────────────────────────────────
   const handleVehicleSave = async (data: any) => {
     if (!vehicle) return
     const { error } = await supabase.from('vehicles').update(data).eq('id', vehicle.id)
@@ -346,6 +350,16 @@ export default function MainPage() {
 
   const displayName = (user as any)?.display_name ?? (user as any)?.displayName ?? '사용자'
   const fuelLabel = FUEL_LABELS[vehicle?.fuel_type ?? ''] ?? vehicle?.fuel_type ?? ''
+
+  // 뒤로가기 버튼 표시 조건: 질문 단계이고 체크포인트가 있고 로딩 중 아닐 때 항상 표시
+  const showBackButton = phase === 'questioning' && checkpoints.length > 0 && !isLoading
+
+  // 현재 질문의 선택지 (중복 제거)
+  const questionChoices = currentQuestion
+    ? [...currentQuestion.choices.filter((c, i, arr) => arr.indexOf(c) === i),
+      ...(!currentQuestion.choices.includes('모름') ? ['모름'] : []),
+      '기타 (직접 입력)']
+    : []
 
   return (
     <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
@@ -369,25 +383,13 @@ export default function MainPage() {
       {/* ── 차량 카드 ── */}
       <div className="px-4 pt-4 flex-shrink-0">
         {vehicle ? (
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="w-full text-left relative bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 text-white overflow-hidden shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
-          >
-            {/* 연료 배지 */}
-            {fuelLabel && (
-              <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {fuelLabel}
-              </div>
-            )}
-            {/* 수정 아이콘 */}
+          <button onClick={() => setShowEditModal(true)}
+            className="w-full text-left relative bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 text-white overflow-hidden shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform">
+            {fuelLabel && <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">{fuelLabel}</div>}
             <div className="absolute bottom-4 right-4 bg-white/20 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-              <span className="text-[10px]">✏️</span>
-              <span className="text-[11px] font-semibold">수정</span>
+              <span className="text-[10px]">✏️</span><span className="text-[11px] font-semibold">수정</span>
             </div>
-            {/* 닉네임 라벨 */}
-            <p className="text-white/70 text-xs mb-1 font-medium">
-              {vehicle.nickname ? `🚗 ${vehicle.nickname}의 차고` : vehicle.maker}
-            </p>
+            <p className="text-white/70 text-xs mb-1 font-medium">{vehicle.nickname ? `🚗 ${vehicle.nickname}의 차고` : vehicle.maker}</p>
             <h2 className="text-2xl font-black mb-1">{vehicle.model}</h2>
             <p className="text-white/70 text-sm">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</p>
           </button>
@@ -401,39 +403,151 @@ export default function MainPage() {
       </div>
 
       {/* ── 채팅 영역 ── */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 mt-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 mt-3">
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="text-primary-600">✦</span>
           <h3 className="font-bold text-gray-900 text-sm">AI 정비 어드바이저</h3>
         </div>
 
+        {/* 메시지 목록 */}
         {messages.map((msg) => (
           <div key={msg.id} className="animate-fade-up">
-            {(msg.type === 'result' || msg.type === 're_diagnosis') && msg.metadata?.result ? (
-              <DiagnosisResultCard
-                result={msg.metadata.result as DiagnosisResult}
-                conversationId={conversationId}
-                onSelfCheckSubmit={handleSelfCheckSubmit}
-              />
-            ) : (
-              <MessageBubble message={msg} />
-            )}
+            <MessageBubble message={msg} />
           </div>
         ))}
 
-        {currentQuestions.length > 0 && !isLoading && (
-          <QuestionChoices
-            questions={currentQuestions}
-            onAnswer={(questionId, answer) => sendMessage(answer, 'answer', questionId)}
-          />
+
+        {/* 차량 선택 버튼 (car_type 단계) */}
+        {phase === 'car_type' && !isLoading && messages.length > 0 && (
+          <div className="flex gap-3 ml-10 animate-fade-up">
+            <button onClick={() => handleCarType('mine')}
+              className="flex-1 py-3 px-4 bg-white border-2 border-primary-200 rounded-2xl text-sm font-semibold text-primary-700 hover:bg-primary-50 transition-all active:scale-[0.97] shadow-sm">
+              🚗 내 차
+            </button>
+            <button onClick={() => handleCarType('other')}
+              className="flex-1 py-3 px-4 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.97] shadow-sm">
+              🔍 다른 분의 차
+            </button>
+          </div>
+        )}
+
+        {/* 남의 차 정보 입력 폼 */}
+        {phase === 'other_car_info' && (
+          <div className="ml-10 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3 animate-fade-up">
+            <p className="text-xs text-gray-500 font-medium mb-1">차량 정보 입력</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">제조사 <span className="text-red-500">*</span></label>
+                <input value={otherCarForm.maker} onChange={e => setOtherCarForm(p => ({ ...p, maker: e.target.value }))}
+                  placeholder="현대, 기아, BMW..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">모델명 <span className="text-red-500">*</span></label>
+                <input value={otherCarForm.model} onChange={e => setOtherCarForm(p => ({ ...p, model: e.target.value }))}
+                  placeholder="아반떼, K5..." className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">연식</label>
+                <input value={otherCarForm.year} onChange={e => setOtherCarForm(p => ({ ...p, year: e.target.value }))}
+                  placeholder="2020" type="number" min="1990" max={CURRENT_YEAR}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">주행거리 (km)</label>
+                <input value={otherCarForm.mileage} onChange={e => setOtherCarForm(p => ({ ...p, mileage: e.target.value }))}
+                  placeholder="50000" type="number" min="0"
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400" />
+              </div>
+            </div>
+            <button onClick={handleOtherCarSubmit}
+              disabled={!otherCarForm.maker.trim() || !otherCarForm.model.trim()}
+              className="w-full py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-40 transition-colors">
+              확인 →
+            </button>
+          </div>
+        )}
+
+        {/* 차량 미등록 시 안내 */}
+        {phase === 'no_vehicle' && (
+          <div className="ml-10 space-y-2 animate-fade-up">
+            <Link href="/vehicles/new"
+              className="block py-3 px-4 bg-primary-600 text-white text-sm font-semibold rounded-2xl text-center hover:bg-primary-700 transition-colors">
+              🚗 차량 등록하기
+            </Link>
+            <button onClick={() => {
+              const aiMsg = createMessage('assistant', '차량 정보를 알려주세요. 아래 양식을 채워주시면 됩니다 📋', 'text') as ChatMessage
+              setMessages(prev => [...prev, aiMsg])
+              setPhase('other_car_info')
+            }}
+              className="block w-full py-3 px-4 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-2xl text-center hover:bg-gray-50 transition-colors">
+              📝 차량 정보 직접 입력
+            </button>
+          </div>
+        )}
+
+        {/* 현재 질문 선택지 */}
+        {currentQuestion && !isLoading && (
+          <div className="ml-10 space-y-2 animate-fade-up">
+            {/* 뒤로가기 버튼 */}
+            {showBackButton && (
+              <div className="flex justify-end mb-1">
+                <button
+                  onClick={handleGoBack}
+                  className="text-xs text-gray-400 hover:text-primary-500 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-primary-200 bg-white transition-all active:scale-[0.97]">
+                  ← 이전 답변 수정
+                </button>
+              </div>
+            )}
+            {!showCustomInput ? (
+              <>
+                {questionChoices.map((choice, i) => (
+                  <button key={`${currentQuestion.id}-${i}`}
+                    onClick={() => {
+                      if (choice === '기타 (직접 입력)') {
+                        setShowCustomInput(true)
+                        return
+                      }
+                      sendMessage(choice, 'answer', currentQuestion.id)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left hover:border-primary-300 hover:bg-primary-50 transition-all active:scale-[0.98] text-sm shadow-sm">
+                    <span className="w-5 h-5 rounded-full border border-primary-300 bg-white flex-shrink-0 flex items-center justify-center text-xs text-primary-600 font-bold">
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="flex-1">{choice}</span>
+                  </button>
+                ))}
+              </>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={customInputValue}
+                  onChange={e => setCustomInputValue(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && customInputValue.trim()) {
+                      sendMessage(customInputValue.trim(), 'answer', currentQuestion.id)
+                    }
+                  }}
+                  placeholder="직접 입력해 주세요..."
+                  autoFocus
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white"
+                />
+                <button
+                  onClick={() => { if (customInputValue.trim()) sendMessage(customInputValue.trim(), 'answer', currentQuestion.id) }}
+                  className="px-4 py-3 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors">
+                  확인
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         {isLoading && <TypingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── 채팅 입력창 ── */}
-      {!diagnosisResult && !isLoading && currentQuestions.length === 0 && (
+      {/* ── 채팅 입력창 (증상 입력 단계만) ── */}
+      {phase === 'symptom' && !isLoading && (
         <ChatInput
           onSend={(text) => sendMessage(text)}
           onImageUpload={handleImageUpload}
@@ -445,11 +559,7 @@ export default function MainPage() {
 
       {/* ── 차량 수정 모달 ── */}
       {showEditModal && vehicle && (
-        <VehicleEditModal
-          vehicle={vehicle}
-          onClose={() => setShowEditModal(false)}
-          onSave={handleVehicleSave}
-        />
+        <VehicleEditModal vehicle={vehicle} onClose={() => setShowEditModal(false)} onSave={handleVehicleSave} />
       )}
     </div>
   )

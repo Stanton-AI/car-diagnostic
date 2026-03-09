@@ -7,9 +7,21 @@ interface Props {
   result: DiagnosisResult
   conversationId: string
   onSelfCheckSubmit?: (results: string) => void
+  defaultExpanded?: boolean   // false면 접힌 채로 시작
+  isRediagnosis?: boolean     // 재진단 카드 여부 (비용 변동 안내 표시)
 }
 
-export default function DiagnosisResultCard({ result, conversationId, onSelfCheckSubmit }: Props) {
+// 주요 원인 신뢰도가 이 값 이상이면 추가 자가진단 불필요로 판단
+const CONFIDENT_THRESHOLD = 70
+
+export default function DiagnosisResultCard({
+  result,
+  conversationId,
+  onSelfCheckSubmit,
+  defaultExpanded = true,
+  isRediagnosis = false,
+}: Props) {
+  const [expanded, setExpanded] = useState(defaultExpanded)
   const [selfCheckItems, setSelfCheckItems] = useState<SelfCheckItem[]>(
     result.selfCheck.map(item => ({ ...item, checked: false, result: '' }))
   )
@@ -19,6 +31,9 @@ export default function DiagnosisResultCard({ result, conversationId, onSelfChec
 
   const urgency = urgencyLabel(result.urgency)
   const shareUrl = getShareUrl(conversationId)
+
+  const topProbability = result.causes[0]?.probability ?? 0
+  const isConfident = topProbability >= CONFIDENT_THRESHOLD
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(shareUrl)
@@ -34,22 +49,67 @@ export default function DiagnosisResultCard({ result, conversationId, onSelfChec
     setShowSelfCheckInput(false)
   }
 
+  // ── 접힌 상태 (미니 요약 카드) ─────────────────────────────────────────
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="w-full text-left bg-white rounded-2xl border border-gray-200 p-3.5 hover:border-primary-300 hover:shadow-sm transition-all animate-fade-up"
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
+            <span className="text-white text-xs font-black">M</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-gray-400 font-medium leading-none mb-0.5">
+              {isRediagnosis ? '이전 진단' : 'MIKY AI 진단 리포트'}
+            </p>
+            <p className="text-sm font-bold text-gray-700 truncate">{result.summary}</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${urgency.bg} ${urgency.color}`}>
+              {urgency.label}
+            </span>
+            <span className="text-gray-400 text-xs">▼ 펼치기</span>
+          </div>
+        </div>
+      </button>
+    )
+  }
+
+  // ── 펼친 상태 (전체 카드) ──────────────────────────────────────────────
   return (
     <div className="space-y-3 animate-fade-up">
-      {/* AI 아바타 + 헤더 라벨 */}
+      {/* AI 아바타 + 헤더 */}
       <div className="flex items-center gap-2 px-1">
         <div className="w-8 h-8 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
           <span className="text-white text-xs font-black">M</span>
         </div>
         <span className="text-sm font-semibold text-gray-700">MIKY AI 진단 리포트</span>
-        <button onClick={handleCopyLink} className="ml-auto text-gray-400 hover:text-primary-500 transition-colors p-1">
-          {copied ? <span className="text-xs text-green-500 font-medium">복사됨!</span> : (
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-            </svg>
-          )}
-        </button>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={handleCopyLink}
+            className="text-gray-400 hover:text-primary-500 transition-colors p-1"
+            title="링크 복사"
+          >
+            {copied ? (
+              <span className="text-xs text-green-500 font-medium">복사됨!</span>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            )}
+          </button>
+          {/* 접기 버튼 */}
+          <button
+            onClick={() => setExpanded(false)}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 text-xs font-medium"
+            title="접기"
+          >
+            ▲ 접기
+          </button>
+        </div>
       </div>
 
       {/* 주요 증상 카드 */}
@@ -89,7 +149,6 @@ export default function DiagnosisResultCard({ result, conversationId, onSelfChec
                   </span>
                 </div>
               </div>
-              {/* 확률 바 */}
               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${i === 0 ? 'bg-primary-500' : 'bg-gray-300'}`}
@@ -127,6 +186,18 @@ export default function DiagnosisResultCard({ result, conversationId, onSelfChec
         {result.cost.note && (
           <p className="text-xs text-gray-400 mt-2 leading-relaxed">* {result.cost.note}</p>
         )}
+
+        {/* 재진단 시 비용 변동 안내 */}
+        {isRediagnosis && (
+          <div className="mt-3 flex items-start gap-1.5 p-2.5 bg-amber-50 rounded-xl border border-amber-100">
+            <span className="text-amber-500 text-xs mt-0.5 flex-shrink-0">ℹ️</span>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              자가점검으로 주요 원인의 우선순위가 바뀌면 견적도 함께 조정됩니다.
+              AI는 매 진단마다 원인별 확률을 독립적으로 추정하므로 소폭의 변동은 정상입니다.
+              최종 비용은 정비소 직접 확인을 권장합니다.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* 권장 조치 사항 */}
@@ -135,37 +206,56 @@ export default function DiagnosisResultCard({ result, conversationId, onSelfChec
         <p className="text-sm text-primary-700 leading-relaxed">{result.shopTip}</p>
       </div>
 
-      {/* 자가점검 팁 */}
-      {result.selfCheck.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <h4 className="font-bold text-gray-900 text-sm mb-3">🏠 집에서 먼저 확인해보세요</h4>
-          <div className="space-y-3">
-            {selfCheckItems.map((item, i) => (
-              <label key={item.id} className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={item.checked}
-                  onChange={e => {
-                    setSelfCheckItems(prev =>
-                      prev.map(it => it.id === item.id ? { ...it, checked: e.target.checked } : it)
-                    )
-                  }}
-                  className="mt-0.5 w-4 h-4 accent-primary-600 rounded flex-shrink-0"
-                />
-                <span className="text-sm text-gray-700 leading-relaxed">{item.tip}</span>
-              </label>
-            ))}
+      {/* 자가점검 섹션 */}
+      {/* onSelfCheckSubmit 미정의 = 구버전 카드 → 자가점검 섹션 전체 숨김 */}
+      {result.selfCheck.length > 0 && !!onSelfCheckSubmit && (
+        isConfident ? (
+          /* 신뢰도가 높아 추가 자가진단 불필요 */
+          <div className="bg-green-50 rounded-2xl border border-green-200 p-4">
+            <div className="flex items-start gap-2.5">
+              <span className="text-green-600 text-lg flex-shrink-0">✅</span>
+              <div>
+                <h4 className="font-bold text-green-800 text-sm mb-1">진단 원인이 충분히 좁혀졌습니다</h4>
+                <p className="text-xs text-green-700 leading-relaxed">
+                  <strong>{result.causes[0]?.name}</strong> 가능성이 <strong>{topProbability}%</strong>로
+                  높아 추가 자가점검의 실익이 적습니다.
+                  정비소 방문을 통한 정확한 진단을 권장합니다.
+                </p>
+              </div>
+            </div>
           </div>
+        ) : (
+          /* 추가 자가진단 가능 */
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <h4 className="font-bold text-gray-900 text-sm mb-3">🏠 집에서 먼저 확인해보세요</h4>
+            <div className="space-y-3">
+              {selfCheckItems.map((item) => (
+                <label key={item.id} className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={e => {
+                      setSelfCheckItems(prev =>
+                        prev.map(it => it.id === item.id ? { ...it, checked: e.target.checked } : it)
+                      )
+                    }}
+                    className="mt-0.5 w-4 h-4 accent-primary-600 rounded flex-shrink-0"
+                  />
+                  <span className="text-sm text-gray-700 leading-relaxed">{item.tip}</span>
+                </label>
+              ))}
+            </div>
 
-          {selfCheckItems.some(i => i.checked) && (
-            <button
-              onClick={() => setShowSelfCheckInput(true)}
-              className="mt-4 w-full py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
-            >
-              자가점검 결과 알려주기 → 재진단 받기
-            </button>
-          )}
-        </div>
+            {selfCheckItems.some(i => i.checked) && (
+              <button
+                onClick={() => setShowSelfCheckInput(true)}
+                className="mt-4 w-full py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
+              >
+                자가점검 결과 알려주기 → 재진단 받기
+              </button>
+            )}
+          </div>
+        )
       )}
 
       {/* 자가점검 결과 입력 */}

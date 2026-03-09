@@ -109,7 +109,7 @@ export default function HomePage() {
         {/* 이용약관 */}
         <p className="text-xs text-gray-600 text-center mt-5 leading-relaxed">
           로그인 시 <span className="underline text-gray-500">이용약관</span> 및{' '}
-          <span className="underline text-gray-500">개인정보처리방침</span>에 동의합니다
+          <a href="/privacy" className="underline text-gray-500 hover:text-gray-300">개인정보처리방침</a>에 동의합니다
         </p>
       </div>
     </div>
