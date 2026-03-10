@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // 초기 증상 텍스트 추출
     // "🚗 내 차", "🔍 다른 분의 차", "차량 정보 입력:" 등 셋업 메시지 제외
-    const SETUP_PREFIXES = ['🚗 내 차', '🔍 다른 분의 차', '차량 정보 입력:']
+    const SETUP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '차량 정보 입력:']
     const symptomMessage = messages.find(m =>
       m.role === 'user' &&
       m.type === 'text' &&

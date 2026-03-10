@@ -136,8 +136,8 @@ export default function MainPage() {
   // 차량 정보 (이번 대화에 사용할 차량 정보)
   const [activeVehicleInfo, setActiveVehicleInfo] = useState<any>(null)
 
-  // 남의 차 입력 폼
-  const [otherCarForm, setOtherCarForm] = useState({ maker: '', model: '', year: '', mileage: '' })
+  // 미등록 차량 입력 폼
+  const [otherCarForm, setOtherCarForm] = useState({ maker: '', model: '', year: '', mileage: '', fuelType: 'gasoline' as FuelType })
 
   // 질문 상태
   const [currentQuestion, setCurrentQuestion] = useState<DiagnosticQuestion | null>(null)
@@ -192,7 +192,7 @@ export default function MainPage() {
 
   // ── 차량 타입 선택 ───────────────────────────────────────────────────
   const handleCarType = useCallback((type: 'mine' | 'other') => {
-    const userMsg = createMessage('user', type === 'mine' ? '🚗 내 차' : '🔍 다른 분의 차', 'text') as ChatMessage
+    const userMsg = createMessage('user', type === 'mine' ? '🚗 내 차' : '🔍 앱에 등록되지 않은 차', 'text') as ChatMessage
     if (type === 'mine') {
       if (!vehicle) {
         const aiMsg = createMessage('assistant', '차고에 등록된 차량이 없네요. 차량을 먼저 등록하면 더 정확한 진단이 가능해요! 📋\n\n아니면 차량 정보를 직접 입력해도 됩니다.', 'text') as ChatMessage
@@ -222,17 +222,19 @@ export default function MainPage() {
     if (!otherCarForm.maker.trim() || !otherCarForm.model.trim()) return
     const yearStr = otherCarForm.year ? ` (${otherCarForm.year}년식)` : ''
     const mileStr = otherCarForm.mileage ? `, ${parseInt(otherCarForm.mileage).toLocaleString()}km` : ''
-    const infoText = `${otherCarForm.maker} ${otherCarForm.model}${yearStr}${mileStr}`
+    const fuelStr = FUEL_LABELS[otherCarForm.fuelType] ?? otherCarForm.fuelType
+    const infoText = `${otherCarForm.maker} ${otherCarForm.model}${yearStr}${mileStr}, ${fuelStr}`
     const userMsg = createMessage('user', `차량 정보 입력: ${infoText}`, 'text') as ChatMessage
     const vInfo: any = {
       maker: otherCarForm.maker.trim(), model: otherCarForm.model.trim(),
       year: otherCarForm.year ? Number(otherCarForm.year) : undefined,
       mileage: otherCarForm.mileage ? Number(otherCarForm.mileage.replace(/,/g, '')) : undefined,
+      fuelType: otherCarForm.fuelType,
     }
     setActiveVehicleInfo(vInfo)
     const aiMsg = createMessage('assistant', `${otherCarForm.maker} ${otherCarForm.model} 기준으로 진행할게요. 🔍\n\n어떤 증상이 있으신가요?`, 'text') as ChatMessage
     setMessages(prev => [...prev, userMsg, aiMsg])
-    setOtherCarForm({ maker: '', model: '', year: '', mileage: '' })
+    setOtherCarForm({ maker: '', model: '', year: '', mileage: '', fuelType: 'gasoline' })
     setPhase('symptom')
   }, [otherCarForm])
 
@@ -426,15 +428,25 @@ export default function MainPage() {
             </button>
             <button onClick={() => handleCarType('other')}
               className="flex-1 py-3 px-4 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.97] shadow-sm">
-              🔍 다른 분의 차
+              🔍 앱에 등록되지 않은 차
             </button>
           </div>
         )}
 
-        {/* 남의 차 정보 입력 폼 */}
+        {/* 앱에 등록되지 않은 차 정보 입력 폼 */}
         {phase === 'other_car_info' && (
           <div className="ml-10 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3 animate-fade-up">
-            <p className="text-xs text-gray-500 font-medium mb-1">차량 정보 입력</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-500 font-medium">차량 정보 입력</p>
+              <button
+                onClick={() => {
+                  setMessages(prev => prev.slice(0, -2))
+                  setPhase('car_type')
+                }}
+                className="text-xs text-gray-400 hover:text-primary-500 flex items-center gap-1 px-2.5 py-1 rounded-full border border-gray-200 hover:border-primary-200 bg-white transition-all">
+                ← 뒤로
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-medium text-gray-500 mb-1 block">제조사 <span className="text-red-500">*</span></label>
@@ -459,6 +471,22 @@ export default function MainPage() {
                   className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400" />
               </div>
             </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1.5 block">연료</label>
+              <div className="flex flex-wrap gap-1.5">
+                {FUEL_TYPES.map(f => (
+                  <button key={f.value} type="button"
+                    onClick={() => setOtherCarForm(p => ({ ...p, fuelType: f.value }))}
+                    className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${
+                      otherCarForm.fuelType === f.value
+                        ? 'bg-primary-600 text-white border-primary-600 font-semibold'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-primary-300'
+                    }`}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <button onClick={handleOtherCarSubmit}
               disabled={!otherCarForm.maker.trim() || !otherCarForm.model.trim()}
               className="w-full py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 disabled:opacity-40 transition-colors">
@@ -481,6 +509,14 @@ export default function MainPage() {
             }}
               className="block w-full py-3 px-4 bg-white border border-gray-200 text-gray-600 text-sm font-medium rounded-2xl text-center hover:bg-gray-50 transition-colors">
               📝 차량 정보 직접 입력
+            </button>
+            <button
+              onClick={() => {
+                setMessages(prev => prev.slice(0, -2))
+                setPhase('car_type')
+              }}
+              className="w-full text-xs text-gray-400 hover:text-primary-500 flex items-center justify-center gap-1 py-2 px-3 rounded-2xl border border-gray-200 hover:border-primary-200 bg-white transition-all">
+              ← 뒤로가기
             </button>
           </div>
         )}
