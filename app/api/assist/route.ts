@@ -25,6 +25,22 @@ async function explainQuestion(question: string): Promise<string> {
   return response.content[0].type === 'text' ? response.content[0].text : ''
 }
 
+// ─── 용어 설명 (툴팁용) ────────────────────────────────────────────────
+async function explainTerm(term: string, enName?: string): Promise<string> {
+  const context = enName ? `한국어: ${term} (영어: ${enName})` : `용어: ${term}`
+  const response = await client.messages.create({
+    model: MODEL,
+    max_tokens: 120,
+    system: `당신은 자동차 정비 용어를 초보자에게 쉽게 설명하는 AI입니다.
+- 1~2문장으로 아주 짧게
+- 일상적인 비유를 사용해서
+- "~예요" 체로
+- 마크다운 없이 평문으로`,
+    messages: [{ role: 'user', content: `${context}\n이 자동차 부품/용어를 자동차를 잘 모르는 사람에게 한 줄로 쉽게 설명해줘.` }],
+  })
+  return response.content[0].type === 'text' ? response.content[0].text : ''
+}
+
 // ─── 결과 화면 채팅 ────────────────────────────────────────────────────
 async function answerResultChat(
   userMessage: string,
@@ -64,6 +80,13 @@ export async function POST(req: NextRequest) {
       if (!question) return NextResponse.json({ error: '질문이 없습니다.' }, { status: 400 })
 
       const answer = await explainQuestion(question)
+      return NextResponse.json({ answer })
+    }
+
+    if (body.type === 'term_explain') {
+      const { term, enName } = body
+      if (!term) return NextResponse.json({ error: '용어가 없습니다.' }, { status: 400 })
+      const answer = await explainTerm(term, enName)
       return NextResponse.json({ answer })
     }
 

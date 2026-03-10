@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { DiagnosisResult, SelfCheckItem } from '@/types'
 import { formatKRW, getShareUrl, urgencyLabel } from '@/lib/utils'
+import { CauseNameWithExplain } from './TermTooltip'
 
 interface Props {
   result: DiagnosisResult
@@ -141,12 +142,7 @@ export default function DiagnosisResultCard({
             <div key={i} className="cause-card mx-3 mb-3 rounded-xl border border-gray-100">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-gray-900 text-sm">{cause.name}</span>
-                    {cause.enName && (
-                      <span className="text-xs text-gray-400">{cause.enName}</span>
-                    )}
-                  </div>
+                  <CauseNameWithExplain name={cause.name} enName={cause.enName} />
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">{cause.description}</p>
                 </div>
                 <div className="flex-shrink-0 text-right">
