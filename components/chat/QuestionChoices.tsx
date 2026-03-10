@@ -13,6 +13,10 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
   const [showCustom, setShowCustom] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
 
+  // ① 질문 설명 상태
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [loadingExplain, setLoadingExplain] = useState(false)
+
   const question = questions[currentIdx]
   if (!question) return null
 
@@ -23,11 +27,13 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
     setTimeout(() => {
       onAnswer(question.id, choice)
       setSelected(null)
+      setExplanation(null)
     }, 200)
   }
 
   const handleDontKnow = () => {
     onAnswer(question.id, '잘 모르겠어요')
+    setExplanation(null)
   }
 
   const handleCustomSubmit = () => {
@@ -35,6 +41,29 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
     onAnswer(question.id, customInput.trim())
     setCustomInput('')
     setShowCustom(false)
+    setExplanation(null)
+  }
+
+  const handleExplain = async () => {
+    if (loadingExplain || explanation) {
+      // 이미 설명 있으면 토글로 닫기
+      setExplanation(null)
+      return
+    }
+    setLoadingExplain(true)
+    try {
+      const res = await fetch('/api/assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'question_explain', question: question.question }),
+      })
+      const data = await res.json()
+      setExplanation(data.answer ?? '설명을 불러오지 못했어요.')
+    } catch {
+      setExplanation('설명을 불러오지 못했어요.')
+    } finally {
+      setLoadingExplain(false)
+    }
   }
 
   return (
@@ -51,6 +80,22 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
             <p className="text-xs text-primary-500 mt-1">{currentIdx + 1} / {questions.length}</p>
           )}
         </div>
+
+        {/* ① 질문 설명 버블 */}
+        {(explanation || loadingExplain) && (
+          <div className="mb-3 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
+            <p className="text-xs text-blue-500 font-semibold mb-1">💡 질문 설명</p>
+            {loadingExplain ? (
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            ) : (
+              <p className="text-xs text-blue-700 leading-relaxed">{explanation}</p>
+            )}
+          </div>
+        )}
 
         {!showCustom ? (
           <div className="space-y-2">
@@ -90,6 +135,15 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
                 ✏️ 직접 입력
               </button>
             </div>
+
+            {/* ① 질문 설명 버튼 */}
+            <button
+              onClick={handleExplain}
+              disabled={loadingExplain}
+              className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50"
+            >
+              {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
+            </button>
           </div>
         ) : (
           <div className="space-y-2">
