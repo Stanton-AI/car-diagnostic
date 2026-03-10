@@ -12,6 +12,14 @@ import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
 
+// 비증상 입력 패턴 (인사말/짧은 입력 감지)
+const GREETING_PATTERNS = ['안녕', '안녕하세요', '안녕히', 'hi', 'hello', '헬로', '반가워', '반갑습니다', '테스트', 'test']
+function isNonSymptom(text: string): boolean {
+  const t = text.trim().toLowerCase()
+  if (t.length <= 2) return true
+  return GREETING_PATTERNS.some(g => t === g || t === g + '!' || t === g + '요')
+}
+
 export default function ChatPage() {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -94,6 +102,14 @@ export default function ChatPage() {
 
   // 메시지 전송 및 AI 호출
   const sendMessage = useCallback(async (content: string, type: 'text' | 'answer' = 'text', questionId?: string) => {
+    // 진단 전 초기 입력이 비증상(인사말 등)이면 안내 메시지로 대체
+    if (type === 'text' && !diagnosisResult && !messages.some(m => m.type === 'question') && isNonSymptom(content)) {
+      const userMsg = createMessage('user', content, 'text') as ChatMessage
+      const guideMsg = createMessage('assistant', '안녕하세요! 😊\n\n어떤 차량 증상으로 불편하신지 알려주세요. 예를 들어:\n• "브레이크 밟을 때 끼익 소리가 나요"\n• "시동 걸 때 진동이 심해요"\n• "에어컨이 차갑지 않아요"', 'text') as ChatMessage
+      setMessages(prev => [...prev, userMsg, guideMsg])
+      return
+    }
+
     const userMsg = createMessage('user', content, type, {
       questionId,
       selectedChoice: content,
@@ -166,7 +182,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
         // 5회 질문 후에도 원인 특정 불가 (confidence < 40%)
         const msg = createMessage(
           'assistant',
-          '5번의 질문으로도 원인을 하나로 특정하기 어렵습니다.\n\n증상이 여러 부위에 걸쳐 있거나, 직접 보지 않으면 판단이 어려운 경우입니다. 파트너 정비소에서 직접 점검받아 보시길 권장합니다.',
+          '4번의 질문으로도 원인을 하나로 특정하기 어렵습니다.\n\n증상이 여러 부위에 걸쳐 있거나, 직접 보지 않으면 판단이 어려운 경우입니다. 파트너 정비소에서 직접 점검받아 보시길 권장합니다.',
           'text'
         ) as ChatMessage
         setMessages(prev => [...prev, msg])

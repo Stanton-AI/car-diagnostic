@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // 초기 증상 텍스트 추출
     // "🚗 내 차", "🔍 다른 분의 차", "차량 정보 입력:" 등 셋업 메시지 제외
-    const SETUP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '차량 정보 입력:']
+    const SETUP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '🔍 다른 분의 차', '차량 정보 입력:']
     const symptomMessage = messages.find(m =>
       m.role === 'user' &&
       m.type === 'text' &&
@@ -171,14 +171,21 @@ export async function POST(req: NextRequest) {
 
       // ── confidence 기반 3-tier 진단 흐름 ────────────────────────────────
       // Tier 1: confidence >= 65% + 최소 1회 질문 완료 → 바로 진단
-      // Tier 2: confidence < 65% OR 아직 1번도 질문 안 함 → 추가 질문 (최대 5회)
-      // Tier 3: 5회 소진 후 confidence < 40% → 원인 특정 불가 (정비소 연결 CTA)
-      const MAX_QUESTIONS = 5
+      // Tier 2: confidence < 65% OR 아직 1번도 질문 안 함 → 추가 질문 (최대 4회)
+      // Tier 3: 4회 소진 후 confidence < 40% → 원인 특정 불가 (정비소 연결 CTA)
+      const MAX_QUESTIONS = 4
       const MIN_QUESTIONS = 1      // 최소 1회는 반드시 질문 (사용자 추가 설명 기회 보장)
       const CONFIDENCE_HIGH = 65   // 이상이면 바로 진단 (단, MIN_QUESTIONS 충족 후)
       const CONFIDENCE_LOW  = 40   // 5회 후 이하면 원인 특정 불가 처리
 
-      if (!categoryExhausted) {
+      // ── "모름/없음" 조기 종료: 2회 이상 모른다고 답하면 현재 정보로 바로 진단 ──
+      const UNSURE_PHRASES = ['잘 모르겠어요', '모르겠어요', '해당없음', '없음', '모름', '잘모르겠어요']
+      const unsureCount = Object.values(existingAnswers).filter(a =>
+        UNSURE_PHRASES.some(p => a.includes(p))
+      ).length
+      const shouldForceFinish = unsureCount >= 2 && answeredIds.size >= MIN_QUESTIONS
+
+      if (!categoryExhausted && !shouldForceFinish) {
         const check = await checkInformationSufficiency(
           symptomText,
           vehicleInfo,
@@ -212,7 +219,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        // Tier 3: 5회 소진 후에도 confidence < 40% → 원인 특정 불가
+        // Tier 3: 4회 소진 후에도 confidence < 40% → 원인 특정 불가
         if (answeredIds.size >= MAX_QUESTIONS && currentConfidence < CONFIDENCE_LOW) {
           return NextResponse.json({
             success: true,
