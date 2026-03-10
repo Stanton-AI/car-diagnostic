@@ -148,6 +148,10 @@ export default function MainPage() {
   const [showCustomInput, setShowCustomInput] = useState(false)
   const [customInputValue, setCustomInputValue] = useState('')
 
+  // 질문 설명 상태
+  const [explanation, setExplanation] = useState<string | null>(null)
+  const [loadingExplain, setLoadingExplain] = useState(false)
+
   // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -276,6 +280,7 @@ export default function MainPage() {
     setCurrentQuestion(null)
     setShowCustomInput(false)
     setCustomInputValue('')
+    setExplanation(null)
     setIsLoading(true)
 
     // 대기 중인 질문이 있으면 API 호출 없이 다음 질문 표시
@@ -534,6 +539,23 @@ export default function MainPage() {
                 </button>
               </div>
             )}
+
+            {/* 질문 설명 버블 */}
+            {(explanation || loadingExplain) && (
+              <div className="px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-xl">
+                <p className="text-xs text-blue-500 font-semibold mb-1">💡 질문 설명</p>
+                {loadingExplain ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-blue-700 leading-relaxed">{explanation}</p>
+                )}
+              </div>
+            )}
+
             {!showCustomInput ? (
               <>
                 {questionChoices.map((choice, i) => (
@@ -552,6 +574,31 @@ export default function MainPage() {
                     <span className="flex-1">{choice}</span>
                   </button>
                 ))}
+
+                {/* 질문 설명 버튼 */}
+                <button
+                  onClick={async () => {
+                    if (loadingExplain) return
+                    if (explanation) { setExplanation(null); return }
+                    setLoadingExplain(true)
+                    try {
+                      const res = await fetch('/api/assist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'question_explain', question: currentQuestion.question }),
+                      })
+                      const data = await res.json()
+                      setExplanation(data.answer ?? '설명을 불러오지 못했어요.')
+                    } catch {
+                      setExplanation('설명을 불러오지 못했어요.')
+                    } finally {
+                      setLoadingExplain(false)
+                    }
+                  }}
+                  disabled={loadingExplain}
+                  className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50">
+                  {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
+                </button>
               </>
             ) : (
               <div className="flex gap-2">
