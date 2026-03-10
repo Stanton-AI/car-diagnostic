@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
@@ -86,11 +86,15 @@ function ConversationHistory({ messages }: { messages: ChatMessage[] }) {
   )
 }
 
+// ── 사후 채팅 메시지 타입 ────────────────────────────────────────────────
+interface PostChatMsg { role: 'user' | 'assistant'; content: string; id: string }
+
 export default function DiagnosisPage() {
   const params = useParams()
   const id = params.id as string
   const router = useRouter()
   const supabase = createClient()
+  const bottomRef = useRef<HTMLDivElement>(null)
 
   const [conversation, setConversation] = useState<any>(null)
   const [primaryResult, setPrimaryResult] = useState<DiagnosisResult | null>(null)
@@ -101,6 +105,12 @@ export default function DiagnosisPage() {
   const [retryCount, setRetryCount] = useState(0)
   // 재진단 실행 횟수 — 카드 key로 사용해 새 결과마다 리셋(펼침) 보장
   const [rediagnosisCount, setRediagnosisCount] = useState(0)
+
+  // ── 사후 채팅 상태 ────────────────────────────────────────────────────
+  const [postMessages, setPostMessages] = useState<PostChatMsg[]>([])
+  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatLoading, setChatLoading] = useState(false)
 
   // ── 대화 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -174,6 +184,50 @@ export default function DiagnosisPage() {
     }
   }, [conversation, primaryResult, id])
 
+  // ── 스크롤 아래로 ─────────────────────────────────────────────────────
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [postMessages, chatLoading])
+
+  // ── 사후 채팅 전송 ────────────────────────────────────────────────────
+  const handlePostChat = useCallback(async () => {
+    const text = chatInput.trim()
+    if (!text || !primaryResult || chatLoading) return
+    setChatInput('')
+
+    const userMsg: PostChatMsg = { role: 'user', content: text, id: crypto.randomUUID() }
+    setPostMessages(prev => [...prev, userMsg])
+    setChatLoading(true)
+
+    const diagnosisContext = `
+진단 결과 요약: ${primaryResult.summary}
+예상 원인:
+${primaryResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enName})` : ''} - ${c.description}`).join('\n')}
+긴급도: ${primaryResult.urgency} - ${primaryResult.urgencyReason}
+예상 비용: ${primaryResult.cost.total.toLocaleString()}원 (부품비 ${primaryResult.cost.parts.toLocaleString()}원 + 공임비 ${primaryResult.cost.labor.toLocaleString()}원)
+    `.trim()
+
+    const newHistory = [...chatHistory, { role: 'user' as const, content: text }]
+
+    try {
+      const res = await fetch('/api/assist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'result_chat', userMessage: text, diagnosisContext, chatHistory }),
+      })
+      const data = await res.json()
+      const answer = data.answer ?? '답변을 불러오지 못했어요.'
+      const aiMsg: PostChatMsg = { role: 'assistant', content: answer, id: crypto.randomUUID() }
+      setPostMessages(prev => [...prev, aiMsg])
+      setChatHistory([...newHistory, { role: 'assistant', content: answer }])
+    } catch {
+      const errMsg: PostChatMsg = { role: 'assistant', content: '오류가 발생했어요. 다시 시도해 주세요.', id: crypto.randomUUID() }
+      setPostMessages(prev => [...prev, errMsg])
+    } finally {
+      setChatLoading(false)
+    }
+  }, [chatInput, primaryResult, chatHistory, chatLoading])
+
   // ── 로딩 상태 ────────────────────────────────────────────────────────
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-surface-50">
@@ -201,9 +255,9 @@ export default function DiagnosisPage() {
     : ''
 
   return (
-    <div className="flex flex-col min-h-screen bg-surface-50 max-w-[480px] mx-auto">
+    <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
       {/* ── 헤더 ── */}
-      <header className="bg-white px-5 pt-12 pb-4 flex items-center gap-3 border-b border-gray-100 sticky top-0 z-10">
+      <header className="bg-white px-5 pt-12 pb-4 flex items-center gap-3 border-b border-gray-100 flex-shrink-0">
         <button onClick={() => router.push('/main')}
           className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600 font-bold">
           ←
@@ -219,8 +273,8 @@ export default function DiagnosisPage() {
         </div>
       </header>
 
-      {/* ── 컨텐츠 ── */}
-      <div className="flex-1 px-4 py-6 space-y-4 pb-10">
+      {/* ── 스크롤 컨텐츠 영역 ── */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {/* 초기 진단 결과 — 재진단이 있으면 접힌 채로 시작 + 자가점검 비활성화 */}
         <DiagnosisResultCard
           key={rediagnosisResult ? 'primary-collapsed' : 'primary-open'}
@@ -241,7 +295,6 @@ export default function DiagnosisPage() {
         {/* 재진단 결과 */}
         {rediagnosisResult && !isRediagnosing && (
           <div className="space-y-3 animate-fade-up">
-            {/* 구분선 */}
             <div className="flex items-center gap-3 py-2">
               <div className="h-px flex-1 bg-gray-200" />
               <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
@@ -250,8 +303,6 @@ export default function DiagnosisPage() {
               </div>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
-
-            {/* 재진단 결과 카드 — 새 재진단마다 key 변경으로 리셋(항상 펼침) */}
             <DiagnosisResultCard
               key={`rediagnosis-${rediagnosisCount}`}
               result={rediagnosisResult}
@@ -279,7 +330,76 @@ export default function DiagnosisPage() {
             홈으로 돌아가기
           </button>
         </div>
+
+        {/* ── 사후 채팅 구분선 ── */}
+        {postMessages.length > 0 && (
+          <div className="flex items-center gap-3 py-1">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs text-gray-400">추가 질문</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+        )}
+
+        {/* ── 사후 채팅 메시지 ── */}
+        {postMessages.map(msg => (
+          <div key={msg.id} className={`flex gap-2 animate-fade-up ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-7 h-7 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center mt-0.5">
+                <span className="text-white text-[10px] font-black">M</span>
+              </div>
+            )}
+            <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+              msg.role === 'user'
+                ? 'bg-primary-600 text-white rounded-tr-sm'
+                : 'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'
+            }`}>
+              {msg.content}
+            </div>
+          </div>
+        ))}
+
+        {/* 타이핑 인디케이터 */}
+        {chatLoading && (
+          <div className="flex gap-2 animate-fade-up">
+            <div className="w-7 h-7 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center">
+              <span className="text-white text-[10px] font-black">M</span>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
+
+        <div ref={bottomRef} className="pb-2" />
       </div>
+
+      {/* ── 하단 채팅 입력창 (진단 결과 있을 때만) ── */}
+      {primaryResult && (
+        <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3">
+          <div className="flex gap-2 items-end">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostChat() } }}
+              placeholder="진단 결과에 대해 궁금한 점을 물어보세요..."
+              disabled={chatLoading}
+              className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:border-primary-400 bg-gray-50 disabled:opacity-50 transition-colors"
+            />
+            <button
+              onClick={handlePostChat}
+              disabled={!chatInput.trim() || chatLoading}
+              className="w-11 h-11 bg-primary-600 text-white rounded-2xl flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-40 flex-shrink-0"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
