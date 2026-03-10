@@ -11,6 +11,7 @@ import {
   mapMeta01ToCategory,
   getCategoryById,
 } from '@/lib/diagnostic/questions'
+import { findKnownIssues, formatKnownIssuesContext } from '@/lib/diagnostic/knownIssues'
 import type { DiagnoseRequest, ChatMessage } from '@/types'
 
 // ─── 연료타입 감지 ───────────────────────────────────────────────────────
@@ -201,10 +202,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2단계: 최종 진단 실행
-    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis)
+    // 2단계: 고질병 DB 매칭 (토큰 추가 없이 컨텍스트만 삽입)
+    const matchedIssues = findKnownIssues(vehicleInfo, symptomText)
+    const knownIssuesCtx = formatKnownIssuesContext(matchedIssues)
 
-    // 3단계: 결과 저장
+    // 3단계: 최종 진단 실행
+    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx)
+
+    // 4단계: 결과 저장
     const guestSessionId = req.headers.get('x-guest-session-id')
     const updateData = isReDiagnosis
       ? { self_check_result: result, updated_at: new Date().toISOString() }

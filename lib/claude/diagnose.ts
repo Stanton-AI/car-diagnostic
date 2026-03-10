@@ -124,7 +124,8 @@ export async function requestDiagnosis(
   messages: ChatMessage[],
   vehicleInfo?: Partial<Vehicle>,
   symptomImages?: string[],
-  isReDiagnosis = false
+  isReDiagnosis = false,
+  knownIssuesCtx = ''   // 고질병 DB 매칭 컨텍스트 (선택)
 ): Promise<DiagnosisResult> {
   const vehicleCtx = vehicleInfo
     ? `**차량 정보**: ${vehicleInfo.maker ?? '불명'} ${vehicleInfo.model ?? ''} ${vehicleInfo.year ?? ''}년식, 주행거리 ${vehicleInfo.mileage?.toLocaleString() ?? '미상'}km, 연료: ${vehicleInfo.fuelType ?? '미상'}`
@@ -143,7 +144,7 @@ export async function requestDiagnosis(
 
   const reDiagCtx = isReDiagnosis ? '\n\n**재진단**: 자가점검 결과를 반영하여 진단을 업데이트하세요.' : ''
 
-  const userPrompt = `${vehicleCtx}
+  const userPrompt = `${vehicleCtx}${knownIssuesCtx}
 
 **대화 내역**:
 ${conversationCtx}${reDiagCtx}
