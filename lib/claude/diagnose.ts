@@ -164,7 +164,7 @@ ${conversationCtx}${reDiagCtx}
       "name": "원인명(한국어)",
       "enName": "Cause Name in English",
       "probability": 75,
-      "description": "이러한 증상을 보이는 75%의 차량에서 이 부품 문제가 원인이었습니다. 구체적 설명."
+      "description": "이 증상에서 가장 흔히 발견되는 원인입니다. 구체적 설명. (설명에 확률 숫자나 %를 절대 포함하지 마세요)"
     }
   ],
   "cost": {

@@ -7,9 +7,10 @@ interface Props {
   uploadedImages: string[]
   onRemoveImage: (url: string) => void
   disabled?: boolean
+  placeholder?: string
 }
 
-export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRemoveImage, disabled }: Props) {
+export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRemoveImage, disabled, placeholder }: Props) {
   const [text, setText] = useState('')
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -91,7 +92,7 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
                 handleSend()
               }
             }}
-            placeholder="증상을 설명해주세요..."
+            placeholder={placeholder ?? "증상을 설명해주세요..."}
             rows={1}
             className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-400 resize-none focus:outline-none max-h-28 leading-relaxed"
             style={{ height: 'auto' }}

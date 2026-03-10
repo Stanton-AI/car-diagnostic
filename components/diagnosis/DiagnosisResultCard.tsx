@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import type { DiagnosisResult, SelfCheckItem } from '@/types'
 import { formatKRW, getShareUrl, urgencyLabel } from '@/lib/utils'
 
@@ -28,54 +28,6 @@ export default function DiagnosisResultCard({
   const [showSelfCheckInput, setShowSelfCheckInput] = useState(false)
   const [selfCheckNote, setSelfCheckNote] = useState('')
   const [copied, setCopied] = useState(false)
-
-  // ② 결과 채팅 상태
-  type ChatMsg = { role: 'user' | 'assistant'; content: string }
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
-  const [chatInput, setChatInput] = useState('')
-  const [chatLoading, setChatLoading] = useState(false)
-  const chatBottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
-
-  const diagnosisContext = `
-진단 결과 요약: ${result.summary}
-예상 원인:
-${result.causes.map((c, i) => `${i + 1}. ${c.name} (${c.enName ?? ''}) - ${c.description}`).join('\n')}
-긴급도: ${result.urgency} - ${result.urgencyReason}
-예상 비용: 부품비 ${result.cost.parts.toLocaleString()}원 + 공임비 ${result.cost.labor.toLocaleString()}원 = 합계 ${result.cost.total.toLocaleString()}원
-`.trim()
-
-  const handleChatSubmit = async () => {
-    const msg = chatInput.trim()
-    if (!msg || chatLoading) return
-
-    const newHistory: ChatMsg[] = [...chatMessages, { role: 'user', content: msg }]
-    setChatMessages(newHistory)
-    setChatInput('')
-    setChatLoading(true)
-
-    try {
-      const res = await fetch('/api/assist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'result_chat',
-          userMessage: msg,
-          diagnosisContext,
-          chatHistory: chatMessages,
-        }),
-      })
-      const data = await res.json()
-      setChatMessages([...newHistory, { role: 'assistant', content: data.answer ?? '답변을 불러오지 못했어요.' }])
-    } catch {
-      setChatMessages([...newHistory, { role: 'assistant', content: '오류가 발생했어요. 다시 시도해 주세요.' }])
-    } finally {
-      setChatLoading(false)
-    }
-  }
 
   const urgency = urgencyLabel(result.urgency)
   const shareUrl = getShareUrl(conversationId)
@@ -348,63 +300,6 @@ ${result.causes.map((c, i) => `${i + 1}. ${c.name} (${c.enName ?? ''}) - ${c.des
 
       {/* 면책 조항 */}
       <p className="text-xs text-gray-400 leading-relaxed px-1">{result.disclaimer}</p>
-
-      {/* ② 결과 채팅 */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-4 pt-4 pb-2 border-b border-gray-50">
-          <h4 className="font-bold text-gray-900 text-sm">💬 결과가 궁금하다면 물어보세요</h4>
-          <p className="text-xs text-gray-400 mt-0.5">전문 용어나 수리 방법 등 무엇이든 질문해 보세요</p>
-        </div>
-
-        {/* 채팅 메시지 목록 */}
-        {chatMessages.length > 0 && (
-          <div className="px-4 py-3 space-y-3 max-h-64 overflow-y-auto">
-            {chatMessages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                  msg.role === 'user'
-                    ? 'bg-primary-600 text-white rounded-tr-sm'
-                    : 'bg-gray-50 text-gray-700 rounded-tl-sm'
-                }`}>
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-50 px-3 py-2 rounded-2xl rounded-tl-sm flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            )}
-            <div ref={chatBottomRef} />
-          </div>
-        )}
-
-        {/* 입력창 */}
-        <div className="px-4 pb-4 pt-2">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleChatSubmit() }}
-              placeholder="예: 피스톤링 마모가 뭔가요?"
-              className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400 bg-white"
-              disabled={chatLoading}
-            />
-            <button
-              onClick={handleChatSubmit}
-              disabled={!chatInput.trim() || chatLoading}
-              className="px-4 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              전송
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* CTA */}
       <button className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2">

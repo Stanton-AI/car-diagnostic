@@ -26,6 +26,9 @@ export default function ChatPage() {
   const [vehicle, setVehicle] = useState<Partial<Vehicle> | null>(null)
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [showWorkshopCTA, setShowWorkshopCTA] = useState(false)
+  // 진단 후 채팅 히스토리 (멀티턴 유지)
+  const [postChatHistory, setPostChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+
 
   // 초기화
   useEffect(() => {
@@ -94,6 +97,39 @@ export default function ChatPage() {
       selectedChoice: content,
       images: type === 'text' ? uploadedImages : undefined,
     }) as ChatMessage
+
+    // ── 진단 완료 후: 결과에 대한 자유 질문 모드 ──────────────────────
+    if (diagnosisResult && type === 'text') {
+      setMessages(prev => [...prev, userMsg])
+      setIsLoading(true)
+      const newHistory = [...postChatHistory, { role: 'user' as const, content }]
+      const diagnosisContext = `
+진단 결과 요약: ${diagnosisResult.summary}
+예상 원인:
+${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enName})` : ''} - ${c.description}`).join('\n')}
+긴급도: ${diagnosisResult.urgency} - ${diagnosisResult.urgencyReason}
+예상 비용: ${diagnosisResult.cost.total.toLocaleString()}원 (부품비 ${diagnosisResult.cost.parts.toLocaleString()}원 + 공임비 ${diagnosisResult.cost.labor.toLocaleString()}원)
+      `.trim()
+
+      try {
+        const res = await fetch('/api/assist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'result_chat', userMessage: content, diagnosisContext, chatHistory: postChatHistory }),
+        })
+        const data = await res.json()
+        const aiMsg = createMessage('assistant', data.answer ?? '답변을 불러오지 못했어요.', 'text') as ChatMessage
+        setMessages(prev => [...prev, aiMsg])
+        setPostChatHistory([...newHistory, { role: 'assistant', content: data.answer }])
+      } catch {
+        const errMsg = createMessage('assistant', '오류가 발생했어요. 다시 시도해 주세요.', 'text') as ChatMessage
+        setMessages(prev => [...prev, errMsg])
+      } finally {
+        setIsLoading(false)
+      }
+      return
+    }
+    // ────────────────────────────────────────────────────────────────────
 
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)
@@ -230,14 +266,15 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력창 */}
-      {!diagnosisResult && !isLoading && currentQuestions.length === 0 && (
+      {/* 입력창 — 진단 전: 증상 입력 / 진단 후: 결과 질문 */}
+      {!isLoading && currentQuestions.length === 0 && (
         <ChatInput
           onSend={(text) => sendMessage(text)}
           onImageUpload={handleImageUpload}
           uploadedImages={uploadedImages}
           onRemoveImage={(url) => setUploadedImages(prev => prev.filter(u => u !== url))}
           disabled={isLoading}
+          placeholder={diagnosisResult ? '진단 결과에 대해 궁금한 점을 물어보세요...' : undefined}
         />
       )}
     </div>
