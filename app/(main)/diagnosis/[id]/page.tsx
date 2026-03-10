@@ -1,11 +1,90 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { v4 as uuidv4 } from 'uuid'
 import { createClient } from '@/lib/supabase/client'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import type { DiagnosisResult, ChatMessage } from '@/types'
 import { createMessage } from '@/lib/utils'
+
+// ── 대화 내역 섹션 ─────────────────────────────────────────────────────────
+const SKIP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '🔍 다른 분의 차', '차량 정보 입력:', '✅ 진단 분석이 완료']
+const SKIP_TYPES = ['result', 're_diagnosis', 'self_check_input']
+
+function ConversationHistory({ messages }: { messages: ChatMessage[] }) {
+  const [open, setOpen] = useState(false)
+
+  const filtered = messages.filter(m =>
+    !SKIP_TYPES.includes(m.type as string) &&
+    !SKIP_PREFIXES.some(p => m.content?.startsWith(p))
+  )
+  if (filtered.length === 0) return null
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      {/* 헤더 토글 */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">💬</span>
+          <span className="text-sm font-bold text-gray-800">진단 대화 내역</span>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{filtered.length}건</span>
+        </div>
+        <span className={`text-gray-400 text-sm transition-transform duration-200 ${open ? 'rotate-180' : ''}`}>▾</span>
+      </button>
+
+      {/* 메시지 목록 */}
+      {open && (
+        <div className="px-4 pb-4 space-y-2 border-t border-gray-100 pt-3">
+          {filtered.map((msg) => {
+            const isUser = msg.role === 'user'
+            const isQuestion = msg.type === 'question'
+            return (
+              <div key={msg.id} className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+                {/* AI 아바타 */}
+                {!isUser && (
+                  <div className="w-6 h-6 bg-primary-600 rounded-lg flex-shrink-0 flex items-center justify-center mt-0.5">
+                    <span className="text-white text-[10px] font-black">M</span>
+                  </div>
+                )}
+                <div className={`max-w-[80%] ${isUser ? 'order-first' : ''}`}>
+                  {/* 질문 배지 */}
+                  {isQuestion && (
+                    <p className="text-[10px] text-primary-500 font-semibold mb-0.5 ml-1">🔍 추가 질문</p>
+                  )}
+                  {msg.type === 'answer' && (
+                    <p className="text-[10px] text-gray-400 font-medium mb-0.5 mr-1 text-right">선택한 답변</p>
+                  )}
+                  <div className={`px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    isUser
+                      ? 'bg-primary-600 text-white rounded-tr-sm'
+                      : isQuestion
+                        ? 'bg-primary-50 text-gray-800 border border-primary-100 rounded-tl-sm'
+                        : 'bg-gray-100 text-gray-800 rounded-tl-sm'
+                  }`}>
+                    {msg.content}
+                  </div>
+                  {/* 질문 선택지 미리보기 */}
+                  {isQuestion && msg.metadata?.choices && (
+                    <div className="mt-1 ml-1 flex flex-wrap gap-1">
+                      {(msg.metadata.choices as string[]).slice(0, 3).map((c, i) => (
+                        <span key={i} className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{c}</span>
+                      ))}
+                      {(msg.metadata.choices as string[]).length > 3 && (
+                        <span className="text-[10px] text-gray-400">+{(msg.metadata.choices as string[]).length - 3}개</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function DiagnosisPage() {
   const params = useParams()
@@ -182,6 +261,11 @@ export default function DiagnosisPage() {
               isRediagnosis={true}
             />
           </div>
+        )}
+
+        {/* 대화 내역 */}
+        {conversation?.messages && Array.isArray(conversation.messages) && (
+          <ConversationHistory messages={conversation.messages as ChatMessage[]} />
         )}
 
         {/* 하단 액션 */}
