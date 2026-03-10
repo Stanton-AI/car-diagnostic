@@ -126,9 +126,12 @@ export default function DiagnosisResultCard({
 
       {/* 원인 분석 */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between">
-          <h4 className="font-bold text-gray-900 text-sm">예상 원인 분석</h4>
-          <span className="text-xs text-gray-400">신뢰도순</span>
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold text-gray-900 text-sm">예상 원인 분석</h4>
+            <span className="text-xs text-gray-400">가능성 높은 순</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">막대 길이 = 해당 증상과의 일치 가능성</p>
         </div>
         <div className="divide-y divide-gray-50">
           {result.causes.map((cause, i) => (
@@ -144,8 +147,14 @@ export default function DiagnosisResultCard({
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">{cause.description}</p>
                 </div>
                 <div className="flex-shrink-0 text-right">
-                  <span className={`text-lg font-black ${i === 0 ? 'text-primary-600' : 'text-gray-400'}`}>
-                    {cause.probability}%
+                  <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${
+                    i === 0
+                      ? 'bg-primary-50 text-primary-600'
+                      : i === 1
+                      ? 'bg-gray-100 text-gray-500'
+                      : 'bg-gray-50 text-gray-400'
+                  }`}>
+                    {i === 0 ? '유력' : i === 1 ? '가능' : '참고'}
                   </span>
                 </div>
               </div>
@@ -217,8 +226,8 @@ export default function DiagnosisResultCard({
               <div>
                 <h4 className="font-bold text-green-800 text-sm mb-1">진단 원인이 충분히 좁혀졌습니다</h4>
                 <p className="text-xs text-green-700 leading-relaxed">
-                  <strong>{result.causes[0]?.name}</strong> 가능성이 <strong>{topProbability}%</strong>로
-                  높아 추가 자가점검의 실익이 적습니다.
+                  <strong>{result.causes[0]?.name}</strong>이 유력한 원인으로 좁혀져
+                  추가 자가점검의 실익이 적습니다.
                   정비소 방문을 통한 정확한 진단을 권장합니다.
                 </p>
               </div>
