@@ -20,6 +20,7 @@ const SYSTEM_PROMPT = `당신은 한국의 자동차 중정비 전문 AI 진단 
 // ─── 1차 분석: 정보 충분 여부 판단 + 추가 질문 선택 ─────────────────
 interface InformationCheckResponse {
   sufficient: boolean
+  confidence: number            // 0~100: 지금 진단 시 최고 원인 예상 확률
   detectedCategory: string
   suggestedQuestionIds: string[]  // 추가로 물어야 할 질문 ID 목록
   reasoning: string
@@ -72,8 +73,10 @@ export async function checkInformationSufficiency(
 
 당신은 자동차 정비 전문가입니다. 위 증상과 수집된 정보를 바탕으로 판단하세요.
 
-이미 충분한 정보가 수집됐다면 sufficient: true를 반환하세요.
-더 필요하다면 아래 후보 질문 중 지금 가장 진단에 중요한 것을 1~2개 선택하세요.
+[판단 기준]
+- 지금 바로 진단한다면 가장 유력한 원인의 예상 확률(confidence)을 0~100으로 추정하세요.
+- confidence >= 65: 진단하기 충분 → sufficient: true, suggestedQuestionIds: []
+- confidence < 65: 아래 후보 질문 중 원인 특정에 가장 중요한 것 1개만 선택하세요.
 (자동차 메커닉 및 전기전자 관점에서 증상 원인 특정에 직접적으로 유용한 질문 우선)
 
 후보 질문:
@@ -82,6 +85,7 @@ ${questionList}
 JSON만 반환하세요 (설명 없이):
 {
   "sufficient": false,
+  "confidence": 40,
   "detectedCategory": "${categoryHint ?? 'unknown'}",
   "suggestedQuestionIds": ["ID1"],
   "reasoning": "이 질문이 필요한 이유"
@@ -98,6 +102,7 @@ JSON만 반환하세요 (설명 없이):
 JSON만 반환하세요 (설명 없이):
 {
   "sufficient": true,
+  "confidence": 70,
   "detectedCategory": "${categoryHint ?? 'other'}",
   "suggestedQuestionIds": [],
   "reasoning": "현재 정보로 진단 가능"
@@ -115,7 +120,7 @@ JSON만 반환하세요 (설명 없이):
     const clean = text.replace(/```json|```/g, '').trim()
     return JSON.parse(clean)
   } catch {
-    return { sufficient: true, detectedCategory: categoryHint ?? 'other', suggestedQuestionIds: [], reasoning: '' }
+    return { sufficient: true, confidence: 70, detectedCategory: categoryHint ?? 'other', suggestedQuestionIds: [], reasoning: '' }
   }
 }
 

@@ -169,24 +169,33 @@ export async function POST(req: NextRequest) {
         && candidateQuestions.length === 0
         && answeredIds.size > 0
 
-      if (!categoryExhausted) {
+      // ── 안전장치: 최대 질문 수 초과 시 바로 진단 ────────────────────────
+      const MAX_QUESTIONS = 6
+      const hardCapReached = answeredIds.size >= MAX_QUESTIONS
+
+      if (!categoryExhausted && !hardCapReached) {
         const check = await checkInformationSufficiency(
           symptomText,
           vehicleInfo,
           existingAnswers,
           candidateQuestions,
           localCategory?.id,
-          detectedFuelType,   // isEV 대신 전체 연료타입 전달
+          detectedFuelType,
           subSymptomHint
         )
 
-        if (!check.sufficient && check.suggestedQuestionIds.length > 0) {
-          // 아직 안 물은 질문만 필터링 (한 번에 1개만 — 이탈 방지)
+        // confidence 기반 판단 (65% 미만이면 더 물어보기)
+        const CONFIDENCE_THRESHOLD = 65
+        const needsMoreInfo = (check.confidence ?? 0) < CONFIDENCE_THRESHOLD
+          && check.suggestedQuestionIds.length > 0
+
+        if (needsMoreInfo) {
+          // 아직 안 물은 질문만 필터링 (라운드당 1개 — 이탈 방지)
           const newQuestions = check.suggestedQuestionIds
             .filter(id => !answeredIds.has(id))
             .map(id => findQuestionById(id))
             .filter(Boolean)
-            .slice(0, 1)   // 라운드당 1문제 — 드롭아웃 최소화
+            .slice(0, 1)
 
           if (newQuestions.length > 0) {
             return NextResponse.json({
@@ -195,6 +204,7 @@ export async function POST(req: NextRequest) {
                 needsMoreInfo: true,
                 detectedCategory: check.detectedCategory,
                 additionalQuestions: newQuestions,
+                confidence: check.confidence,  // 디버깅용
               }
             })
           }
