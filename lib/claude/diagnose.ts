@@ -218,6 +218,75 @@ ${conversationCtx}${reDiagCtx}
   return parsed as DiagnosisResult
 }
 
+// ─── V2: AI가 질문 직접 생성 ─────────────────────────────────────────
+export interface AIGeneratedQuestion {
+  id: string               // 고유 ID (타임스탬프 기반)
+  question: string         // 질문 텍스트
+  choices: string[]        // 선택지 (3~4개)
+}
+
+export interface AIQuestionCheckResponse {
+  sufficient: boolean
+  confidence: number
+  question?: AIGeneratedQuestion   // sufficient=false일 때만 존재
+}
+
+export async function checkAndGenerateQuestion(
+  symptomText: string,
+  vehicleInfo?: Partial<Vehicle>,
+  existingQAs?: Array<{ question: string; answer: string }>,
+  questionCount = 0,
+): Promise<AIQuestionCheckResponse> {
+  const vehicleCtx = vehicleInfo
+    ? `차량: ${vehicleInfo.maker ?? ''} ${vehicleInfo.model ?? ''} ${vehicleInfo.year ?? ''}년식, ${vehicleInfo.mileage?.toLocaleString() ?? '?'}km, 연료: ${vehicleInfo.fuelType ?? '미상'}`
+    : '차량 정보 없음'
+
+  const qaCtx = existingQAs && existingQAs.length > 0
+    ? `\n\n기존 질문/답변:\n${existingQAs.map((qa, i) => `Q${i + 1}: ${qa.question}\nA${i + 1}: ${qa.answer}`).join('\n')}`
+    : ''
+
+  const prompt = `당신은 자동차 정비 전문가입니다.
+
+${vehicleCtx}
+증상: "${symptomText}"${qaCtx}
+
+[판단 기준]
+- 지금까지 수집된 정보로 진단 가능한 confidence(0~100)를 추정하세요.
+- confidence >= 65이거나 질문을 이미 ${questionCount}회 했으면: sufficient: true
+- 그렇지 않으면: 원인 특정에 가장 중요한 질문 1개를 직접 생성하세요.
+
+[질문 생성 규칙]
+- 차량 연료타입에 맞는 질문만 생성 (전기차에 엔진오일 질문 금지)
+- 이미 답변된 내용과 중복 금지
+- 선택지는 실제 차주가 직접 확인할 수 있는 것으로 3~4개
+- 질문은 쉽고 구체적으로 (전문 용어 최소화)
+
+JSON만 반환하세요 (설명 없이):
+{
+  "sufficient": false,
+  "confidence": 45,
+  "question": {
+    "id": "ai_q_${Date.now()}",
+    "question": "소리가 언제 주로 납니까?",
+    "choices": ["저속 주행 시", "고속 주행 시", "브레이크 밟을 때", "항상"]
+  }
+}`
+
+  const response = await getClient().messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 400,
+    messages: [{ role: 'user', content: prompt }],
+  })
+
+  const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
+  try {
+    const clean = text.replace(/```json|```/g, '').trim()
+    return JSON.parse(clean)
+  } catch {
+    return { sufficient: true, confidence: 70 }
+  }
+}
+
 // ─── 긴급도 한국어 변환 ───────────────────────────────────────────────
 export function urgencyLabel(urgency: string) {
   const map: Record<string, { label: string; color: string; bg: string }> = {

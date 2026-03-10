@@ -50,6 +50,14 @@ export default function DiagnosisResultCard({
   const [selfCheckNote, setSelfCheckNote] = useState('')
   const [shared, setShared] = useState(false)
 
+  // 정비 결과 피드백
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackRepairName, setFeedbackRepairName] = useState('')
+  const [feedbackCost, setFeedbackCost] = useState('')
+  const [feedbackAiCorrect, setFeedbackAiCorrect] = useState<boolean | null>(null)
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+  const [feedbackDone, setFeedbackDone] = useState(false)
+
   const urgency = urgencyLabel(result.urgency)
   const shareUrl = getShareUrl(conversationId)
   const healthScore = calcHealthScore(result)
@@ -70,6 +78,28 @@ export default function DiagnosisResultCard({
         setTimeout(() => setShared(false), 2000)
       }
     } catch { /* user cancelled share */ }
+  }
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackRepairName.trim()) return
+    setFeedbackSubmitting(true)
+    try {
+      await fetch(`/api/conversations/${conversationId}/feedback`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          repair_name: feedbackRepairName.trim(),
+          actual_cost: feedbackCost ? parseInt(feedbackCost.replace(/,/g, '')) : undefined,
+          ai_correct: feedbackAiCorrect,
+        }),
+      })
+      setFeedbackDone(true)
+      setShowFeedback(false)
+    } catch {
+      // 저장 실패해도 UX 방해 않음
+    } finally {
+      setFeedbackSubmitting(false)
+    }
   }
 
   const handleSelfCheckSubmit = () => {
@@ -359,6 +389,80 @@ export default function DiagnosisResultCard({
               재진단 요청
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── 정비 결과 피드백 ─────────────────────────────────── */}
+      {!feedbackDone ? (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          {!showFeedback ? (
+            <button
+              onClick={() => setShowFeedback(true)}
+              className="w-full py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors text-center"
+            >
+              🔧 정비소 다녀오셨나요? 결과 알려주세요
+            </button>
+          ) : (
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <p className="text-sm font-semibold text-gray-800">실제 수리 결과</p>
+
+              {/* AI 예측 일치 여부 */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFeedbackAiCorrect(true)}
+                  className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors ${feedbackAiCorrect === true ? 'bg-green-50 border-green-400 text-green-700' : 'border-gray-200 text-gray-500 hover:bg-gray-100'}`}
+                >
+                  ✅ AI 예측이 맞았어요
+                </button>
+                <button
+                  onClick={() => setFeedbackAiCorrect(false)}
+                  className={`flex-1 py-2 rounded-xl border text-xs font-medium transition-colors ${feedbackAiCorrect === false ? 'bg-red-50 border-red-400 text-red-700' : 'border-gray-200 text-gray-500 hover:bg-gray-100'}`}
+                >
+                  ❌ 달랐어요
+                </button>
+              </div>
+
+              {/* 실제 수리명 */}
+              <input
+                type="text"
+                value={feedbackRepairName}
+                onChange={e => setFeedbackRepairName(e.target.value)}
+                placeholder="실제 수리 내역 (예: 워터펌프 교체)"
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400 bg-white"
+              />
+
+              {/* 실제 비용 */}
+              <input
+                type="text"
+                value={feedbackCost}
+                onChange={e => setFeedbackCost(e.target.value)}
+                placeholder="실제 수리비 (선택, 예: 250000)"
+                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-primary-400 bg-white"
+              />
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowFeedback(false)}
+                  className="px-4 py-2.5 border border-gray-200 text-sm text-gray-500 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleFeedbackSubmit}
+                  disabled={!feedbackRepairName.trim() || feedbackSubmitting}
+                  className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {feedbackSubmitting ? '저장 중...' : '결과 제출'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-center text-sm text-green-600 font-medium py-2">
+            ✅ 정비 결과를 알려주셔서 감사합니다! AI 개선에 도움이 됩니다.
+          </p>
         </div>
       )}
     </div>
