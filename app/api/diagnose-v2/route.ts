@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { checkAndGenerateQuestion, requestDiagnosis } from '@/lib/claude/diagnose'
 import { findKnownIssues, formatKnownIssuesContext } from '@/lib/diagnostic/knownIssues'
+import { findSimilarCases, formatSimilarCasesContext, generateEmbedding } from '@/lib/embeddings'
+import { findRepairCosts, formatRepairCostsContext } from '@/lib/repairCosts'
 import type { DiagnoseRequest, ChatMessage } from '@/types'
 
 // 셋업 메시지 필터 (기존과 동일)
@@ -98,14 +100,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── 최종 진단 ───────────────────────────────────────────────────────
+    // ── 고질병 DB + 유사 케이스 (RAG) + 수리비 DB 병렬 조회 ──────────────────
     const matchedIssues = findKnownIssues(vehicleInfo, symptomText)
     const knownIssuesCtx = formatKnownIssuesContext(matchedIssues)
 
-    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx)
+    const [similarCases, repairCosts] = await Promise.all([
+      findSimilarCases(supabase, symptomText),
+      findRepairCosts(supabase, symptomText, vehicleInfo),
+    ])
+    const similarCasesCtx = formatSimilarCasesContext(similarCases)
+    const repairCostsCtx = formatRepairCostsContext(repairCosts)
 
-    // ── 결과 저장 ───────────────────────────────────────────────────────
+    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
+
+    // ── 결과 저장 + 임베딩 생성 ─────────────────────────────────────────
     const guestSessionId = req.headers.get('x-guest-session-id')
+    const embedding = symptomText ? await generateEmbedding(symptomText).catch(() => null) : null
+
     const updateData = isReDiagnosis
       ? { self_check_result: result, updated_at: new Date().toISOString() }
       : {
@@ -116,6 +127,7 @@ export async function POST(req: NextRequest) {
           cost_max: result.cost.total,
           messages: messages,
           updated_at: new Date().toISOString(),
+          ...(embedding ? { embedding } : {}),
         }
 
     if (conversationId) {
@@ -127,7 +139,7 @@ export async function POST(req: NextRequest) {
           guest_session_id: guestSessionId ?? null,
           initial_symptom: symptomText,
           symptom_images: symptomImages ?? [],
-          variant: 'v2',   // V2 식별자
+          variant: 'v2',
           ...updateData,
         })
     }

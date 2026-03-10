@@ -1,65 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requestDiagnosis, checkInformationSufficiency } from '@/lib/claude/diagnose'
-import {
-  selectNextQuestions,
-  findQuestionById,
-  getAnsweredQuestionIds,
-  getAnsweredAnswers,
-  inferCategory,
-  getMetaQuestion,
-  mapMeta01ToCategory,
-  getCategoryById,
-} from '@/lib/diagnostic/questions'
+import { requestDiagnosis, checkAndGenerateQuestion } from '@/lib/claude/diagnose'
 import { findKnownIssues, formatKnownIssuesContext } from '@/lib/diagnostic/knownIssues'
+import { findSimilarCases, formatSimilarCasesContext, generateEmbedding } from '@/lib/embeddings'
+import { findRepairCosts, formatRepairCostsContext } from '@/lib/repairCosts'
 import type { DiagnoseRequest, ChatMessage } from '@/types'
 
-// ─── 연료타입 감지 ───────────────────────────────────────────────────────
-// vehicleInfo.fuelType 우선, 없으면 증상 텍스트 + 모델명으로 추론
-function detectFuelType(
-  vehicleInfo: Partial<{ fuelType: string; model: string }> | undefined,
-  symptomLower: string,
-  modelLower: string
-): string {
-  if (vehicleInfo?.fuelType) return vehicleInfo.fuelType
+const SETUP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '🔍 다른 분의 차', '차량 정보 입력:']
 
-  const EV_KEYWORDS = [
-    '전기차', '전기자동차', '아이오닉', 'ioniq', 'ev6', 'ev9',
-    '코나ev', '니로ev', '볼트ev', 'tesla', '테슬라', '리프', 'leaf',
-    '모델3', 'model 3', 'model s', 'model y', 'model x',
-  ]
-  const DIESEL_KEYWORDS = ['디젤', 'diesel', 'crdi', 'dci', 'tdi', 'cdti', 'd4']
-  const HYBRID_KEYWORDS = ['하이브리드', 'hybrid', 'phev', 'hev']
-  const LPG_KEYWORDS = ['lpg', 'lpi', '가스차']
-
-  const combinedText = `${symptomLower} ${modelLower}`
-
-  if (EV_KEYWORDS.some(k => combinedText.includes(k)))     return 'electric'
-  if (DIESEL_KEYWORDS.some(k => combinedText.includes(k))) return 'diesel'
-  if (HYBRID_KEYWORDS.some(k => combinedText.includes(k))) return 'hybrid'
-  if (LPG_KEYWORDS.some(k => combinedText.includes(k)))    return 'lpg'
-  return 'gasoline'  // 기본값
+function getAnsweredCount(messages: ChatMessage[]): number {
+  return messages.filter(m => m.type === 'answer' && m.metadata?.questionId).length
 }
 
-// ─── 세부 증상 힌트 (drive 카테고리에서 Claude가 올바른 질문 선택하도록) ──
-const SUB_SYMPTOM_HINTS: Array<{ keywords: string[]; hint: string }> = [
-  {
-    keywords: ['조향', '타이어', '미끌림', '슬립', '그립', '미끄러', '핸들'],
-    hint: '조향·타이어·트랙션 증상 → D04(쏠림 방향/조건), D08(타이어 작업 이력) 우선. D02·D03·D06·D07은 이 증상과 무관하므로 제외.',
-  },
-  {
-    keywords: ['가속', '출력', '힘이 없', '힘없'],
-    hint: '출력·가속 저하 증상 → D02(출력저하 조건) 우선. 조향·변속 관련 질문은 제외.',
-  },
-  {
-    keywords: ['변속', '충격', '기어'],
-    hint: '변속 이상 증상 → D03(변속 증상 유형) 우선. 조향·출력 관련 질문은 제외.',
-  },
-  {
-    keywords: ['브레이크', '제동', '밀림'],
-    hint: '제동 이상 증상 → D05(브레이크 이상 유형) 우선. 가속·변속 관련 질문은 제외.',
-  },
-]
+function extractQAPairs(messages: ChatMessage[]): Array<{ question: string; answer: string }> {
+  const pairs: Array<{ question: string; answer: string }> = []
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]
+    if (msg.type === 'question') {
+      const nextAnswer = messages.slice(i + 1).find(m => m.type === 'answer')
+      if (nextAnswer) {
+        pairs.push({ question: msg.content, answer: nextAnswer.content })
+      }
+    }
+  }
+  return pairs
+}
+
+const UNSURE_PHRASES = ['잘 모르겠어요', '모르겠어요', '해당없음', '없음', '모름']
+
+function shouldForceFinish(messages: ChatMessage[], answeredCount: number): boolean {
+  const answerMsgs = messages.filter(m => m.type === 'answer')
+  const unsureCount = answerMsgs.filter(m =>
+    UNSURE_PHRASES.some(p => m.content.includes(p))
+  ).length
+  return unsureCount >= 2 && answeredCount >= 1
+}
+
+const MAX_QUESTIONS = 4
+const CONFIDENCE_LOW = 40
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,154 +73,73 @@ export async function POST(req: NextRequest) {
     }
 
     // 초기 증상 텍스트 추출
-    // "🚗 내 차", "🔍 다른 분의 차", "차량 정보 입력:" 등 셋업 메시지 제외
-    const SETUP_PREFIXES = ['🚗 내 차', '🔍 앱에 등록되지 않은 차', '🔍 다른 분의 차', '차량 정보 입력:']
     const symptomMessage = messages.find(m =>
       m.role === 'user' &&
       m.type === 'text' &&
       !SETUP_PREFIXES.some(p => m.content.startsWith(p))
     )
     const symptomText = symptomMessage?.content ?? ''
-    const symptomLower = symptomText.toLowerCase()
-    const modelLower = (vehicleInfo?.model ?? '').toLowerCase()
 
-    // 이미 답변된 질문 ID 추출
-    const answeredIds = getAnsweredQuestionIds(messages)
-
-    // 1단계: 정보 충분 여부 판단 (아직 진단 결과 없고 재진단도 아닌 경우)
+    const answeredCount = getAnsweredCount(messages)
     const hasResult = messages.some(m => m.type === 'result')
+
+    // ── 역질문 단계 (재진단/결과 없는 경우만) ──────────────────────────────
     if (!hasResult && !isReDiagnosis) {
-      // 질문ID → 답변 텍스트 맵 (fuel_filter·conditional_on 판단에 사용)
-      const existingAnswers = getAnsweredAnswers(messages)
+      const forceFinish = shouldForceFinish(messages, answeredCount)
 
-      // ── 연료타입 감지 (5종: gasoline/diesel/hybrid/electric/lpg) ──────────
-      const detectedFuelType = detectFuelType(vehicleInfo, symptomLower, modelLower)
+      if (!forceFinish && answeredCount < MAX_QUESTIONS) {
+        const existingQAs = extractQAPairs(messages)
 
-      // ── 카테고리 감지 ────────────────────────────────────────────────────
-      let localCategory = inferCategory(symptomText)
-
-      // ── META01 fallback: 카테고리 미감지 시 범용 분류 질문 사용 ────────────
-      if (!localCategory) {
-        const meta01Answer = existingAnswers['META01']
-
-        if (!meta01Answer) {
-          // META01 아직 안 물었으면 META01 반환
-          const meta01 = getMetaQuestion('META01')
-          if (meta01) {
-            return NextResponse.json({
-              success: true,
-              data: {
-                needsMoreInfo: true,
-                detectedCategory: 'unknown',
-                additionalQuestions: [meta01],
-              }
-            })
-          }
-        } else {
-          // META01 답변으로 카테고리 결정 후 계속 진행
-          const mappedId = mapMeta01ToCategory(meta01Answer)
-          if (mappedId) {
-            localCategory = getCategoryById(mappedId) ?? null
-          }
-        }
-      }
-
-      // ── 후보 질문 선별: 연료타입 + conditional_on 필터 적용 ─────────────
-      const CANDIDATE_COUNT = 6
-      let candidateQuestions = localCategory
-        ? selectNextQuestions(
-            localCategory.id,
-            answeredIds,
-            CANDIDATE_COUNT,
-            detectedFuelType,
-            existingAnswers
-          )
-        : []
-
-      // ── 세부 증상 힌트 (drive 카테고리에서 올바른 질문 방향 지시) ────────
-      const subSymptomHint = SUB_SYMPTOM_HINTS.find(e =>
-        e.keywords.some(kw => symptomLower.includes(kw))
-      )?.hint
-
-      // 카테고리는 감지됐지만 해당 카테고리 질문이 모두 소진 → 바로 최종 진단
-      const categoryExhausted = localCategory !== null
-        && candidateQuestions.length === 0
-        && answeredIds.size > 0
-
-      // ── confidence 기반 3-tier 진단 흐름 ────────────────────────────────
-      // Tier 1: confidence >= 65% + 최소 1회 질문 완료 → 바로 진단
-      // Tier 2: confidence < 65% OR 아직 1번도 질문 안 함 → 추가 질문 (최대 4회)
-      // Tier 3: 4회 소진 후 confidence < 40% → 원인 특정 불가 (정비소 연결 CTA)
-      const MAX_QUESTIONS = 4
-      const MIN_QUESTIONS = 1      // 최소 1회는 반드시 질문 (사용자 추가 설명 기회 보장)
-      const CONFIDENCE_HIGH = 65   // 이상이면 바로 진단 (단, MIN_QUESTIONS 충족 후)
-      const CONFIDENCE_LOW  = 40   // 5회 후 이하면 원인 특정 불가 처리
-
-      // ── "모름/없음" 조기 종료: 2회 이상 모른다고 답하면 현재 정보로 바로 진단 ──
-      const UNSURE_PHRASES = ['잘 모르겠어요', '모르겠어요', '해당없음', '없음', '모름', '잘모르겠어요']
-      const unsureCount = Object.values(existingAnswers).filter(a =>
-        UNSURE_PHRASES.some(p => a.includes(p))
-      ).length
-      const shouldForceFinish = unsureCount >= 2 && answeredIds.size >= MIN_QUESTIONS
-
-      if (!categoryExhausted && !shouldForceFinish) {
-        const check = await checkInformationSufficiency(
+        const check = await checkAndGenerateQuestion(
           symptomText,
           vehicleInfo,
-          existingAnswers,
-          candidateQuestions,
-          localCategory?.id,
-          detectedFuelType,
-          subSymptomHint
+          existingQAs,
+          answeredCount,
         )
-        const currentConfidence = check.confidence ?? 50
 
-        // Tier 2: 최소 질문 미충족 OR confidence 낮음 → 추가 질문
-        const needsMinQuestion = answeredIds.size < MIN_QUESTIONS
-        if ((needsMinQuestion || currentConfidence < CONFIDENCE_HIGH) && answeredIds.size < MAX_QUESTIONS) {
-          const newQuestions = check.suggestedQuestionIds
-            .filter(id => !answeredIds.has(id))
-            .map(id => findQuestionById(id))
-            .filter(Boolean)
-            .slice(0, 1)
-
-          if (newQuestions.length > 0) {
-            return NextResponse.json({
-              success: true,
-              data: {
-                needsMoreInfo: true,
-                detectedCategory: check.detectedCategory,
-                additionalQuestions: newQuestions,
-                confidence: currentConfidence,
-              }
-            })
-          }
+        if (!check.sufficient && check.question) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              needsMoreInfo: true,
+              additionalQuestions: [check.question],
+              confidence: check.confidence,
+            }
+          })
         }
 
-        // Tier 3: 4회 소진 후에도 confidence < 40% → 원인 특정 불가
-        if (answeredIds.size >= MAX_QUESTIONS && currentConfidence < CONFIDENCE_LOW) {
+        // 4회 소진 후 confidence < 40%
+        if (answeredCount >= MAX_QUESTIONS && check.confidence < CONFIDENCE_LOW) {
           return NextResponse.json({
             success: true,
             data: {
               needsMoreInfo: false,
               lowConfidence: true,
-              confidence: currentConfidence,
+              confidence: check.confidence,
             }
           })
         }
-        // Tier 1 또는 (5회 소진 + confidence 40~65%) → 진단 진행
       }
     }
 
-    // 2단계: 고질병 DB 매칭 (토큰 추가 없이 컨텍스트만 삽입)
+    // ── 고질병 DB + 유사 케이스 (RAG) + 수리비 DB 병렬 조회 ──────────────────
     const matchedIssues = findKnownIssues(vehicleInfo, symptomText)
     const knownIssuesCtx = formatKnownIssuesContext(matchedIssues)
 
-    // 3단계: 최종 진단 실행
-    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx)
+    const [similarCases, repairCosts] = await Promise.all([
+      findSimilarCases(supabase, symptomText),
+      findRepairCosts(supabase, symptomText, vehicleInfo),
+    ])
+    const similarCasesCtx = formatSimilarCasesContext(similarCases)
+    const repairCostsCtx = formatRepairCostsContext(repairCosts)
 
-    // 4단계: 결과 저장
+    // ── 최종 진단 실행 ──────────────────────────────────────────────────────
+    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
+
+    // ── 결과 저장 + 임베딩 생성 ─────────────────────────────────────────────
     const guestSessionId = req.headers.get('x-guest-session-id')
+    const embedding = symptomText ? await generateEmbedding(symptomText).catch(() => null) : null
+
     const updateData = isReDiagnosis
       ? { self_check_result: result, updated_at: new Date().toISOString() }
       : {
@@ -253,6 +150,7 @@ export async function POST(req: NextRequest) {
           cost_max: result.cost.total,
           messages: messages,
           updated_at: new Date().toISOString(),
+          ...(embedding ? { embedding } : {}),
         }
 
     if (conversationId) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { updateRepairCostFromFeedback } from '@/lib/repairCosts'
 
 interface FeedbackBody {
   repair_name: string      // "워터펌프 교체"
@@ -49,6 +50,11 @@ export async function PATCH(
 
     const { error } = await query
     if (error) throw error
+
+    // 실제 비용이 있으면 수리비 DB 자동 업데이트 (RAG 학습)
+    if (body.actual_cost && body.actual_cost > 0) {
+      await updateRepairCostFromFeedback(supabase, body.repair_name.trim(), body.actual_cost)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
