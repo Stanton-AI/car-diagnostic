@@ -204,21 +204,24 @@ interface CauseNameProps {
 }
 
 /**
- * 원인 이름 + 항상 보이는 쉬운 설명 박스
- * - 사전 등록 → 즉시 표시
- * - 미등록 → 페이지 마운트 시 자동으로 API 호출
+ * 원인 이름 + 탭하면 펼치는 쉬운 설명
+ * - 사전 등록 → 즉시 사용 가능 (탭 시 표시)
+ * - 미등록 → 첫 탭 시 API 호출
  */
 export function CauseNameWithExplain({ name, enName }: CauseNameProps) {
   const dictExplanation = findDictEntry(name)
   const [explanation, setExplanation] = useState<string | null>(dictExplanation)
-  const [loading, setLoading] = useState(!dictExplanation)
+  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [fetched, setFetched] = useState(!!dictExplanation)
 
-  useEffect(() => {
-    if (dictExplanation) return // 사전에 있으면 API 불필요
-    let cancelled = false
-    const fetch_ = async () => {
+  const handleToggle = async () => {
+    if (open) { setOpen(false); return }
+    setOpen(true)
+    // 아직 설명 없고 API 호출 안 했으면 호출
+    if (!fetched && !loading) {
+      setLoading(true)
       try {
-        // 수식어 제거한 순수 용어명으로 API 호출
         const cleanTerm = stripSuffix(name) || name
         const res = await fetch('/api/assist', {
           method: 'POST',
@@ -227,33 +230,44 @@ export function CauseNameWithExplain({ name, enName }: CauseNameProps) {
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
-        if (!cancelled && data.answer) setExplanation(data.answer)
+        if (data.answer) setExplanation(data.answer)
       } catch {
-        // 실패 시 조용히 숨김
+        // 실패 시 조용히
       } finally {
-        if (!cancelled) setLoading(false)
+        setLoading(false)
+        setFetched(true)
       }
     }
-    fetch_()
-    return () => { cancelled = true }
-  }, [name, enName, dictExplanation])
+  }
+
+  const hasExplanation = !!explanation || loading
 
   return (
     <div>
-      {/* 원인명 + 영문명 */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* 원인명 + 영문명 — 탭하면 설명 토글 */}
+      <button
+        onClick={handleToggle}
+        className={`w-full text-left flex items-center gap-2 flex-wrap ${hasExplanation ? 'cursor-pointer' : ''}`}
+      >
         <span className="font-bold text-gray-900 text-sm">{name}</span>
         {enName && <span className="text-xs text-gray-400">{enName}</span>}
-      </div>
+        {hasExplanation && (
+          <span className="text-[10px] text-blue-400 ml-auto flex-shrink-0">
+            {open ? '💡 ▲' : '💡 ▼'}
+          </span>
+        )}
+      </button>
 
-      {/* 쉬운 설명 */}
-      {loading ? (
-        <p className="mt-1 text-[11px] text-blue-400">💡 설명 불러오는 중...</p>
-      ) : explanation ? (
-        <p className="mt-1 text-[11px] text-blue-600 leading-relaxed">
-          💡 {explanation}
-        </p>
-      ) : null}
+      {/* 쉬운 설명 (펼쳤을 때) */}
+      {open && (
+        loading ? (
+          <p className="mt-1 text-[11px] text-blue-400">설명 불러오는 중...</p>
+        ) : explanation ? (
+          <p className="mt-1.5 text-[11px] text-blue-600 leading-relaxed bg-blue-50 rounded-lg px-2.5 py-1.5">
+            {explanation}
+          </p>
+        ) : null
+      )}
     </div>
   )
 }
