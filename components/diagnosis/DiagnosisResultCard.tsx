@@ -15,6 +15,26 @@ interface Props {
 // 주요 원인 신뢰도가 이 값 이상이면 추가 자가진단 불필요로 판단
 const CONFIDENT_THRESHOLD = 70
 
+// 차량 건강 점수 계산 (urgency + 최고 확률 기반)
+function calcHealthScore(result: DiagnosisResult): number {
+  const topProb = result.causes[0]?.probability ?? 50
+  if (result.urgency === 'HIGH') return Math.max(15, 50 - Math.round(topProb / 3))
+  if (result.urgency === 'MID')  return Math.max(45, 75 - Math.round(topProb / 3))
+  return Math.max(70, 95 - Math.round(topProb / 5))
+}
+
+function HealthScoreBadge({ score }: { score: number }) {
+  const color = score >= 70 ? 'text-green-600 bg-green-50 border-green-200'
+    : score >= 45 ? 'text-amber-600 bg-amber-50 border-amber-200'
+    : 'text-red-600 bg-red-50 border-red-200'
+  return (
+    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${color}`}>
+      <span>❤️</span>
+      <span>건강점수 {score}/100</span>
+    </div>
+  )
+}
+
 export default function DiagnosisResultCard({
   result,
   conversationId,
@@ -28,18 +48,28 @@ export default function DiagnosisResultCard({
   )
   const [showSelfCheckInput, setShowSelfCheckInput] = useState(false)
   const [selfCheckNote, setSelfCheckNote] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [shared, setShared] = useState(false)
 
   const urgency = urgencyLabel(result.urgency)
   const shareUrl = getShareUrl(conversationId)
+  const healthScore = calcHealthScore(result)
 
   const topProbability = result.causes[0]?.probability ?? 0
   const isConfident = topProbability >= CONFIDENT_THRESHOLD
 
-  const handleCopyLink = async () => {
-    await navigator.clipboard.writeText(shareUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  // 방치 시 예상 비용 (현재 견적의 2~3배)
+  const neglectCost = formatKRW(result.cost.total * 2)
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'MIKY 자동차 진단 결과', text: result.summary, url: shareUrl })
+      } else {
+        await navigator.clipboard.writeText(shareUrl)
+        setShared(true)
+        setTimeout(() => setShared(false), 2000)
+      }
+    } catch { /* user cancelled share */ }
   }
 
   const handleSelfCheckSubmit = () => {
@@ -87,13 +117,14 @@ export default function DiagnosisResultCard({
           <span className="text-white text-xs font-black">M</span>
         </div>
         <span className="text-sm font-semibold text-gray-700">MIKY AI 진단 리포트</span>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1.5">
+          <HealthScoreBadge score={healthScore} />
           <button
-            onClick={handleCopyLink}
+            onClick={handleShare}
             className="text-gray-400 hover:text-primary-500 transition-colors p-1"
-            title="링크 복사"
+            title="공유"
           >
-            {copied ? (
+            {shared ? (
               <span className="text-xs text-green-500 font-medium">복사됨!</span>
             ) : (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -111,6 +142,14 @@ export default function DiagnosisResultCard({
             ▲ 접기
           </button>
         </div>
+      </div>
+
+      {/* P1: 면책 문구 — 결과 위에 먼저 표시 (솔직함 = 신뢰) */}
+      <div className="flex items-start gap-2 px-1">
+        <span className="text-gray-400 text-xs mt-0.5">ℹ️</span>
+        <p className="text-[11px] text-gray-400 leading-relaxed">
+          이 결과는 AI가 증상 정보를 바탕으로 추정한 진단입니다. 실제 정비사 점검이 최종 판단이며, 참고용으로 활용해 주세요.
+        </p>
       </div>
 
       {/* 주요 증상 카드 */}
@@ -139,11 +178,18 @@ export default function DiagnosisResultCard({
         </div>
         <div className="divide-y divide-gray-50">
           {result.causes.map((cause, i) => (
-            <div key={i} className="cause-card mx-3 mb-3 rounded-xl border border-gray-100">
+            <div key={i} className={`mx-3 mb-3 rounded-xl border ${i === 0 ? 'border-primary-100 bg-primary-50/30' : 'border-gray-100'} p-3`}>
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex-1">
                   <CauseNameWithExplain name={cause.name} enName={cause.enName} />
                   <p className="text-xs text-gray-500 mt-1 leading-relaxed">{cause.description}</p>
+                  {/* P2: 방치 시나리오 — 1순위 + HIGH/MID 한정 */}
+                  {i === 0 && result.urgency !== 'LOW' && (
+                    <p className="text-[11px] text-orange-600 font-medium mt-1.5 flex items-center gap-1">
+                      <span>⚠</span>
+                      <span>방치 시 {neglectCost}+ 수리비로 번질 수 있어요</span>
+                    </p>
+                  )}
                 </div>
                 <div className="flex-shrink-0 text-right">
                   <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${
@@ -157,16 +203,29 @@ export default function DiagnosisResultCard({
                   </span>
                 </div>
               </div>
-              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              {/* P2: 게이지 바 — 1순위를 두껍게 시각적 차별화 */}
+              <div className={`w-full bg-gray-100 rounded-full overflow-hidden ${i === 0 ? 'h-2.5' : 'h-1.5'}`}>
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${i === 0 ? 'bg-primary-500' : i === 1 ? 'bg-amber-400' : 'bg-gray-300'}`}
                   style={{ width: `${cause.probability}%` }}
                 />
               </div>
+              {/* 1순위와 2순위 사이 시각적 구분 강화 */}
+              {i === 0 && result.causes.length > 1 && (
+                <div className="mt-3 border-b border-dashed border-gray-200" />
+              )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* P2: CTA — 방치 비용 문구 직후, 감정 피크에서 바로 행동 유도 */}
+      {result.urgency !== 'LOW' && (
+        <button className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
+          <span>📅</span>
+          <span>지금 근처 정비소 예약하기</span>
+        </button>
+      )}
 
       {/* 예상 수리 비용 */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -182,7 +241,11 @@ export default function DiagnosisResultCard({
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center text-xs">🔧</span>
-              <span>공임비 (예상)</span>
+              <div>
+                <span>공임비 (예상)</span>
+                {/* P2: 공임 시간 근거 추가 — 바가지 불안 제거 */}
+                <span className="text-[10px] text-gray-400 ml-1">약 3~5시간 작업 기준</span>
+              </div>
             </div>
             <span className="font-semibold text-gray-800">{formatKRW(result.cost.labor)}</span>
           </div>
@@ -208,6 +271,14 @@ export default function DiagnosisResultCard({
         )}
       </div>
 
+      {/* LOW urgency CTA (덜 긴박하게) */}
+      {result.urgency === 'LOW' && (
+        <button className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+          <span>📅</span>
+          <span>내 주변 정비소 예약하기</span>
+        </button>
+      )}
+
       {/* 권장 조치 사항 */}
       <div className="bg-primary-50 rounded-2xl border border-primary-100 p-4">
         <h4 className="font-bold text-primary-800 text-sm mb-2">💡 권장 조치 사항</h4>
@@ -215,10 +286,8 @@ export default function DiagnosisResultCard({
       </div>
 
       {/* 자가점검 섹션 */}
-      {/* onSelfCheckSubmit 미정의 = 구버전 카드 → 자가점검 섹션 전체 숨김 */}
       {result.selfCheck.length > 0 && !!onSelfCheckSubmit && (
         isConfident ? (
-          /* 신뢰도가 높아 추가 자가진단 불필요 */
           <div className="bg-green-50 rounded-2xl border border-green-200 p-4">
             <div className="flex items-start gap-2.5">
               <span className="text-green-600 text-lg flex-shrink-0">✅</span>
@@ -233,7 +302,6 @@ export default function DiagnosisResultCard({
             </div>
           </div>
         ) : (
-          /* 추가 자가진단 가능 */
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
             <h4 className="font-bold text-gray-900 text-sm mb-3">🏠 집에서 먼저 확인해보세요</h4>
             <div className="space-y-3">
@@ -293,15 +361,6 @@ export default function DiagnosisResultCard({
           </div>
         </div>
       )}
-
-      {/* 면책 조항 */}
-      <p className="text-xs text-gray-400 leading-relaxed px-1">{result.disclaimer}</p>
-
-      {/* CTA */}
-      <button className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
-        <span>📅</span>
-        <span>내 주변 정비소 예약하기</span>
-      </button>
     </div>
   )
 }

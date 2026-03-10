@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🚗 차량 진단 질문 데이터 풀 전체보기</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      font-size: 14px;
+    }
+    header {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      padding: 24px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    header h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    header p { font-size: 12px; opacity: 0.6; }
+    .stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .stat {
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* NAV */
+    nav {
+      background: white;
+      padding: 12px 24px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 88px;
+      z-index: 90;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    nav a {
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s;
+      border: 1.5px solid transparent;
+    }
+    nav a:hover { opacity: 0.8; transform: translateY(-1px); }
+
+    /* MAIN */
+    main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+    /* SECTION */
+    .section { margin-bottom: 48px; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid;
+    }
+    .section-header .emoji { font-size: 28px; }
+    .section-header h2 { font-size: 20px; font-weight: 700; }
+    .section-header .badge {
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+    }
+    .section-header .desc {
+      margin-left: auto;
+      font-size: 11px;
+      opacity: 0.5;
+      font-style: italic;
+    }
+
+    /* QUESTIONS GRID */
+    .questions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    /* QUESTION CARD */
+    .q-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      border: 1px solid #e5e7eb;
+      transition: box-shadow 0.2s;
+    }
+    .q-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+    .q-card-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .q-id {
+      font-size: 13px;
+      font-weight: 800;
+      font-family: 'Courier New', monospace;
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: white;
+    }
+    .q-level {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      border: 1.5px solid;
+    }
+    .q-type {
+      margin-left: auto;
+      font-size: 10px;
+      color: #6b7280;
+      background: #f9fafb;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .q-body { padding: 14px 16px; }
+    .q-question {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.5;
+      margin-bottom: 10px;
+      color: #111827;
+    }
+    .q-choices {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+    .q-choices li {
+      font-size: 12px;
+      padding: 5px 10px;
+      background: #f9fafb;
+      border-radius: 6px;
+      border-left: 3px solid #e5e7eb;
+      color: #374151;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .q-choices li::before {
+      content: "▸";
+      font-size: 10px;
+      opacity: 0.4;
+    }
+    .q-footer {
+      padding: 0 16px 14px;
+    }
+    details {
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    summary {
+      cursor: pointer;
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      background: #f9fafb;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    summary:hover { background: #f3f4f6; }
+    .detail-content {
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #374151;
+    }
+    .detail-label {
+      font-weight: 700;
+      color: #6b7280;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .detail-text {
+      white-space: pre-wrap;
+      font-family: inherit;
+      margin-bottom: 8px;
+    }
+
+    /* EV WARNING */
+    .ev-badge {
+      display: inline-block;
+      background: #fef3c7;
+      color: #92400e;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+      border: 1px solid #fcd34d;
+    }
+
+    /* COMMON SECTION */
+    .common-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    /* LEVEL COLORS */
+    .level-L0 { border-color: #8b5cf6; color: #8b5cf6; }
+    .level-L1 { border-color: #3b82f6; color: #3b82f6; }
+    .level-L2 { border-color: #10b981; color: #10b981; }
+    .level-L3 { border-color: #f59e0b; color: #f59e0b; }
+
+    /* SECTION COLORS */
+    .cat-common   { --cat: #8b5cf6; }
+    .cat-sound    { --cat: #ef4444; }
+    .cat-vibration{ --cat: #f97316; }
+    .cat-warning  { --cat: #eab308; }
+    .cat-smell    { --cat: #84cc16; }
+    .cat-start    { --cat: #06b6d4; }
+    .cat-drive    { --cat: #3b82f6; }
+    .cat-leak     { --cat: #0ea5e9; }
+    .cat-electric { --cat: #a855f7; }
+    .cat-exterior { --cat: #64748b; }
+
+    .section-header { border-color: var(--cat); }
+    .section-header h2 { color: var(--cat); }
+    .section-header .badge { background: var(--cat); }
+    .q-id { background: var(--cat, #374151); }
+    .q-choices li { border-left-color: var(--cat, #e5e7eb); }
+
+    /* LEGEND */
+    .legend {
+      background: white;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      border: 1px solid #e5e7eb;
+    }
+    .legend h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
+    .legend-items {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+    }
+    .legend-dot {
+      width: 28px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 9px;
+      font-weight: 800;
+    }
+
+    /* FILTER BAR */
+    .filter-bar {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      border: 1px solid #e5e7eb;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-bar label { font-size: 12px; font-weight: 600; color: #374151; }
+    .filter-bar select, .filter-bar input {
+      padding: 6px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 12px;
+      outline: none;
+      font-family: inherit;
+    }
+    .filter-bar select:focus, .filter-bar input:focus { border-color: #3b82f6; }
+    .filter-bar input { width: 220px; }
+    #total-count { font-size: 12px; color: #6b7280; margin-left: auto; }
+
+    @media (max-width: 600px) {
+      .questions-grid { grid-template-columns: 1fr; }
+      nav { top: auto; position: relative; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 차량 진단 질문 데이터 풀 전체보기</h1>
+  <p>car-diagnostic-mvp · data/diagnostic-questions.json</p>
+  <div class="stats">
+    <div class="stat">📦 총 질문 수: <strong>80개</strong></div>
+    <div class="stat">📂 카테고리: <strong>9개</strong></div>
+    <div class="stat">🔴 L1 (필수): <strong>18개</strong></div>
+    <div class="stat">🟢 L2 (심화): <strong>36개</strong></div>
+    <div class="stat">🟡 L3 (상세): <strong>26개</strong></div>
+    <div class="stat">⚡ EV 제외 대상: <strong>D06, D07, V09, W07</strong></div>
+  </div>
+</header>
+
+<nav>
+  <a href="#common"    style="background:#ede9fe;color:#7c3aed;border-color:#c4b5fd;">🔧 공통 (5)</a>
+  <a href="#sound"     style="background:#fee2e2;color:#dc2626;border-color:#fca5a5;">🔊 소리·이음 (10)</a>
+  <a href="#vibration" style="background:#ffedd5;color:#c2410c;border-color:#fdba74;">📳 진동·떨림 (9)</a>
+  <a href="#warning"   style="background:#fefce8;color:#a16207;border-color:#fde047;">🚨 경고등 (9)</a>
+  <a href="#smell"     style="background:#f0fdf4;color:#15803d;border-color:#86efac;">👃 냄새 (8)</a>
+  <a href="#start"     style="background:#ecfeff;color:#0e7490;border-color:#67e8f9;">🔑 시동 (9)</a>
+  <a href="#drive"     style="background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;">🚗 주행성능 (8)</a>
+  <a href="#leak"      style="background:#f0f9ff;color:#0369a1;border-color:#7dd3fc;">💧 누유·누수 (8)</a>
+  <a href="#electric"  style="background:#faf5ff;color:#7e22ce;border-color:#d8b4fe;">⚡ 전기·전자 (8)</a>
+  <a href="#exterior"  style="background:#f8fafc;color:#475569;border-color:#cbd5e1;">🔧 외관·기타 (6)</a>
+</nav>
+
+<main>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <h3>🔍 범례</h3>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-dot level-L0" style="background:#8b5cf6">L0</div>
+        <span>공통 기본 정보 (차량 기초 데이터)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot level-L1" style="background:#3b82f6">L1</div>
+        <span>필수 첫 질문 — 계통·유형 특정</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot level-L2" style="background:#10b981">L2</div>
+        <span>심화 질문 — 원인 좁히기</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot level-L3" style="background:#f59e0b">L3</div>
+        <span>상세 질문 — 최종 원인 확정</span>
+      </div>
+      <div class="legend-item">
+        <span class="ev-badge">EV 제외</span>
+        <span>전기차에서 제외되는 질문</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────── 공통 ───────────────── -->
+  <div id="common" class="section cat-common">
+    <div class="section-header">
+      <span class="emoji">🔧</span>
+      <h2>공통 기본 정보</h2>
+      <span class="badge">5개</span>
+      <span class="desc">vehicleInfo에 이미 있으면 Skip 가능 · C1~C5</span>
+    </div>
+    <div class="common-grid">
+
+      <div class="q-card">
+        <div class="q-card-header">
+          <span class="q-id">C1</span>
+          <span class="q-level level-L0">L0</span>
+          <span class="q-type">숫자입력</span>
+        </div>
+        <div class="q-body">
+          <div class="q-question">주행거리를 알려주세요</div>
+          <ul class="q-choices">
+            <li>5만km 미만</li>
+            <li>5~10만km</li>
+            <li>10~15만km</li>
+            <li>15~20만km</li>
+            <li>20만km 초과</li>
+          </ul>
+        </div>
+        <div class="q-footer">
+          <details>
+            <summary>🔬 진단 로직 보기</summary>
+            <div class="detail-content">
+              <div class="detail-label">Logic</div>
+              <div class="detail-text">교환주기 도래 소모품 자동 계산
+5만미만→초기결함/시공불량 우선
+15만이상→구조적마모/촉매/체인</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-card-header">
+          <span class="q-id">C2</span>
+          <span class="q-level level-L0">L0</span>
+          <span class="q-type">숫자입력</span>
+        </div>
+        <div class="q-body">
+          <div class="q-question">차량 연식을 알려주세요</div>
+          <ul class="q-choices">
+            <li>2010년 이전</li>
+            <li>2011~2015년</li>
+            <li>2016~2020년</li>
+            <li>2021년 이후</li>
+            <li>모름</li>
+          </ul>
+        </div>
+        <div class="q-footer">
+          <details>
+            <summary>🔬 진단 로직 보기</summary>
+            <div class="detail-content">
+              <div class="detail-label">Logic</div>
+              <div class="detail-text">모델별 특이 결함 패턴 DB 매칭
+GDI엔진 세대별 오일소모 여부
+LED일체형 여부 등 구조 특이사항</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-card-header">
+          <span class="q-id">C3</span>
+          <span class="q-level level-L0">L0</span>
+          <span class="q-type">텍스트</span>
+        </div>
+        <div class="q-body">
+          <div class="q-question">차량 모델명을 알려주세요</div>
+          <ul class="q-choices">
+            <li>직접 입력</li>
+            <li>국산 (현대/기아/GM)</li>
+            <li>국산 (쌍용/르노)</li>
+            <li>수입 (독일계)</li>
+            <li>수입 (일본/미국계)</li>
+          </ul>
+        </div>
+        <div class="q-footer">
+          <details>
+            <summary>🔬 진단 로직 보기</summary>
+            <div class="detail-content">
+              <div class="detail-label">Logic</div>
+              <div class="detail-text">모델별 공개 결함/리콜 이력 매칭
+예: GDI오일소모/DCT떨림/스마트스트림</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-card-header">
+          <span class="q-id">C4</span>
+          <span class="q-level level-L0">L0</span>
+          <span class="q-type">단일선택</span>
+        </div>
+        <div class="q-body">
+          <div class="q-question">이 증상이 언제부터 시작됐나요?</div>
+          <ul class="q-choices">
+            <li>오늘 갑자기</li>
+            <li>1주일 이내</li>
+            <li>1개월 이내</li>
+            <li>3개월 이상 지속</li>
+            <li>항상 있었던 것 같음</li>
+          </ul>
+        </div>
+        <div class="q-footer">
+          <details>
+            <summary>🔬 진단 로직 보기</summary>
+            <div class="detail-content">
+              <div class="detail-label">Logic</div>
+              <div class="detail-text">급성(갑자기) vs 만성(서서히) 분류
+갑자기→부품파손/충격/급변
+오래됨→점진적마모/누적결함</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="q-card">
+        <div class="q-card-header">
+          <span class="q-id">C5</span>
+          <span class="q-level level-L0">L0</span>
+          <span class="q-type">단일선택</span>
+        </div>
+        <div class="q-body">
+          <div class="q-question">증상의 심각도는 어떻게 느껴지나요?</div>
+          <ul class="q-choices">
+            <li>불편하지만 운전은 가능</li>
+            <li>운전에 약간 영향</li>
+            <li>운전이 불안하고 무섭다</li>
+            <li>이미 운행을 멈춤</li>
+            <li>모름</li>
+          </ul>
+        </div>
+        <div class="q-footer">
+          <details>
+            <summary>🔬 진단 로직 보기</summary>
+            <div class="detail-content">
+              <div class="detail-label">Logic</div>
+              <div class="detail-text">긴급도 판단 → 즉시 정차/즉시 점검/여유 점검 분기</div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ───────────────── 소리·이음 ───────────────── -->
+  <div id="sound" class="section cat-sound">
+    <div class="section-header">
+      <span class="emoji">🔊</span>
+      <h2>소리·이음</h2>
+      <span class="badge">10개</span>
+      <span class="desc">S01~S10 · 키워드: 소리,이음,끼익,덜덜,쿵,탁,윙,앵,드르륵</span>
+    </div>
+    <div class="questions-grid" id="sound-questions"></div>
+  </div>
+
+  <!-- ───────────────── 진동·떨림 ───────────────── -->
+  <div id="vibration" class="section cat-vibration">
+    <div class="section-header">
+      <span class="emoji">📳</span>
+      <h2>진동·떨림</h2>
+      <span class="badge">9개</span>
+      <span class="desc">V01~V09 · 키워드: 진동,떨림,흔들,떨린다,흔들린다</span>
+    </div>
+    <div class="questions-grid" id="vibration-questions"></div>
+  </div>
+
+  <!-- ───────────────── 경고등 ───────────────── -->
+  <div id="warning" class="section cat-warning">
+    <div class="section-header">
+      <span class="emoji">🚨</span>
+      <h2>경고등</h2>
+      <span class="badge">9개</span>
+      <span class="desc">W01~W09 · 키워드: 경고등,체크엔진,불빛,경고,점등</span>
+    </div>
+    <div class="questions-grid" id="warning-questions"></div>
+  </div>
+
+  <!-- ───────────────── 냄새 ───────────────── -->
+  <div id="smell" class="section cat-smell">
+    <div class="section-header">
+      <span class="emoji">👃</span>
+      <h2>냄새</h2>
+      <span class="badge">8개</span>
+      <span class="desc">SM01~SM08 · 키워드: 냄새,탄내,달콤,유황,연료냄새,오일냄새</span>
+    </div>
+    <div class="questions-grid" id="smell-questions"></div>
+  </div>
+
+  <!-- ───────────────── 시동 ───────────────── -->
+  <div id="start" class="section cat-start">
+    <div class="section-header">
+      <span class="emoji">🔑</span>
+      <h2>시동 관련</h2>
+      <span class="badge">9개</span>
+      <span class="desc">ST01~ST09 · 키워드: 시동,크랭킹,RPM,시동안,안걸</span>
+    </div>
+    <div class="questions-grid" id="start-questions"></div>
+  </div>
+
+  <!-- ───────────────── 주행 성능 ───────────────── -->
+  <div id="drive" class="section cat-drive">
+    <div class="section-header">
+      <span class="emoji">🚗</span>
+      <h2>주행 성능</h2>
+      <span class="badge">8개</span>
+      <span class="desc">D01~D08 · 키워드: 가속,변속,브레이크,연비,조향,쏠림,출력,타이어...</span>
+    </div>
+    <div class="questions-grid" id="drive-questions"></div>
+  </div>
+
+  <!-- ───────────────── 누유·누수 ───────────────── -->
+  <div id="leak" class="section cat-leak">
+    <div class="section-header">
+      <span class="emoji">💧</span>
+      <h2>누유·누수</h2>
+      <span class="badge">8개</span>
+      <span class="desc">L01~L08 · 키워드: 새다,누유,누수,오일,냉각수새,물새</span>
+    </div>
+    <div class="questions-grid" id="leak-questions"></div>
+  </div>
+
+  <!-- ───────────────── 전기·전자 ───────────────── -->
+  <div id="electric" class="section cat-electric">
+    <div class="section-header">
+      <span class="emoji">⚡</span>
+      <h2>전기·전자</h2>
+      <span class="badge">8개</span>
+      <span class="desc">E01~E08 · 키워드: 방전,배터리,블루투스,카메라,전기,전자,스마트키</span>
+    </div>
+    <div class="questions-grid" id="electric-questions"></div>
+  </div>
+
+  <!-- ───────────────── 외관·기타 ───────────────── -->
+  <div id="exterior" class="section cat-exterior">
+    <div class="section-header">
+      <span class="emoji">🔧</span>
+      <h2>외관·기타</h2>
+      <span class="badge">6개</span>
+      <span class="desc">O01~O06 · 키워드: 긁힘,판금,도색,교환주기,견적,소모품</span>
+    </div>
+    <div class="questions-grid" id="exterior-questions"></div>
+  </div>
+
+</main>
+
+<script>
+const EV_EXCLUDE = new Set(['D06','D07','V09','W07']);
+
+const data = {
+  sound: [
+    { id:'S01', level:'1', question:'소리가 나는 위치는?', type:'단일선택',
+      choices:['엔진룸 (앞 중앙)','하체 (차량 하부)','조향 계통 (핸들 돌릴 때)','제동 계통 (브레이크 시)','실내 / 트렁크'],
+      logic:'위치 = 계통 확정 (엔진계/하체계/조향계/제동계)',
+      causes:'엔진룸→타이밍체인/벨트/마운트/오일부족\n하체→허브베어링/등속조인트/쇼바/부싱\n조향→MDPS커플링/랙앤피니언/파워호스\n제동→패드마모/디스크/캘리퍼'},
+    { id:'S02', level:'1', question:'소리의 성격은?', type:'단일선택',
+      choices:['딱/탁/탕 (금속 충돌음)','끼익/긁힘 (고주파 마찰음)','덜덜/드르륵 (연속 진동음)','앵/윙/웅 (고음 공명음)','쿵/둥 (저음 충격음)'],
+      logic:'소리 성격 = 원인 물리적 특성 즉시 분류',
+      causes:'금속충돌→타이밍체인/밸브/피스톤\n마찰음→패드마모/벨트슬립/베어링\n진동음→허브베어링/등속/마운트\n공명음→흡기/배기공명/PCV밸브\n충격음→마운트파손/서스펜션'},
+    { id:'S03', level:'2', question:'소리가 언제 발생하나요?', type:'단일선택',
+      choices:['냉간 시동 직후에만 (5분 이내 해소)','워밍업 후 계속','특정 속도대에서만','특정 조작 시 (핸들끝/변속/브레이크)','항상 (온도·속도 무관)'],
+      logic:'냉간→열팽창전 금속/오일부족 / 속도비례→회전체',
+      causes:'냉간한정→알터네이터베어링/겉벨트슬립/금속수축\n속도비례→타이어밸런스/허브베어링/드라이브샤프트\n특정조작→해당 작동 부품 집중'},
+    { id:'S04', level:'2', question:'소리가 사라지는 조건이 있나요?', type:'단일선택',
+      choices:['5~10분 주행 후 자연히 사라짐','브레이크를 완전히 밟으면 사라짐','속도를 줄이면 사라짐','사라지지 않음 (항상 있음)','모름'],
+      logic:'사라지는 조건 = 정상/이상 및 원인 즉시 판별 핵심 변수',
+      causes:'주행 후 해소→냉간정상소음(GDI인젝터/PCSV/열순환)\n브레이크시 사라짐→패드 마모 인디케이터 접촉\n항상→부품 실제 손상'},
+    { id:'S05', level:'2', question:'소리의 주기 또는 패턴은?', type:'단일선택',
+      choices:['엔진 RPM에 정확히 비례 (RPM높으면 빨라짐)','차속에 비례 (속도높으면 빨라짐)','핸들 조작 각도에 비례','불규칙 (간헐적)','일정한 리듬 없음'],
+      logic:'RPM비례→엔진내부부품 / 차속비례→회전체(타이어/허브)',
+      causes:'RPM비례→크랭크/캠/밸브/오일펌프/보조벨트\n차속비례→타이어밸런스/허브베어링/드라이브샤프트\n조향비례→MDPS/랙앤피니언/등속조인트'},
+    { id:'S06', level:'2', question:'소리가 심해지는 환경 조건이 있나요?', type:'단일선택',
+      choices:['기온 낮을 때 (영하~5도 이하)','비 오거나 습기 많을 때','고속 주행 시','급가속 또는 급제동 시','특별한 조건 없음'],
+      logic:'환경 조건 = 재료 특성 기반 원인 특정',
+      causes:'저온악화→금속수축/오일점도상승/배터리성능저하\n습기악화→브레이크녹/패드수분흡수/스피커침수\n고속악화→타이어밸런스/공기저항/배기공명'},
+    { id:'S07', level:'3', question:'최근 교체하거나 정비한 항목이 있나요?', type:'단일선택',
+      choices:['없음 (6개월 이상)','엔진오일 교체','브레이크 패드/디스크 교체','타이어 또는 휠 교체','기타 부품 교체'],
+      logic:'정비 후 소리 발생 = 오장착/새결함 분기 (가장 중요한 이력 변수)',
+      causes:'브레이크교체후→패드길들이기소음(정상)/오장착\n타이어교체후→밸런스미조정/얼라이먼트\n오일교체후→드레인볼트미체결/과보충'},
+    { id:'S08', level:'3', question:'현재 주행거리는?', type:'단일선택',
+      choices:['5만km 미만','5~10만km','10~15만km','15~20만km','20만km 초과'],
+      logic:'주행거리 = 소모품 교환주기 및 부품수명 기반 원인 필터',
+      causes:'10만km이상→겉벨트/타이밍체인 점검 우선\n15만km이상→허브베어링/등속조인트/마운트 수명\n20만km이상→엔진내부마모/스커핑 의심'},
+    { id:'S09', level:'3', question:'소리 외 동반 증상이 있나요?', type:'복수선택',
+      choices:['없음 (소리만)','진동도 함께 느껴짐','출력 또는 연비 저하','경고등 점등','냄새 또는 연기'],
+      logic:'동반증상 = 단독 vs 복합 원인 분기, 긴급도 판단',
+      causes:'소리+경고등+출력저하→엔진오일/타이밍체인 즉시점검\n소리+진동→마운트/등속조인트/허브베어링\n소리만→해당계통 단독점검'},
+    { id:'S10', level:'3', question:'소리 발생 전 특별한 사건이 있었나요?', type:'단일선택',
+      choices:['없음 (서서히 또는 갑자기)','외부 충격 (연석/과속방지턱)','장거리 주행 직후','세차 또는 폭우 경험','특정 정비 직후'],
+      logic:'트리거 이벤트 = 원인 시점 특정으로 진단 범위 좁히기',
+      causes:'충격후→서스펜션/마운트/허브\n세차후→브레이크녹/스피커침수\n정비후→오장착 확인 우선'},
+  ],
+  vibration: [
+    { id:'V01', level:'1', question:'진동이 주로 느껴지는 곳은?', type:'단일선택',
+      choices:['핸들 (스티어링 휠)','운전석 시트 및 차체 전반','브레이크 페달','가속 페달 또는 기어봉','엔진룸 자체 떨림'],
+      logic:'진동 위치 = 발생 계통 즉시 특정',
+      causes:'핸들→타이어밸런스/휠변형/드라이브샤프트/허브\n차체전반→엔진마운트/미션마운트/배기계고무\n브레이크페달→디스크두께불균일/ABS작동\n엔진룸→점화불량/공회전RPM불안정'},
+    { id:'V02', level:'1', question:'진동의 성격은?', type:'단일선택',
+      choices:['미세하게 지속적으로 떨림 (버즈)','한쪽으로 당기는 느낌 포함','쿵쿵 낮은 충격형 진동','엔진 부조로 인한 불규칙 떨림','브레이크 시 제동 불안정'],
+      logic:'진동 성격 = 원인 물리 특성 분류',
+      causes:'미세버즈→타이어밸런스/휠동적불균형/드라이브샤프트\n쏠림포함→얼라이먼트/캘리퍼고착/타이어마모편차\n쿵쿵→마운트파손/등속조인트심한마모\n부조형→점화플러그/인젝터/스로틀바디'},
+    { id:'V03', level:'2', question:'진동이 어느 속도 구간에서 가장 심한가요?', type:'단일선택',
+      choices:['저속 (30km/h 이하)','특정 속도 (40~60km/h 구간)','특정 속도 (80~100km/h 구간)','고속 (120km/h 이상)','정차 시동 중에도 발생'],
+      logic:'공진 속도대 = 타이어 밸런스 불량 vs 구조적 문제 분리',
+      causes:'특정속도대진동→타이어동적불균형(공진점)\n저속진동→마운트/부싱/등속조인트\n정차시진동→엔진마운트/점화불량/공회전RPM'},
+    { id:'V04', level:'2', question:'어떤 상황에서 진동이 심해지나요?', type:'단일선택',
+      choices:['가속 페달 밟을 때','브레이크 밟을 때','핸들 끝까지 꺾을 때','후진 시','코너링 시 한쪽만'],
+      logic:'발생 조작 = 특정 부품으로 직접 매핑',
+      causes:'가속시→드라이브샤프트/등속조인트/미션마운트\n브레이크시→디스크두께편차/캘리퍼고착\n핸들끝→등속조인트/MDPS\n후진시악화→등속조인트각도변화(진단핵심)'},
+    { id:'V05', level:'2', question:'후진 시 진동이 어떻게 변하나요?', type:'단일선택',
+      choices:['전진과 동일하게 진동','후진 시 확실히 더 심함','후진 시 오히려 없어짐','후진해보지 않음','해당 없음'],
+      logic:'후진 시 악화 여부 = 등속조인트 진단의 최고 변별 질문',
+      causes:'후진악화→등속조인트마모(후진시각도커서하중집중)\n후진시해소→브레이크관련 또는 전진방향하중계통'},
+    { id:'V06', level:'2', question:'진동이 발생한 후 어떻게 변화하나요?', type:'단일선택',
+      choices:['처음부터 계속 있음 (항상)','서서히 심해지는 추세','주행 중 갑자기 시작됨','간헐적 (나타났다 사라짐)','특정 온도 이상에서만'],
+      logic:'변화 패턴 = 급성/만성 결함 및 긴급도 분류',
+      causes:'서서히악화→부싱/마운트 점진적노화\n갑자기시작→부품파손/이물질유입\n간헐적→센서/접촉불량/이물질'},
+    { id:'V07', level:'3', question:'타이어 교체 및 휠 밸런스를 마지막으로 한 게 언제인가요?', type:'단일선택',
+      choices:['6개월 이내','6개월~1년','1~2년','2년 이상','한 번도 안 함'],
+      logic:'밸런스 이력 = 타이어 원인 배제 가장 빠른 변수',
+      causes:'밸런스최근조정→타이어원인낮음→허브/드라이브샤프트로집중\n2년이상→타이어밸런스/편마모 우선 점검'},
+    { id:'V08', level:'3', question:'최근 하체 또는 서스펜션 정비 이력이 있나요?', type:'단일선택',
+      choices:['없음','쇼크업소버 교체','스태빌라이저/부싱 교체','얼라이먼트 조정','허브베어링 교체'],
+      logic:'하체 정비 이력 = 교체 후 진동이면 오장착/다른 부품 문제',
+      causes:'교체후진동발생→오장착/다른하체부품문제\n없음→교환주기도래소모품우선'},
+    { id:'V09', level:'3', question:'엔진오일 상태와 최근 교환 여부는?', type:'단일선택',
+      choices:['정상 (적정 레벨, 최근 교환)','레벨 부족','색상 검거나 매우 탁함','5000km 이상 무교환','모름'],
+      logic:'오일 상태 = 엔진 부조 진동의 배경 원인 확인',
+      causes:'오일부족/열화→엔진내부윤활불량→공회전부조→진동\n정상→엔진원인낮음', evExclude: true},
+  ],
+  warning: [
+    { id:'W01', level:'1', question:'어떤 경고등이 켜졌나요?', type:'단일선택',
+      choices:['엔진 경고등 (체크엔진·주황)','오일 압력 경고등 (빨간 기름통)','배터리/충전 경고등 (빨간 배터리)','브레이크/ABS 경고등','타이어 공기압 (TPMS)'],
+      logic:'경고등 종류 = 계통 확정 + 긴급도 즉시 판단',
+      causes:'오일압력빨간→즉시정차(엔진손상위험)\n배터리빨간→발전기/배터리교체시급\n체크엔진→OBD코드필요(P코드분류)\nABS→휠속센서/ABS모듈\nTPMS→공기압부족/센서불량'},
+    { id:'W02', level:'1', question:'경고등 색상과 형태는?', type:'단일선택',
+      choices:['빨간색 (위험, 즉시 조치)','주황/노란색 (주의, 점검 필요)','노란색 깜빡임 (긴급 주의)','초록/파란색 (정보성, 정상작동)','여러 개 동시 점등'],
+      logic:'빨간색=즉시정차권고 / 주황=가까운시일내점검',
+      causes:'빨간→오일압력/배터리/냉각수온도/브레이크오일\n주황깜빡임→촉매과열/오일레벨/연료부족'},
+    { id:'W03', level:'2', question:'경고등이 어떤 패턴으로 켜지나요?', type:'단일선택',
+      choices:['시동 후 항상 켜져있음','시동 시 잠깐 켜졌다 꺼짐 (정상)','주행 중 갑자기 켜짐','간헐적 (켰다 꺼졌다 반복)','특정 조건에서만 (오르막/고속)'],
+      logic:'점등 패턴 = 확정결함 vs 간헐성 센서오류 분류',
+      causes:'항상점등→확정결함\n간헐→센서불량/접촉불량/배선손상\n특정조건→부하시결함(고온/고회전)'},
+    { id:'W04', level:'2', question:'경고등과 함께 느껴지는 증상은?', type:'복수선택',
+      choices:['아무것도 없음 (경고등만)','출력 또는 가속력 저하','엔진 부조 또는 진동','이상한 냄새 또는 연기','시동이 꺼질 것 같은 불안감'],
+      logic:'동반증상 = 심각도 즉시 판단, 단독경고등은 센서오류 가능',
+      causes:'경고등+출력저하+부조→스로틀/점화/연료 즉시점검\n경고등만단독→O2센서/EVAP/EGR센서류 가능성\n경고등+냄새연기→즉시정차(촉매과열/오일누유)'},
+    { id:'W05', level:'2', question:'OBD 스캐너로 코드를 확인했나요?', type:'조건부입력',
+      choices:['확인함 (P코드 알고 있음)','확인했으나 없음','확인 안 함','코드를 알고 있음 (직접 입력 가능)','모름'],
+      logic:'OBD코드 있으면 진단 정밀도 90%이상 향상',
+      causes:'P0420→촉매효율저하(오일소모확인)\nP0300~P0304→점화불량(실린더별)\nP0171/P0174→희박연소(흡기누기/인젝터)\nP0101→MAF센서오염'},
+    { id:'W06', level:'2', question:'경고등이 켜진 후 얼마나 지났나요?', type:'단일선택',
+      choices:['오늘 처음','3일 이내','1주일 이내','한 달 이상','모름'],
+      logic:'경과 시간 = 2차 손상 누적 가능성 판단',
+      causes:'오래방치→촉매손상/오일소모가속/엔진마모누적\n오늘처음→즉각점검가능'},
+    { id:'W07', level:'3', question:'엔진오일 레벨 및 교환 상태는?', type:'단일선택',
+      choices:['정상 (F선 부근, 최근 교환)','F선 아래로 부족','L선 이하 (거의 없음)','색상 검고 탁함 (열화)','오랫동안 교환 안 함'],
+      logic:'오일 상태 = 엔진경고등의 1차 기초 확인 항목',
+      causes:'L선이하→즉시보충필수(오일압력경고등위험)\n열화+체크엔진→오일소모→촉매손상경로', evExclude: true},
+    { id:'W08', level:'3', question:'최근 주행 패턴 및 특이사항은?', type:'단일선택',
+      choices:['장거리 주행 직후','연료 가득 주입 후','정비 또는 부품 교체 후','오랫동안 방치 후 재사용','특이사항 없음'],
+      logic:'최근 이벤트 = 경고등 트리거 원인 특정',
+      causes:'연료주입후체크엔진→연료캡미체결/EVAP누기\n정비후→오장착/센서미연결\n방치후→배터리방전/연료시스템'},
+    { id:'W09', level:'3', question:'현재 주행거리는?', type:'단일선택',
+      choices:['5만km 미만','5~10만km','10~15만km','15~20만km','20만km 초과'],
+      logic:'주행거리 = 고주행 특이 결함 필터 (촉매/EGR/터보)',
+      causes:'15만km이상→촉매효율저하/O2센서교체시기\n20만km이상→EGR밸브막힘/VVT오일라인막힘'},
+  ],
+  smell: [
+    { id:'SM01', level:'1', question:'냄새의 성격은?', type:'단일선택',
+      choices:['탄 냄새 (고무/플라스틱/전선)','오일 타는 냄새 (매캐하고 텁텁함)','달콤한 냄새 (안티프리즈·냉각수)','가솔린/연료 냄새','계란 썩는 냄새 (유황/황화수소)'],
+      logic:'냄새 유형 = 누출 물질 즉시 특정 (가장 강력한 분류 변수)',
+      causes:'달콤→냉각수누수(즉시확인)\n유황→배터리과충전/촉매과열\n연료→연료계통누출(즉시점화원제거)\n탄냄새→전선쇼트/PTC히터/클러치소손\n오일탄내→오일누유가열부위접촉'},
+    { id:'SM02', level:'1', question:'냄새가 어디서 오는 것 같나요?', type:'단일선택',
+      choices:['에어컨·히터 통풍구 (실내로 유입)','엔진룸 방향','배기구/하부 쪽','실내 (출처 불명)','주차 후 차량 외부'],
+      logic:'냄새 발생 위치 = 누출 계통 확정',
+      causes:'통풍구→에바코일곰팡이/PTC히터소손/에어컨필터오염\n엔진룸→오일/냉각수누출+가열부위접촉\n배기하부→촉매과열/오일연소\n실내→연료증기유입/배기가스역류(위험)'},
+    { id:'SM03', level:'2', question:'냄새가 언제 발생하나요?', type:'단일선택',
+      choices:['에어컨 또는 히터를 켤 때','시동 직후 (냉간)','주행 중 계속','감속 또는 정차 시','특정 조건 없이 간헐적'],
+      logic:'발생 조건 = 원인 트리거 특정',
+      causes:'에어컨켤때→에바코일곰팡이(달달한/퀴퀴한냄새)\n냉간시동후→냉각수누출가열/오일연소\n감속시→배기촉매과열/오일연소\n히터켤때→PTC히터박스플라스틱소손가능'},
+    { id:'SM04', level:'2', question:'냄새의 강도는?', type:'단일선택',
+      choices:['매우 약함 (가끔 맡아짐)','보통 (지속적이지만 견딜만함)','강함 (즉시 인지됨)','연기나 가스 형태로 눈에 보임','점점 강해지는 추세'],
+      logic:'강도 = 긴급도 판단 (연기/가스 = 즉시 정차)',
+      causes:'연기+냄새→즉시정차(화재/과열위험)\n점점강해짐→누출 진행중→즉시점검\n약하고간헐→센서류/소량누출'},
+    { id:'SM05', level:'2', question:'냄새가 최근 어떤 사건 후 시작됐나요?', type:'단일선택',
+      choices:['에어컨 필터 교체 후','장거리 주행 후','비 또는 세차 후','정비 또는 부품 교체 후','특별한 계기 없음'],
+      logic:'트리거 이벤트 = 원인 시점 특정',
+      causes:'에어컨필터교체후→낙엽/이물질블로워유입\n세차후→방음재수분/스피커침수/브레이크녹\n정비후→오일캡미체결/냉각수호스미체결'},
+    { id:'SM06', level:'3', question:'냉각수 리저브탱크 수위를 확인해보셨나요?', type:'단일선택',
+      choices:['정상','조금 부족 (MIN~MAX 사이)','많이 부족 (MIN 이하)','리저브탱크 비어있음','확인 안 함'],
+      logic:'냉각수 수위 = 달콤한냄새 원인 즉시 확인',
+      causes:'부족+달콤냄새→냉각수누수거의확정→라디에이터/호스/헤드가스켓\n정상→냉각수원인낮음→다른원인탐색'},
+    { id:'SM07', level:'3', question:'엔진오일 레벨 및 색상은?', type:'단일선택',
+      choices:['정상 (적정레벨, 맑은갈색)','레벨부족','색상 검고 탁함 (오래됨)','색상이 우유빛 (냉각수혼입)','오일에 거품 있음'],
+      logic:'오일 상태 = 오일 탄내 및 헤드가스켓 손상 판단',
+      causes:'우유빛오일→냉각수혼입(헤드가스켓파손의심)\n오일부족+탄내→누유부위가열접촉\n거품→엔진내부냉각수유입'},
+    { id:'SM08', level:'3', question:'에어컨 필터 교체 주기는?', type:'단일선택',
+      choices:['6개월 이내','6개월~1년','1~2년','2년 이상 또는 미교체','모름'],
+      logic:'에어컨 필터 주기 = 에바 오염 및 곰팡이 원인 판단',
+      causes:'2년이상→곰팡이/세균오염→퀴퀴한냄새확정\n필터교체후새냄새→이물질블로워유입'},
+  ],
+  start: [
+    { id:'ST01', level:'1', question:'시동 문제의 유형은?', type:'단일선택',
+      choices:['아예 시동이 안 걸림 (무반응)','크랭킹은 되나 시동이 안 걸림','시동은 걸리나 RPM 불안정 (부조)','시동 후 바로 꺼짐','시동 걸릴 때 이상 소리'],
+      logic:'시동 유형 = 배터리/스타터/연료/점화 계통 즉시 분류',
+      causes:'무반응→배터리완전방전/스타터릴레이\n크랭킹O시동X→연료/점화/압축문제\nRPM부조→스로틀/MAF/점화플러그\n시동후꺼짐→공회전학습/연료압력\n이상소리→스타터기어/링기어'},
+    { id:'ST02', level:'1', question:'시동 시 어떤 소리가 나나요?', type:'단일선택',
+      choices:['달칵 소리 1번 후 완전 침묵','윙윙 (크랭킹은 되나 시동 안 됨)','평소보다 힘없이 느린 크랭킹','쇠 갈리는 소리 (끄드득)','정상 소리 (소리는 정상)'],
+      logic:'소리 유형 = 배터리/스타터/연료 원인 즉시 분류',
+      causes:'달칵1번→배터리거의완전방전(전류부족)\n윙윙→스타터작동but연료/점화문제\n느린크랭킹→배터리수명저하/터미널부식\n끄드득→스타터기어돌출불량/링기어마모'},
+    { id:'ST03', level:'2', question:'시동 문제가 언제 발생하나요?', type:'단일선택',
+      choices:['항상 (매번 시동 불가)','아침 첫 시동만 문제','날씨 추울 때 (5도 이하)','장시간 주차 (하루 이상) 후','불규칙하게 (예측 불가)'],
+      logic:'발생 조건 = 배터리/연료증기/암전류 원인 분리',
+      causes:'아침만→배터리노화(야간자가방전)/스로틀바디오염\n추울때→배터리성능저하/연료기화불량/오일점도\n장주차후→암전류과다방전/연료압력저하'},
+    { id:'ST04', level:'2', question:'점프 케이블로 연결하면 시동이 걸리나요?', type:'단일선택',
+      choices:['걸림 (점프 시 정상 시동)','안 걸림 (점프해도 안 됨)','시도해봄 - 잠깐 걸렸다 꺼짐','시도 안 함','해당 없음'],
+      logic:'점프 후 시동 여부 = 배터리 원인 확정 여부 핵심 분기',
+      causes:'점프후시동→배터리방전확정(교체필요)\n점프해도안됨→연료/점화/스타터/시동계통\n잠깐후꺼짐→스로틀바디오염/공회전학습필요'},
+    { id:'ST05', level:'2', question:'악셀 페달을 살짝 밟으면 시동이 걸리나요?', type:'단일선택',
+      choices:['걸림','안 걸림','시도 안 함','모름','해당 없음'],
+      logic:'악셀 시 시동 = 스로틀 바디 오염/공회전 제어 불량 즉시 확정',
+      causes:'악셀시시동→스로틀바디오염/공회전제어밸브불량\n확실한진단→스로틀바디청소우선'},
+    { id:'ST06', level:'2', question:'시동 후 RPM 상태는 어떻게 되나요?', type:'단일선택',
+      choices:['정상 공회전 (700~900rpm 유지)','RPM이 낮고 불안정 (500rpm 이하)','RPM이 높게 유지됨 (1500rpm 이상)','RPM이 올랐다 내렸다 헌팅','시동 후 즉시 꺼짐'],
+      logic:'공회전 RPM 상태 = 스로틀/ISG/공회전제어 원인 분류',
+      causes:'500이하불안정→스로틀바디/공회전밸브/에어유입\n높게유지→수온센서불량/냉각수온도미반영\n헌팅→MAF센서/TPS/흡기누기'},
+    { id:'ST07', level:'3', question:'배터리를 언제 교체했나요?', type:'단일선택',
+      choices:['1년 이내','1~2년','3~4년','4년 이상 (수명 종료 가능)','교체한 적 없음 / 모름'],
+      logic:'배터리 수명 = 시동 문제 1차 확인 항목',
+      causes:'4년이상→배터리수명종료가능성높음\n새배터리임에도방전→암전류/발전기불량'},
+    { id:'ST08', level:'3', question:'최근 단거리 주행만 반복했나요?', type:'단일선택',
+      choices:['예 (5km 이하, 시내만)','아니오 (장거리도 있음)','한 달 이상 장기 주차','통상적인 패턴','모름'],
+      logic:'주행 패턴 = 배터리 충전 불량 방전 패턴 확인',
+      causes:'단거리반복→시동시소모>주행시충전→배터리방전누적\n장기주차→자가방전+암전류'},
+    { id:'ST09', level:'3', question:'상시전원 연결 용품이 얼마나 있나요?', type:'단일선택',
+      choices:['없음','블랙박스 1개 (ACC만)','블랙박스+상시전원 용품','보조배터리/인버터','여러 개 (3개 이상)'],
+      logic:'암전류 부하 = 배터리 방전의 주요 원인',
+      causes:'상시전원다수→암전류과다→야간방전\n블랙박스상시→주차모드전류소모확인'},
+  ],
+  drive: [
+    { id:'D01', level:'1', question:'어떤 주행 문제가 있나요?', type:'단일선택',
+      choices:['가속이 안 됨 (출력 저하)','변속 충격 또는 이상','핸들이 무겁거나 한쪽으로 쏠림','브레이크 제동력 약화','연비가 갑자기 크게 나빠짐'],
+      logic:'주행 문제 유형 = 엔진/미션/조향/제동/연료 계통 즉시 분류',
+      causes:'출력저하→점화/흡기/연료/배기 계통\n변속이상→미션오일/클러치/TCU\n조향이상→MDPS/얼라이먼트/타이어\n제동약화→패드/디스크/캘리퍼/브레이크오일\n연비악화→O2센서/인젝터/타이어공기압'},
+    { id:'D02', level:'2', question:'출력 저하가 어떤 상황에서 나타나나요?', type:'단일선택',
+      choices:['평소와 달리 항상 힘이 없음','급가속 시에만 힘이 없음','고속 (100km 이상)에서만','오르막길에서만','더운 날씨에 심해짐'],
+      logic:'부하 조건 = 연료/흡기/냉각 계통 세분화',
+      causes:'항상→스로틀바디/MAF/에어필터/촉매막힘\n급가속시→인젝터불량/연료압력부족/점화타이밍\n더울때→흡기온도상승/냉각계통부족\n오르막→고부하시터보(과급)불량'},
+    { id:'D03', level:'2', question:'변속 시 어떤 증상이 있나요?', type:'단일선택',
+      choices:['변속 시 쿵 하는 충격','변속 지연 (RPM오르는데 속도안오름)','특정 단수에서만 문제','후진 기어 체결 이상','자동변속기 헌팅 (왔다갔다)'],
+      logic:'변속 증상 유형 = 미션 내부/TCU/클러치 분류',
+      causes:'충격→미션오일부족/열화/밸브바디\nRPM오르는데속도안오름→클러치미끄러짐/토크컨버터\n특정단수→해당단수싱크로나이저(수동)/밴드(자동)\n헌팅→TCU학습리셋필요/미션오일열화'},
+    { id:'D04', level:'2', question:'핸들 쏠림의 방향과 조건은?', type:'단일선택',
+      choices:['항상 한쪽으로 (방향: 좌/우)','브레이크 밟을 때만 쏠림','고속에서만 흔들림 (시미)','핸들이 무겁거나 조향력 약함','코너링 시 차가 바깥으로 밀림'],
+      logic:'쏠림 조건 = 얼라이먼트/캘리퍼/MDPS/타이어 분류',
+      causes:'항상쏠림→얼라이먼트불량/타이어마모편차\n브레이크시쏠림→캘리퍼편측고착/패드두께편차\n고속시미→타이어밸런스/허브베어링\n핸들무거움→MDPS오일/랙앤피니언'},
+    { id:'D05', level:'2', question:'브레이크 이상의 유형은?', type:'단일선택',
+      choices:['제동 거리가 눈에 띄게 길어짐','브레이크 페달이 바닥까지 밟힘','한쪽으로 쏠리면서 섬','브레이크 잡을 때 떨림','브레이크 경고등 점등'],
+      logic:'제동 이상 유형 = 마스터실린더/캘리퍼/패드/오일 분류',
+      causes:'페달바닥→브레이크오일부족/에어유입(즉시점검)\n쏠림→캘리퍼편측고착/패드편마모\n떨림→디스크두께불균일/부식\n거리길어짐→패드소진/디스크마모'},
+    { id:'D06', level:'3', question:'에어 필터, 연료 필터 교체 이력은?', type:'단일선택',
+      choices:['최근 교체 (1년 이내)','1~2년','2년 이상','한 번도 교체 안 함','모름'],
+      logic:'소모품 이력 = 출력저하/연비악화의 소모품 원인 확인',
+      causes:'에어필터2년이상→흡기저항증가→출력저하/연비악화\n연료필터→연료압력저하→인젝터분사불량', evExclude: true},
+    { id:'D07', level:'3', question:'미션오일 또는 클러치오일 교환 주기는?', type:'단일선택',
+      choices:['최근 교환 (2년 이내)','3~5년','5년 이상 또는 미교환','모름','수동변속기 없음'],
+      logic:'미션오일 상태 = 변속 이상의 기초 원인',
+      causes:'5년이상미교환→미션오일산화/점도저하→변속충격\n탈거식교환필요여부확인', evExclude: true},
+    { id:'D08', level:'3', question:'최근 타이어 관련 작업을 했나요?', type:'단일선택',
+      choices:['없음','타이어 교체','밸런스 조정','얼라이먼트 조정','공기압 조정'],
+      logic:'타이어 작업 이력 = 조향/연비 이상의 타이어 원인 확인',
+      causes:'교체후쏠림→얼라이먼트미조정\n공기압저하→연비악화/편마모/조향불안'},
+  ],
+  leak: [
+    { id:'L01', level:'1', question:'무엇이 새는 것 같나요?', type:'단일선택',
+      choices:['엔진오일 (검은색/암갈색)','냉각수 (투명/연두/분홍)','연료 (냄새 매우 강함)','브레이크오일 (무색/연노랑)','파워스티어링오일 (붉은색)'],
+      logic:'누출 유체 특정 = 계통 즉시 확정 (색/냄새로 판별)',
+      causes:'연료누출→즉시정차+점화원제거(화재위험)\n냉각수→달콤한냄새/수위확인/오버히팅주의\n브레이크오일→즉시운행중지(제동불량)\n엔진오일→누유위치특정(가스켓/씰/드레인)'},
+    { id:'L02', level:'1', question:'누출 위치를 알 수 있나요?', type:'단일선택',
+      choices:['엔진룸 하부 (주차 후 바닥에 고임)','엔진 상부 또는 옆면','차량 중앙 하부 (미션/드라이브샤프트)','바퀴 근처 (허브/캘리퍼)','실내 바닥 (물기)'],
+      logic:'누출 위치 = 부품 특정 범위 축소',
+      causes:'실내바닥물→에어컨응결수(정상)/히터코어누수\n바퀴근처→캘리퍼브레이크오일/허브그리스\n엔진상부→밸브커버가스켓/캠씰\n엔진하부→오일팬가스켓/드레인볼트'},
+    { id:'L03', level:'2', question:'누출량은 어느 정도인가요?', type:'단일선택',
+      choices:['방울방울 (주차 후 흔적 남음)','줄줄 (지속적으로 흐름)','주행 중에만 새는 것 같음 (정차시 없음)','냄새나 증기만 있고 눈에 안 보임','모름 (간접 증거만)'],
+      logic:'누출량 = 긴급도 판단',
+      causes:'줄줄→즉시정비소입고\n방울방울→빠른시일내수리(방치시악화)\n주행중만→열팽창시누출(호스/씰열화)'},
+    { id:'L04', level:'2', question:'오일 레벨게이지 또는 냉각수 수위를 확인했나요?', type:'단일선택',
+      choices:['오일 정상','오일 F선 이하로 부족','오일 거의 없음 (L선 이하)','냉각수 부족','둘 다 정상'],
+      logic:'레벨 확인 = 긴급 조치 필요 여부 즉시 판단',
+      causes:'오일L선이하→즉시보충(엔진손상위험)\n냉각수부족→오버히팅위험(보충후원인점검)'},
+    { id:'L05', level:'2', question:'엔진 온도 게이지 또는 오버히팅 증상이 있나요?', type:'단일선택',
+      choices:['정상 (중간 유지)','H쪽으로 올라가는 중','이미 경고등 켜짐','수증기 또는 연기 발생','모름'],
+      logic:'오버히팅 여부 = 즉시 정차 판단 (가장 긴급한 분기)',
+      causes:'H쪽상승/경고등→즉시정차(엔진치명적손상방지)\n수증기→라디에이터/냉각호스파손'},
+    { id:'L06', level:'3', question:'해당 유체를 최근 보충하거나 교체했나요?', type:'단일선택',
+      choices:['없음','직접 보충함','정비소에서 교체함','여러 번 반복 보충 경험','모름'],
+      logic:'반복 보충 이력 = 지속적 누출로 근본 수리 필요 판단',
+      causes:'반복보충→지속적누출확정→씰/가스켓/호스수리필요'},
+    { id:'L07', level:'3', question:'최근 오일 교환 또는 하체 작업을 직접 했나요?', type:'단일선택',
+      choices:['없음','오일 직접 교환함','하체 작업 정비소에서','부품 직접 교체함','모름'],
+      logic:'DIY 작업 이력 = 오장착 원인 확인 (드레인볼트/오일캡)',
+      causes:'직접오일교환후누유→드레인볼트미체결/토크불량\n직접부품교체→가스켓누락/씰오장착'},
+    { id:'L08', level:'3', question:'주차 장소의 특성은?', type:'단일선택',
+      choices:['실내 주차 (오염 확인 쉬움)','실외 (빗물과 구분 어려움)','경사진 곳','모름','항상 다른 장소'],
+      logic:'주차 환경 = 누출 흔적 확인 신뢰도 판단',
+      causes:'경사진곳→오일팬 한쪽쏠림으로 누유증가\n실내→정확한누출색/위치 확인가능'},
+  ],
+  electric: [
+    { id:'E01', level:'1', question:'어떤 전기·전자 문제인가요?', type:'단일선택',
+      choices:['배터리가 자꾸 방전됨','전장 부품 오작동 (파워윈도우/잠금/썬루프)','오디오·블루투스·화면 이상','후방카메라·네비 오류','경보기 오작동 또는 스마트키 이상'],
+      logic:'전기 문제 유형 = 배터리/발전기/모듈/통신 계통 분류',
+      causes:'반복방전→발전기불량/암전류과다\n파워윈도우→모터/레귤레이터/BCM\n블루투스→폰호환성/차량모듈\n후방카메라→카메라모듈/배선/AVN소프트웨어\n스마트키→배터리/수신기/BCM'},
+    { id:'E02', level:'1', question:'문제가 지속적인가요, 간헐적인가요?', type:'단일선택',
+      choices:['항상 발생 (매번 재현)','특정 기온 (더울 때/추울 때)에만','특정 조작 시에만','주차 후 재시동 시에만','예측 불가능하게 간헐적'],
+      logic:'간헐성 = 부품고장 vs 접촉불량/소프트웨어 분류',
+      causes:'항상→부품물리적고장\n기온의존→배터리성능/전선열팽창접촉불량\n간헐→접촉불량/커넥터산화/소프트웨어버그'},
+    { id:'E03', level:'2', question:'배터리 충전 전압을 확인해보셨나요?', type:'단일선택',
+      choices:['확인: 13.5~14.5V (정상 충전 중)','확인: 12V대 (충전 안 됨/발전기 의심)','확인: 15V 이상 (과충전)','확인 못 함','전압계 없음'],
+      logic:'충전 전압 = 발전기 정상 여부 즉시 확인 가능',
+      causes:'12V대충전중→발전기불량(교체필요)\n15V이상→발전기조절기불량(배터리과충전손상)'},
+    { id:'E04', level:'2', question:'블루투스 문제가 특정 기기에서만 발생하나요?', type:'단일선택',
+      choices:['내 스마트폰에서만','모든 기기에서 동일한 문제','예전 폰에선 됐는데 새 폰으로 바꾼 후','특정 앱 사용 시에만','모름'],
+      logic:'특정기기 여부 = 폰 문제 vs 차량 모듈 문제 분리',
+      causes:'특정폰만→폰블루투스버전호환성/폰설정\n모든기기→차량블루투스모듈불량\n새폰후→BT코덱/프로파일버전불일치'},
+    { id:'E05', level:'2', question:'후방카메라 문제의 유형은?', type:'단일선택',
+      choices:['화면이 아예 안 나옴 (검은 화면)','화질 불량 (흐림/노이즈/줄무늬)','가이드라인만 오작동 (위치 이상)','간헐적으로 꺼졌다 켜짐','색상 이상 (녹색/보라)'],
+      logic:'카메라 증상 유형 = 하드웨어 vs 소프트웨어 분리',
+      causes:'검은화면→카메라모듈파손/배선단선\n노이즈→커넥터산화/전원불량\n가이드라인만→AVN소프트웨어보정값오류\n색상이상→카메라센서손상'},
+    { id:'E06', level:'2', question:'배터리 탈거, 교체 또는 점프를 최근 했나요?', type:'단일선택',
+      choices:['최근 교체함','최근 점프 케이블 사용','탈거 후 재연결','오래된 배터리 그대로','모름'],
+      logic:'배터리 관련 작업 = 전장 학습값 초기화 필요 여부',
+      causes:'배터리탈거재연결→TCU/ECU학습초기화필요\n스로틀바디학습/파워윈도우리셋필요'},
+    { id:'E07', level:'3', question:'차량에 상시전원으로 연결된 용품 목록은?', type:'단일선택',
+      choices:['없음','블랙박스 (ACC 전원만)','블랙박스 상시전원 + 1개','3개 이상 상시전원 용품','보조배터리/인버터 포함'],
+      logic:'암전류 총량 = 배터리 방전 원인 정량 판단',
+      causes:'3개이상상시→암전류100~200mA이상→배터리2~3년내방전\n블랙박스상시→주차감시모드전류측정필요'},
+    { id:'E08', level:'3', question:'최근 순정 또는 사제 부품/용품을 설치했나요?', type:'단일선택',
+      choices:['없음','사제 오디오/내비 설치','블랙박스/카메라 설치','ECU 튜닝/코딩','딜러 소프트웨어 업데이트'],
+      logic:'외부 설치 이력 = 전장 오작동의 직접 원인',
+      causes:'사제오디오→CAN통신간섭/스마트키수신방해\nECU코딩→소프트웨어버그/경고등오류'},
+  ],
+  exterior: [
+    { id:'O01', level:'1', question:'문의 유형은 무엇인가요?', type:'단일선택',
+      choices:['외부 충격 수리 (판금/도색)','소모품 교환 시기 또는 종류 추천','비용 견적 타당성 확인','업그레이드 또는 튜닝 상담','중고차 구매 전 점검 문의'],
+      logic:'문의 유형 = 수리/정보/판단 의도 즉시 구분',
+      causes:'견적타당성→비교기준제공\n소모품추천→주행거리/모델기반제품추천\n중고차→엔진오일소모/사고이력/하체점검'},
+    { id:'O02', level:'1', question:'외부 충격의 범위는?', type:'단일선택',
+      choices:['경미 (도장만 긁힘, 철판 노출 없음)','중등 (도장 탈락, 철판 노출)','판금 필요 (찌그러짐)','절단 교체 필요 수준','충격 범위 모름'],
+      logic:'손상 범위 = 수리 방법 즉시 분류',
+      causes:'철판노출→즉시도색(녹방지)\n찌그러짐→판금도색(덴트권장)\n절단교체→사고차이력발생위험안내'},
+    { id:'O03', level:'2', question:'수리 방법 선택 기준은?', type:'단일선택',
+      choices:['비용 최소화 우선','사고 이력 남기지 않기 우선','빠른 수리 우선','품질 (원상복구) 우선','보험 처리 가능 여부 우선'],
+      logic:'우선순위 = 최적 수리 방법 추천',
+      causes:'이력없애기→판금도색(절단교체대신)\n비용최소→셀프붓펜/부분도색\n보험처리→가해자보험/자차보험'},
+    { id:'O04', level:'2', question:'소모품 교환 문의 항목은?', type:'단일선택',
+      choices:['엔진오일 (종류/점도/교환주기)','브레이크 (패드/디스크/오일)','냉각수 또는 겉벨트','타이어 추천','에어컨 필터 또는 연료 필터'],
+      logic:'소모품 유형 = 주행거리 기반 교환 시기 안내',
+      causes:'엔진오일→모델/주행거리/점도표준\n겉벨트→10~12만km교환시기\n브레이크오일→2년또는4만km'},
+    { id:'O05', level:'3', question:'차량 연식 및 주행거리는?', type:'입력',
+      choices:['연식: 직접입력 / 주행거리: 직접입력','모름','차량등록증 확인 가능','대략 알고 있음','해당 없음'],
+      logic:'연식+주행거리 = 모든 소모품 교환시기 동시 계산',
+      causes:'연식7년+10만km→겉벨트/타이밍체인/서모스텟\n5년+5만km→브레이크오일/에어컨필터'},
+    { id:'O06', level:'3', question:'현재 차량 모델 및 엔진 유형은?', type:'단일선택',
+      choices:['가솔린 자연흡기 (NA)','가솔린 터보 (T-GDI)','디젤','하이브리드','모름'],
+      logic:'엔진 유형 = 오일 점도/규격/교환주기 기준 분기',
+      causes:'GDI가솔린→API SP이상/LSPI방지규격필수\n터보→5W30또는5W40/교환주기단축권장\n디젤→5W30저황규격'},
+  ],
+};
+
+function levelColor(l) {
+  if (l === 'L0' || l === '0') return '#8b5cf6';
+  if (l === '1') return '#3b82f6';
+  if (l === '2') return '#10b981';
+  if (l === '3') return '#f59e0b';
+  return '#6b7280';
+}
+
+function renderCards(catId, questions) {
+  const container = document.getElementById(catId + '-questions');
+  if (!container) return;
+  container.innerHTML = questions.map(q => `
+    <div class="q-card">
+      <div class="q-card-header">
+        <span class="q-id">${q.id}</span>
+        <span class="q-level level-L${q.level}" style="border-color:${levelColor(q.level)};color:${levelColor(q.level)}">L${q.level}</span>
+        ${q.evExclude ? '<span class="ev-badge">⚡ EV 제외</span>' : ''}
+        <span class="q-type">${q.type}</span>
+      </div>
+      <div class="q-body">
+        <div class="q-question">${q.question}</div>
+        <ul class="q-choices">
+          ${q.choices.map(c => `<li>${c}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="q-footer">
+        <details>
+          <summary>🔬 진단 로직 보기</summary>
+          <div class="detail-content">
+            <div class="detail-label">Logic</div>
+            <div class="detail-text">${q.logic}</div>
+            ${q.causes ? `<div class="detail-label">Causes</div><div class="detail-text">${q.causes}</div>` : ''}
+          </div>
+        </details>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Render all categories
+Object.entries(data).forEach(([cat, qs]) => renderCards(cat, qs));
+</script>
+</body>
+</html>

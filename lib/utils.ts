@@ -81,8 +81,8 @@ export function createMessage(
 export function urgencyLabel(urgency: string) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
     HIGH: { label: '즉시 점검 필요', color: 'text-red-600', bg: 'bg-red-50 border-red-200' },
-    MID:  { label: '조기 점검 권장', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
-    LOW:  { label: '여유 있게 점검', color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
+    MID:  { label: '빠른 점검 필요해요', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+    LOW:  { label: '3개월 내 점검 권장', color: 'text-green-600', bg: 'bg-green-50 border-green-200' },
   }
   return map[urgency] ?? map.MID
 }

@@ -28,6 +28,8 @@ export default function ChatPage() {
   const [showWorkshopCTA, setShowWorkshopCTA] = useState(false)
   // 진단 후 채팅 히스토리 (멀티턴 유지)
   const [postChatHistory, setPostChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
+  // 진행 단계 추적 (1=증상입력, 2=1차질문, 3=추가질문, 4=진단완료)
+  const [diagStep, setDiagStep] = useState(1)
 
 
   // 초기화
@@ -135,6 +137,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
     setMessages(newMessages)
     setCurrentQuestions([])
     setIsLoading(true)
+    if (diagStep === 1) setDiagStep(2)
 
     try {
       const response = await fetch('/api/diagnose', {
@@ -158,6 +161,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
         const aiMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 확인해 드릴게요.', 'question', {}) as ChatMessage
         setMessages(prev => [...prev, aiMsg])
         setCurrentQuestions(questions)
+        setDiagStep(prev => Math.min(3, prev + 1))
       } else if (data.data.lowConfidence) {
         // 5회 질문 후에도 원인 특정 불가 (confidence < 40%)
         const msg = createMessage(
@@ -171,6 +175,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
         // 정상 진단 결과
         const result: DiagnosisResult = data.data.result!
         setDiagnosisResult(result)
+        setDiagStep(4)
         const resultMsg = createMessage('assistant', result.summary, 'result', { result }) as ChatMessage
         setMessages(prev => [...prev, resultMsg])
       }
@@ -216,7 +221,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <ChatHeader vehicle={vehicle} onBack={() => router.push('/main')} />
+      <ChatHeader vehicle={vehicle} onBack={() => router.push('/main')} step={diagStep} totalSteps={4} />
 
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-surface-50">
