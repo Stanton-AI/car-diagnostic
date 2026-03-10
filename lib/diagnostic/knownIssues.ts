@@ -120,5 +120,5 @@ export function formatKnownIssuesContext(issues: MatchedIssue[]): string {
     `• [${issue.name}] ${issue.description}\n  → 조치: ${issue.fix}\n  → 보증: ${issue.warrantyNote}`
   ).join('\n')
 
-  return `\n\n⚠️ 이 차량의 알려진 고질병 (DB 매칭):\n${lines}\n위 고질병이 현재 증상과 일치한다면 진단 결과에 반드시 반영하고, 보증 수리 가능 여부를 안내하세요.`
+  return `\n\n📋 참고: 유사 차종·증상에서 보고된 알려진 패턴 (해당 여부는 실제 증상 맥락으로 판단)\n${lines}\n실제 증상과 패턴이 명확히 일치할 때만 진단에 반영하세요. 증상 맥락이 맞지 않으면 무시해도 됩니다.`
 }
