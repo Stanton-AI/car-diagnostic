@@ -99,6 +99,15 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
 
         {!showCustom ? (
           <div className="space-y-2">
+            {/* ① 질문 설명 버튼 — 선택지 위에 배치 */}
+            <button
+              onClick={handleExplain}
+              disabled={loadingExplain}
+              className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50"
+            >
+              {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
+            </button>
+
             {/* 주요 선택지 */}
             {mainChoices.map((choice, i) => (
               <button
@@ -135,15 +144,6 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
                 ✏️ 직접 입력
               </button>
             </div>
-
-            {/* ① 질문 설명 버튼 */}
-            <button
-              onClick={handleExplain}
-              disabled={loadingExplain}
-              className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50"
-            >
-              {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
-            </button>
           </div>
         ) : (
           <div className="space-y-2">

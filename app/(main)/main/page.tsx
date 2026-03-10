@@ -558,24 +558,7 @@ export default function MainPage() {
 
             {!showCustomInput ? (
               <>
-                {questionChoices.map((choice, i) => (
-                  <button key={`${currentQuestion.id}-${i}`}
-                    onClick={() => {
-                      if (choice === '기타 (직접 입력)') {
-                        setShowCustomInput(true)
-                        return
-                      }
-                      sendMessage(choice, 'answer', currentQuestion.id)
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left hover:border-primary-300 hover:bg-primary-50 transition-all active:scale-[0.98] text-sm shadow-sm">
-                    <span className="w-5 h-5 rounded-full border border-primary-300 bg-white flex-shrink-0 flex items-center justify-center text-xs text-primary-600 font-bold">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                    <span className="flex-1">{choice}</span>
-                  </button>
-                ))}
-
-                {/* 질문 설명 버튼 */}
+                {/* 질문 설명 버튼 — 선택지 위에 배치 */}
                 <button
                   onClick={async () => {
                     if (loadingExplain) return
@@ -599,6 +582,23 @@ export default function MainPage() {
                   className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50">
                   {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
                 </button>
+
+                {questionChoices.map((choice, i) => (
+                  <button key={`${currentQuestion.id}-${i}`}
+                    onClick={() => {
+                      if (choice === '기타 (직접 입력)') {
+                        setShowCustomInput(true)
+                        return
+                      }
+                      sendMessage(choice, 'answer', currentQuestion.id)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left hover:border-primary-300 hover:bg-primary-50 transition-all active:scale-[0.98] text-sm shadow-sm">
+                    <span className="w-5 h-5 rounded-full border border-primary-300 bg-white flex-shrink-0 flex items-center justify-center text-xs text-primary-600 font-bold">
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="flex-1">{choice}</span>
+                  </button>
+                ))}
               </>
             ) : (
               <div className="flex gap-2">
