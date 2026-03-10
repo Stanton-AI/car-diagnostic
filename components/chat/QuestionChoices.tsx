@@ -16,19 +16,18 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
   const question = questions[currentIdx]
   if (!question) return null
 
-  const allChoices = [...question.choices, '모름', '기타 (직접 입력)']
+  const mainChoices = question.choices
 
   const handleChoice = (choice: string) => {
-    if (choice === '기타 (직접 입력)') {
-      setShowCustom(true)
-      return
-    }
     setSelected(choice)
     setTimeout(() => {
       onAnswer(question.id, choice)
       setSelected(null)
-      setShowCustom(false)
     }, 200)
+  }
+
+  const handleDontKnow = () => {
+    onAnswer(question.id, '잘 모르겠어요')
   }
 
   const handleCustomSubmit = () => {
@@ -53,10 +52,10 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
           )}
         </div>
 
-        {/* 선택지 */}
         {!showCustom ? (
           <div className="space-y-2">
-            {allChoices.map((choice, i) => (
+            {/* 주요 선택지 */}
+            {mainChoices.map((choice, i) => (
               <button
                 key={i}
                 onClick={() => handleChoice(choice)}
@@ -68,24 +67,70 @@ export default function QuestionChoices({ questions, onAnswer }: Props) {
                 <span className="flex-1 text-sm">{choice}</span>
               </button>
             ))}
+
+            {/* 구분선 */}
+            <div className="flex items-center gap-2 py-1">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">또는</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* 보조 선택지 */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleDontKnow}
+                className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors text-center"
+              >
+                잘 모르겠어요
+              </button>
+              <button
+                onClick={() => setShowCustom(true)}
+                className="flex-1 px-3 py-2.5 rounded-xl border border-primary-200 text-sm text-primary-600 font-medium hover:bg-primary-50 transition-colors text-center"
+              >
+                ✏️ 직접 입력
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
+          <div className="space-y-2">
+            {/* 힌트 텍스트 */}
+            <p className="text-xs text-gray-500 leading-relaxed">
+              해당하는 선택지가 없다면 자유롭게 설명해 주세요.<br />
+              다른 증상이나 추가 정보도 함께 입력하시면 더 정확한 진단이 가능해요.
+            </p>
+
+            {/* 텍스트 입력 */}
+            <textarea
               value={customInput}
               onChange={e => setCustomInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCustomSubmit()}
-              placeholder="직접 입력해 주세요..."
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleCustomSubmit()
+                }
+              }}
+              placeholder="예: 엔진룸 쪽에서 나는 것 같고, 비 온 다음 날에 더 심해지는 것 같아요..."
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white resize-none leading-relaxed"
               autoFocus
             />
-            <button
-              onClick={handleCustomSubmit}
-              className="px-4 py-3 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors"
-            >
-              확인
-            </button>
+
+            {/* 버튼 행 */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowCustom(false); setCustomInput('') }}
+                className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                돌아가기
+              </button>
+              <button
+                onClick={handleCustomSubmit}
+                disabled={!customInput.trim()}
+                className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                이대로 진단하기 →
+              </button>
+            </div>
           </div>
         )}
       </div>
