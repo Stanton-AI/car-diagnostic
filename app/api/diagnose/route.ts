@@ -169,11 +169,15 @@ export async function POST(req: NextRequest) {
         && candidateQuestions.length === 0
         && answeredIds.size > 0
 
-      // ── 안전장치: 최대 질문 수 초과 시 바로 진단 ────────────────────────
-      const MAX_QUESTIONS = 6
-      const hardCapReached = answeredIds.size >= MAX_QUESTIONS
+      // ── confidence 기반 3-tier 진단 흐름 ────────────────────────────────
+      // Tier 1: confidence >= 65% → 바로 진단
+      // Tier 2: confidence 40~65% + 질문 여유 → 추가 질문 (최대 5회)
+      // Tier 3: 5회 소진 후 confidence < 40% → 원인 특정 불가 (정비소 연결 CTA)
+      const MAX_QUESTIONS = 5
+      const CONFIDENCE_HIGH = 65   // 이상이면 바로 진단
+      const CONFIDENCE_LOW  = 40   // 5회 후 이하면 원인 특정 불가 처리
 
-      if (!categoryExhausted && !hardCapReached) {
+      if (!categoryExhausted) {
         const check = await checkInformationSufficiency(
           symptomText,
           vehicleInfo,
@@ -183,14 +187,10 @@ export async function POST(req: NextRequest) {
           detectedFuelType,
           subSymptomHint
         )
+        const currentConfidence = check.confidence ?? 50
 
-        // confidence 기반 판단 (65% 미만이면 더 물어보기)
-        const CONFIDENCE_THRESHOLD = 65
-        const needsMoreInfo = (check.confidence ?? 0) < CONFIDENCE_THRESHOLD
-          && check.suggestedQuestionIds.length > 0
-
-        if (needsMoreInfo) {
-          // 아직 안 물은 질문만 필터링 (라운드당 1개 — 이탈 방지)
+        // Tier 2: 아직 질문 여유 있고 confidence 낮음 → 추가 질문
+        if (currentConfidence < CONFIDENCE_HIGH && answeredIds.size < MAX_QUESTIONS) {
           const newQuestions = check.suggestedQuestionIds
             .filter(id => !answeredIds.has(id))
             .map(id => findQuestionById(id))
@@ -204,11 +204,24 @@ export async function POST(req: NextRequest) {
                 needsMoreInfo: true,
                 detectedCategory: check.detectedCategory,
                 additionalQuestions: newQuestions,
-                confidence: check.confidence,  // 디버깅용
+                confidence: currentConfidence,
               }
             })
           }
         }
+
+        // Tier 3: 5회 소진 후에도 confidence < 40% → 원인 특정 불가
+        if (answeredIds.size >= MAX_QUESTIONS && currentConfidence < CONFIDENCE_LOW) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              needsMoreInfo: false,
+              lowConfidence: true,
+              confidence: currentConfidence,
+            }
+          })
+        }
+        // Tier 1 또는 (5회 소진 + confidence 40~65%) → 진단 진행
       }
     }
 

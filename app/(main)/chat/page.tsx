@@ -25,6 +25,7 @@ export default function ChatPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [vehicle, setVehicle] = useState<Partial<Vehicle> | null>(null)
   const [user, setUser] = useState<{ id: string } | null>(null)
+  const [showWorkshopCTA, setShowWorkshopCTA] = useState(false)
 
   // 초기화
   useEffect(() => {
@@ -116,12 +117,23 @@ export default function ChatPage() {
       if (!response.ok) throw new Error(data.error)
 
       if (data.data.needsMoreInfo && data.data.additionalQuestions?.length > 0) {
+        // 추가 질문
         const questions: DiagnosticQuestion[] = data.data.additionalQuestions
         const aiMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 확인해 드릴게요.', 'question', {}) as ChatMessage
         setMessages(prev => [...prev, aiMsg])
         setCurrentQuestions(questions)
+      } else if (data.data.lowConfidence) {
+        // 5회 질문 후에도 원인 특정 불가 (confidence < 40%)
+        const msg = createMessage(
+          'assistant',
+          '5번의 질문으로도 원인을 하나로 특정하기 어렵습니다.\n\n증상이 여러 부위에 걸쳐 있거나, 직접 보지 않으면 판단이 어려운 경우입니다. 파트너 정비소에서 직접 점검받아 보시길 권장합니다.',
+          'text'
+        ) as ChatMessage
+        setMessages(prev => [...prev, msg])
+        setShowWorkshopCTA(true)
       } else {
-        const result: DiagnosisResult = data.data.result
+        // 정상 진단 결과
+        const result: DiagnosisResult = data.data.result!
         setDiagnosisResult(result)
         const resultMsg = createMessage('assistant', result.summary, 'result', { result }) as ChatMessage
         setMessages(prev => [...prev, resultMsg])
@@ -192,6 +204,26 @@ export default function ChatPage() {
             questions={currentQuestions}
             onAnswer={(questionId, answer) => sendMessage(answer, 'answer', questionId)}
           />
+        )}
+
+        {/* 원인 특정 불가 — 정비소 연결 CTA */}
+        {showWorkshopCTA && !isLoading && (
+          <div className="flex items-start gap-2 animate-fade-up">
+            <div className="w-8 h-8 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm mt-1">
+              <span className="text-white text-xs font-black">M</span>
+            </div>
+            <div className="flex flex-col gap-2 flex-1 max-w-[90%]">
+              <button
+                onClick={() => router.push('/workshops')}
+                className="w-full py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors shadow-sm"
+              >
+                🔧 가까운 파트너 정비소 찾기
+              </button>
+              <p className="text-xs text-gray-400 text-center">
+                정비소 방문 시 대화 내역을 보여주시면 도움이 됩니다
+              </p>
+            </div>
+          </div>
         )}
 
         {isLoading && <TypingIndicator />}

@@ -186,7 +186,9 @@ export interface DiagnoseRequest {
 }
 
 export interface DiagnoseResponse {
-  result: DiagnosisResult
+  result?: DiagnosisResult
   needsMoreInfo: boolean
   additionalQuestions?: DiagnosticQuestion[]
+  lowConfidence?: boolean   // 5회 질문 후에도 confidence < 40% → 원인 특정 불가
+  confidence?: number       // 디버깅용
 }
