@@ -170,11 +170,12 @@ export async function POST(req: NextRequest) {
         && answeredIds.size > 0
 
       // ── confidence 기반 3-tier 진단 흐름 ────────────────────────────────
-      // Tier 1: confidence >= 65% → 바로 진단
-      // Tier 2: confidence 40~65% + 질문 여유 → 추가 질문 (최대 5회)
+      // Tier 1: confidence >= 65% + 최소 1회 질문 완료 → 바로 진단
+      // Tier 2: confidence < 65% OR 아직 1번도 질문 안 함 → 추가 질문 (최대 5회)
       // Tier 3: 5회 소진 후 confidence < 40% → 원인 특정 불가 (정비소 연결 CTA)
       const MAX_QUESTIONS = 5
-      const CONFIDENCE_HIGH = 65   // 이상이면 바로 진단
+      const MIN_QUESTIONS = 1      // 최소 1회는 반드시 질문 (사용자 추가 설명 기회 보장)
+      const CONFIDENCE_HIGH = 65   // 이상이면 바로 진단 (단, MIN_QUESTIONS 충족 후)
       const CONFIDENCE_LOW  = 40   // 5회 후 이하면 원인 특정 불가 처리
 
       if (!categoryExhausted) {
@@ -189,8 +190,9 @@ export async function POST(req: NextRequest) {
         )
         const currentConfidence = check.confidence ?? 50
 
-        // Tier 2: 아직 질문 여유 있고 confidence 낮음 → 추가 질문
-        if (currentConfidence < CONFIDENCE_HIGH && answeredIds.size < MAX_QUESTIONS) {
+        // Tier 2: 최소 질문 미충족 OR confidence 낮음 → 추가 질문
+        const needsMinQuestion = answeredIds.size < MIN_QUESTIONS
+        if ((needsMinQuestion || currentConfidence < CONFIDENCE_HIGH) && answeredIds.size < MAX_QUESTIONS) {
           const newQuestions = check.suggestedQuestionIds
             .filter(id => !answeredIds.has(id))
             .map(id => findQuestionById(id))
