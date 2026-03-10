@@ -131,7 +131,10 @@ export default function DiagnosisResultCard({
             <h4 className="font-bold text-gray-900 text-sm">예상 원인 분석</h4>
             <span className="text-xs text-gray-400">가능성 높은 순</span>
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">막대 길이 = 해당 증상과의 일치 가능성</p>
+          <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+            <span>📊</span>
+            <span>막대 길이가 길수록 해당 증상과 일치 가능성이 높음</span>
+          </p>
         </div>
         <div className="divide-y divide-gray-50">
           {result.causes.map((cause, i) => (
@@ -151,8 +154,8 @@ export default function DiagnosisResultCard({
                     i === 0
                       ? 'bg-primary-50 text-primary-600'
                       : i === 1
-                      ? 'bg-gray-100 text-gray-500'
-                      : 'bg-gray-50 text-gray-400'
+                      ? 'bg-amber-50 text-amber-600'
+                      : 'bg-gray-100 text-gray-400'
                   }`}>
                     {i === 0 ? '유력' : i === 1 ? '가능' : '참고'}
                   </span>
@@ -160,7 +163,7 @@ export default function DiagnosisResultCard({
               </div>
               <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${i === 0 ? 'bg-primary-500' : 'bg-gray-300'}`}
+                  className={`h-full rounded-full transition-all duration-700 ${i === 0 ? 'bg-primary-500' : i === 1 ? 'bg-amber-400' : 'bg-gray-300'}`}
                   style={{ width: `${cause.probability}%` }}
                 />
               </div>

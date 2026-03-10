@@ -145,7 +145,7 @@ export default function HistoryPage() {
                           {topCause?.name ?? convo.initial_symptom}
                         </p>
                         {topCause && (
-                          <p className="text-xs text-primary-600 font-semibold mt-0.5">{topCause.probability}% 가능성</p>
+                          <p className="text-xs text-primary-600 font-semibold mt-0.5">유력한 원인</p>
                         )}
                         <div className="flex items-center gap-2 mt-1">
                           {convo.category && (
