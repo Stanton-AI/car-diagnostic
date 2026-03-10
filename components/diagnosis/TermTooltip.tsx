@@ -244,19 +244,16 @@ export function CauseNameWithExplain({ name, enName }: CauseNameProps) {
 
   return (
     <div>
-      {/* 원인명 + 영문명 — 탭하면 설명 토글 */}
-      <button
-        onClick={handleToggle}
-        className={`w-full text-left flex items-center gap-2 flex-wrap ${hasExplanation ? 'cursor-pointer' : ''}`}
-      >
-        <span className="font-bold text-gray-900 text-sm">{name}</span>
+      {/* 원인명 텍스트 직접 탭 → 설명 토글 */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={handleToggle}
+          className={`font-bold text-gray-900 text-sm text-left leading-snug ${hasExplanation ? 'underline decoration-dotted decoration-blue-300 underline-offset-2' : ''}`}
+        >
+          {name}
+        </button>
         {enName && <span className="text-xs text-gray-400">{enName}</span>}
-        {hasExplanation && (
-          <span className="text-[10px] text-blue-400 ml-auto flex-shrink-0">
-            {open ? '💡 ▲' : '💡 ▼'}
-          </span>
-        )}
-      </button>
+      </div>
 
       {/* 쉬운 설명 (펼쳤을 때) */}
       {open && (
