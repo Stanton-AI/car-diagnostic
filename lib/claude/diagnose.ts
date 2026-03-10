@@ -105,7 +105,7 @@ JSON만 반환하세요 (설명 없이):
   }
 
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-haiku-4-5-20251001',  // 질문 선택은 Haiku로 충분 (비용 ~10x 절감)
     max_tokens: 400,
     messages: [{ role: 'user', content: prompt }],
   })
