@@ -109,7 +109,8 @@ function PartnerRequestsContent() {
     const bids = (allBids ?? []) as unknown as BidWithRequest[]
     setMyBidIds(new Set(bids.map(b => b.request_id)))
     setPendingBids(bids.filter(b => b.status === 'pending'))
-    setWonBids(bids.filter(b => b.status === 'accepted'))
+    // repair_requests.status가 'completed'이면 수리완료 탭으로 이동 → 낙찰 탭에서 제외
+    setWonBids(bids.filter(b => b.status === 'accepted' && b.repair_requests?.status !== 'completed'))
 
     // 3) 완료 작업
     const { data: jobs } = await supabase
@@ -278,16 +279,19 @@ function PartnerRequestsContent() {
             <EmptyState icon="🏆" title="낙찰된 견적이 없습니다" sub="소비자가 내 견적을 선택하면 여기에 표시됩니다" />
           ) : wonBids.map(bid => {
             const rr = bid.repair_requests
+            const isInProgress = rr?.status === 'in_progress'
             return (
-              <div key={bid.id} className="bg-green-50 rounded-2xl border border-green-200 shadow-sm p-4">
+              <div key={bid.id} className={`rounded-2xl border shadow-sm p-4 ${isInProgress ? 'bg-purple-50 border-purple-200' : 'bg-green-50 border-green-200'}`}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="text-xs font-bold text-green-700 mb-1">🎉 낙찰 완료</p>
+                    <p className={`text-xs font-bold mb-1 ${isInProgress ? 'text-purple-700' : 'text-green-700'}`}>
+                      {isInProgress ? '🔧 수리 진행 중' : '🎉 낙찰 완료'}
+                    </p>
                     <p className="text-sm font-medium text-gray-800 leading-snug">
                       {rr?.symptom_summary?.slice(0, 60) ?? ''}
                     </p>
                   </div>
-                  <span className="text-base font-black text-green-700 flex-shrink-0">{formatKRW(bid.total_cost)}</span>
+                  <span className={`text-base font-black flex-shrink-0 ${isInProgress ? 'text-purple-700' : 'text-green-700'}`}>{formatKRW(bid.total_cost)}</span>
                 </div>
                 {rr && (
                   <div className="text-xs text-gray-600 space-y-0.5 mt-2">
@@ -297,9 +301,9 @@ function PartnerRequestsContent() {
                 )}
                 <button
                   onClick={() => router.push('/partner/jobs')}
-                  className="mt-3 w-full py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition-colors"
+                  className={`mt-3 w-full py-2.5 rounded-xl text-sm font-bold transition-colors ${isInProgress ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-green-600 text-white hover:bg-green-700'}`}
                 >
-                  작업 관리하기 →
+                  {isInProgress ? '수리 완료 처리하기 →' : '작업 관리하기 →'}
                 </button>
               </div>
             )

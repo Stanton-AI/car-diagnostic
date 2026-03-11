@@ -6,6 +6,29 @@ import { getMyShop, mapRequest, mapBid, formatDeadline, REQUEST_STATUS_LABEL } f
 import { formatKRW } from '@/lib/utils'
 import type { RepairRequest, ShopBid, PartnerShop } from '@/types'
 
+interface DiagnosisCause {
+  name: string
+  probability: number
+  description: string
+}
+
+interface DiagnosisReport {
+  hasReport: boolean
+  category?: string
+  summary?: string
+  urgency?: string
+  urgencyReason?: string
+  causes?: DiagnosisCause[]
+  shopTip?: string
+  cost?: { parts: number; labor: number; total: number }
+}
+
+const URGENCY_STYLE: Record<string, { label: string; color: string; bg: string }> = {
+  HIGH: { label: '즉시 수리 필요', color: 'text-red-700', bg: 'bg-red-50 border-red-200' },
+  MID:  { label: '조기 수리 권장', color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' },
+  LOW:  { label: '여유 있음',       color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
+}
+
 export default function PartnerRequestDetailPage() {
   const router = useRouter()
   const { id: requestId } = useParams<{ id: string }>()
@@ -14,6 +37,8 @@ export default function PartnerRequestDetailPage() {
   const [shop, setShop] = useState<PartnerShop | null>(null)
   const [request, setRequest] = useState<RepairRequest | null>(null)
   const [myBid, setMyBid] = useState<ShopBid | null>(null)
+  const [report, setReport] = useState<DiagnosisReport | null>(null)
+  const [reportExpanded, setReportExpanded] = useState(true)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -48,6 +73,19 @@ export default function PartnerRequestDetailPage() {
 
       if (rr) {
         setRequest(mapRequest(rr))
+
+        // MIKY 진단 리포트 조회 (입찰 후에만 가능)
+        if (bid) {
+          try {
+            const reportRes = await fetch(`/api/repair-requests/${requestId}/report`)
+            if (reportRes.ok) {
+              const reportData = await reportRes.json()
+              setReport(reportData)
+            }
+          } catch {
+            // 리포트 조회 실패해도 페이지는 정상 표시
+          }
+        }
       } else if (!bid) {
         // bid도 없고 request도 없으면 잘못된 접근 → 올바른 탭으로 이동
         router.replace('/partner/requests?tab=bidding')
@@ -96,6 +134,12 @@ export default function PartnerRequestDetailPage() {
         createdAt: data.createdAt ?? new Date().toISOString(),
         updatedAt: data.updatedAt ?? new Date().toISOString(),
       })
+
+      // 입찰 후 리포트도 바로 조회
+      try {
+        const reportRes = await fetch(`/api/repair-requests/${requestId}/report`)
+        if (reportRes.ok) setReport(await reportRes.json())
+      } catch { /* 무시 */ }
     } else {
       const err = await res.json()
       alert(err.error ?? '입찰 실패')
@@ -152,6 +196,8 @@ export default function PartnerRequestDetailPage() {
   const commissionPreview = Math.round(totalCost * (shop?.commissionRate ?? 0.10))
   const netRevenue = totalCost - commissionPreview
 
+  const urgencyStyle = report?.urgency ? URGENCY_STYLE[report.urgency] : null
+
   return (
     <div className="flex flex-col min-h-screen bg-surface-50">
       <header className="bg-white px-4 pt-14 pb-4 flex items-center gap-3 border-b border-gray-100">
@@ -171,7 +217,7 @@ export default function PartnerRequestDetailPage() {
           {request.vehicleMaker && (
             <p className="text-xs text-gray-500 mt-2">🚗 {request.vehicleMaker} {request.vehicleModel} · {request.vehicleYear}년식 · {request.vehicleMileage?.toLocaleString()}km</p>
           )}
-          <div className="flex gap-3 mt-2 text-xs text-gray-500">
+          <div className="flex gap-3 mt-2 text-xs text-gray-500 flex-wrap">
             <span>📍 {request.preferredLocation}</span>
             {request.preferredDate && <span>📅 희망일: {request.preferredDate}</span>}
             <span>⏰ {formatDeadline(request.bidDeadline)}</span>
@@ -182,6 +228,92 @@ export default function PartnerRequestDetailPage() {
             </div>
           )}
         </div>
+
+        {/* MIKY 진단 리포트 (입찰 후 또는 입찰 전 요청 상세에서 표시) */}
+        {report?.hasReport && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* 헤더 (토글 가능) */}
+            <button
+              onClick={() => setReportExpanded(prev => !prev)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-base">🤖</span>
+                <span className="text-sm font-bold text-gray-800">MIKY 진단 리포트</span>
+                {urgencyStyle && (
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${urgencyStyle.bg} ${urgencyStyle.color}`}>
+                    {urgencyStyle.label}
+                  </span>
+                )}
+              </div>
+              <span className="text-gray-400 text-xs">{reportExpanded ? '▲' : '▼'}</span>
+            </button>
+
+            {reportExpanded && (
+              <div className="px-4 pb-4 space-y-3">
+
+                {/* 정비소 전달사항 (shopTip) - 가장 중요하므로 먼저 */}
+                {report.shopTip && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-xs font-bold text-amber-800 mb-1">📋 정비소 전달사항</p>
+                    <p className="text-xs text-amber-700 leading-relaxed">{report.shopTip}</p>
+                  </div>
+                )}
+
+                {/* 긴급도 이유 */}
+                {urgencyStyle && report.urgencyReason && (
+                  <div className={`rounded-xl p-3 border ${urgencyStyle.bg}`}>
+                    <p className={`text-xs font-bold mb-0.5 ${urgencyStyle.color}`}>⚠️ 긴급도: {urgencyStyle.label}</p>
+                    <p className={`text-xs ${urgencyStyle.color} opacity-90`}>{report.urgencyReason}</p>
+                  </div>
+                )}
+
+                {/* 예상 원인 목록 */}
+                {report.causes && report.causes.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-600 mb-2">🔍 AI 분석 예상 원인</p>
+                    <div className="space-y-2.5">
+                      {report.causes.slice(0, 4).map((cause, i) => (
+                        <div key={i}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs font-semibold text-gray-700">{cause.name}</span>
+                            <span className="text-xs font-bold text-primary-600">{cause.probability}%</span>
+                          </div>
+                          {/* 확률 바 */}
+                          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${i === 0 ? 'bg-primary-500' : 'bg-primary-300'}`}
+                              style={{ width: `${cause.probability}%` }}
+                            />
+                          </div>
+                          {cause.description && (
+                            <p className="text-xs text-gray-400 mt-0.5 leading-snug">{cause.description.slice(0, 80)}{cause.description.length > 80 ? '...' : ''}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 딜러 예상 견적 (AI 추정) */}
+                {report.cost && report.cost.total > 0 && (
+                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <p className="text-xs font-bold text-gray-600 mb-1.5">💰 MIKY AI 추정 수리비</p>
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>부품비</span><span>{formatKRW(report.cost.parts)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-0.5">
+                      <span>공임비</span><span>{formatKRW(report.cost.labor)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-bold text-gray-700 mt-1 pt-1 border-t border-gray-200">
+                      <span>합계 (딜러 기준)</span><span>{formatKRW(report.cost.total)}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 딜러 기준가 */}
         {dealerMax > 0 && (
@@ -223,6 +355,11 @@ export default function PartnerRequestDetailPage() {
                 <span>{formatKRW(myBid.totalCost - Math.round(myBid.totalCost * (shop?.commissionRate ?? 0.10)))}</span>
               </div>
             </div>
+            {myBid.status === 'accepted' && (
+              <button onClick={() => router.push('/partner/jobs')} className="mt-3 w-full py-2.5 bg-green-600 text-white font-bold rounded-xl text-sm">
+                작업 관리하기 →
+              </button>
+            )}
           </div>
         ) : (
           /* 입찰 폼 */
