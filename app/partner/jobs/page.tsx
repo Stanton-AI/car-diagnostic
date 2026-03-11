@@ -60,13 +60,25 @@ export default function PartnerJobsPage() {
 
   const updateJobStatus = async (jobId: string, status: string) => {
     setUpdating(jobId)
-    const update: Record<string, string> = { status, updated_at: new Date().toISOString() }
-    if (status === 'in_progress') update.started_at = new Date().toISOString()
-    if (status === 'completed')   update.completed_at = new Date().toISOString()
-
-    await supabase.from('repair_jobs').update(update).eq('id', jobId)
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status } : j))
-    setUpdating(null)
+    try {
+      const res = await fetch(`/api/repair-jobs/${jobId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status } : j))
+      } else {
+        const err = await res.json().catch(() => ({}))
+        console.error('Job update failed:', err)
+        alert('상태 변경에 실패했습니다.')
+      }
+    } catch (e) {
+      console.error('Job update error:', e)
+      alert('상태 변경 중 오류가 발생했습니다.')
+    } finally {
+      setUpdating(null)
+    }
   }
 
   if (loading) return (

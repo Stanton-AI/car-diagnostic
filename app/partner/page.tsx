@@ -13,6 +13,7 @@ interface DashStats {
   totalRevenue: number
   pendingBids: number
   unreadNotifications: number
+  activeJobs: number
 }
 
 export default function PartnerDashboard() {
@@ -44,6 +45,7 @@ export default function PartnerDashboard() {
         { data: jobs },
         { count: pendingBids },
         { count: unread },
+        { count: activeJobsCount },
       ] = await Promise.all([
         supabase.from('repair_requests').select('*', { count: 'exact', head: true })
           .in('status', ['open','bidding']).gte('created_at', today.toISOString()),
@@ -55,6 +57,8 @@ export default function PartnerDashboard() {
           .eq('shop_id', myShop.id).eq('status', 'pending'),
         supabase.from('notifications').select('*', { count: 'exact', head: true })
           .eq('shop_id', myShop.id).eq('is_read', false),
+        supabase.from('repair_jobs').select('*', { count: 'exact', head: true })
+          .eq('shop_id', myShop.id).in('status', ['scheduled', 'in_progress']),
       ])
 
       const totalRevenue = (jobs ?? []).reduce((sum, j) => sum + (j.actual_total_cost ?? 0), 0)
@@ -65,6 +69,7 @@ export default function PartnerDashboard() {
         totalRevenue,
         pendingBids: pendingBids ?? 0,
         unreadNotifications: unread ?? 0,
+        activeJobs: activeJobsCount ?? 0,
       })
       setLoading(false)
     }
@@ -170,7 +175,7 @@ export default function PartnerDashboard() {
             {
               icon: '🔧', title: '진행 중인 작업',
               desc: '낙찰된 수리 작업 관리',
-              badge: 0,
+              badge: stats?.activeJobs ?? 0,
               path: '/partner/jobs',
               color: 'border-gray-100 hover:border-gray-300',
             },
