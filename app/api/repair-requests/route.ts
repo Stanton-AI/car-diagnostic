@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ id: data.id }, { status: 201 })
-  } catch (e) {
+  } catch (e: any) {
     console.error('[repair-requests POST]', e)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Server error', detail: e?.message ?? String(e) }, { status: 500 })
   }
 }
