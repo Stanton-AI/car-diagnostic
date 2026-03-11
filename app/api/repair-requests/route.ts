@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // GET /api/repair-requests — 내 요청 목록
 export async function GET(req: NextRequest) {
@@ -53,7 +53,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '필수 항목 누락' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    // RLS 순환참조 방지: INSERT는 service client 사용 (인증은 위에서 검증 완료)
+    const serviceSupabase = createServiceClient()
+    const { data, error } = await serviceSupabase
       .from('repair_requests')
       .insert({
         user_id: user.id,
