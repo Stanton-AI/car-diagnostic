@@ -1,8 +1,11 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import type { DiagnosisResult, ChatMessage } from '@/types'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
+import { createClient } from '@/lib/supabase/client'
+import { REQUEST_STATUS_LABEL } from '@/lib/marketplace'
 
 interface Props {
   conversation: {
@@ -51,6 +54,25 @@ export default function ResultPageClient({ conversation }: Props) {
   const router = useRouter()
   const result = conversation.self_check_result ?? conversation.final_result
   const [showChat, setShowChat] = useState(false)
+  const [repairRequest, setRepairRequest] = useState<{ id: string; status: string; bid_count: number } | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // 이 대화에 연결된 견적 요청이 있는지 확인
+    const checkRepair = async () => {
+      const { data } = await supabase
+        .from('repair_requests')
+        .select('id, status, bid_count')
+        .eq('conversation_id', conversation.id)
+        .neq('status', 'cancelled')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data) setRepairRequest(data)
+    }
+    checkRepair()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id])
 
   if (!result) return null
 
@@ -92,6 +114,37 @@ export default function ResultPageClient({ conversation }: Props) {
       )}
 
       <div className="px-4 py-4 space-y-4">
+
+        {/* 견적 요청 현황 배너 */}
+        {repairRequest && (() => {
+          const statusInfo = REQUEST_STATUS_LABEL[repairRequest.status]
+          const isActive = ['open', 'bidding'].includes(repairRequest.status)
+          return (
+            <Link href={`/repair/${repairRequest.id}`} className="block">
+              <div className={`rounded-2xl p-4 border flex items-center justify-between gap-3 ${
+                isActive ? 'bg-primary-50 border-primary-200' : 'bg-gray-50 border-gray-200'
+              }`}>
+                <div>
+                  <p className={`text-xs font-bold mb-0.5 ${isActive ? 'text-primary-600' : 'text-gray-500'}`}>
+                    🔧 견적 요청 현황
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusInfo?.color ?? 'bg-gray-100 text-gray-500'}`}>
+                      {statusInfo?.label}
+                    </span>
+                    {repairRequest.bid_count > 0 && (
+                      <span className="text-xs text-primary-600 font-semibold">
+                        📬 입찰 {repairRequest.bid_count}건
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <span className={`text-sm font-bold ${isActive ? 'text-primary-600' : 'text-gray-400'}`}>→</span>
+              </div>
+            </Link>
+          )
+        })()}
+
         {/* 진단 결과 카드 */}
         <DiagnosisResultCard
           result={result}
