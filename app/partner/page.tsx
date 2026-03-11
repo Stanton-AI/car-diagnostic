@@ -133,20 +133,20 @@ export default function PartnerDashboard() {
 
       <div className="px-4 py-4 space-y-4">
 
-        {/* 요약 통계 */}
+        {/* 요약 통계 — 클릭 시 해당 탭으로 이동 */}
         {stats && (
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: '오늘 새 요청', value: stats.todayRequests, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📋' },
-              { label: '입찰 진행 중', value: stats.pendingBids, color: 'text-amber-600', bg: 'bg-amber-50', icon: '⏳' },
-              { label: '낙찰 완료', value: stats.openBids, color: 'text-green-600', bg: 'bg-green-50', icon: '✅' },
-              { label: '누적 완료 수리', value: stats.completedJobs, color: 'text-purple-600', bg: 'bg-purple-50', icon: '🔧' },
+              { label: '오늘 새 요청',   value: stats.todayRequests,  color: 'text-blue-600',   bg: 'bg-blue-50',   icon: '📋', path: '/partner/requests?tab=new' },
+              { label: '입찰 진행 중',   value: stats.pendingBids,    color: 'text-amber-600',  bg: 'bg-amber-50',  icon: '⏳', path: '/partner/requests?tab=bidding' },
+              { label: '낙찰 완료',      value: stats.openBids,       color: 'text-green-600',  bg: 'bg-green-50',  icon: '✅', path: '/partner/requests?tab=won' },
+              { label: '누적 완료 수리', value: stats.completedJobs,  color: 'text-purple-600', bg: 'bg-purple-50', icon: '🔧', path: '/partner/requests?tab=done' },
             ].map(item => (
-              <div key={item.label} className={`${item.bg} rounded-2xl p-4 text-center`}>
+              <button key={item.label} onClick={() => router.push(item.path)} className={`${item.bg} rounded-2xl p-4 text-center hover:brightness-95 active:scale-95 transition-all`}>
                 <p className="text-2xl mb-1">{item.icon}</p>
                 <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{item.label}</p>
-              </div>
+              </button>
             ))}
           </div>
         )}

@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getMyShop, mapRequest, REQUEST_STATUS_LABEL, formatDeadline, SHOP_CATEGORIES } from '@/lib/marketplace'
 import { formatKRW } from '@/lib/utils'
@@ -53,9 +53,12 @@ interface JobRow {
 
 export default function PartnerRequestsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [shop, setShop] = useState<PartnerShop | null>(null)
-  const [activeTab, setActiveTab] = useState<TabType>('new')
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (searchParams.get('tab') as TabType) ?? 'new'
+  )
   const [loading, setLoading] = useState(true)
 
   // 탭별 데이터
