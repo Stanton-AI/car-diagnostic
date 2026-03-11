@@ -10,16 +10,26 @@ export default function ProfilePage() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [hasShop, setHasShop] = useState(false)
 
   useEffect(() => {
     const load = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()
       if (!authUser) { router.replace('/'); return }
-      const { data: profile } = await supabase.from('users').select('*').eq('id', authUser.id).single()
+
+      const [{ data: profile }, { data: shop }] = await Promise.all([
+        supabase.from('users').select('*').eq('id', authUser.id).single(),
+        supabase.from('partner_shops').select('id').eq('user_id', authUser.id).maybeSingle(),
+      ])
+
       setUser(profile)
+      setIsAdmin(profile?.role === 'admin')
+      setHasShop(!!shop)
       setLoading(false)
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleLogout = async () => {
@@ -86,6 +96,43 @@ export default function ProfilePage() {
             <span className="text-gray-300">→</span>
           </button>
         </div>
+
+        {/* 포털 전환 (파트너/어드민 계정만 표시) */}
+        {(hasShop || isAdmin) && (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <p className="px-5 pt-4 pb-2 text-xs font-semibold text-gray-400">다른 포털</p>
+            {hasShop && (
+              <button
+                onClick={() => router.push('/partner')}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">🔧</span>
+                  <div className="text-left">
+                    <p className="font-semibold text-gray-800 text-sm">파트너 포털</p>
+                    <p className="text-xs text-gray-400">정비소 대시보드로 이동</p>
+                  </div>
+                </div>
+                <span className="text-gray-300">→</span>
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => router.push('/admin')}
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors border-t border-gray-50"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">⚙️</span>
+                  <div className="text-left">
+                    <p className="font-semibold text-gray-800 text-sm">어드민 포털</p>
+                    <p className="text-xs text-gray-400">운영 관리 페이지로 이동</p>
+                  </div>
+                </div>
+                <span className="text-gray-300">→</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 로그아웃 */}
         <button
