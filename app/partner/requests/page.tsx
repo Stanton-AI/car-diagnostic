@@ -95,7 +95,7 @@ export default function PartnerRequestsPage() {
       .order('created_at', { ascending: false })
       .limit(100)
 
-    const bids = (allBids ?? []) as BidWithRequest[]
+    const bids = (allBids ?? []) as unknown as BidWithRequest[]
     setMyBidIds(new Set(bids.map(b => b.request_id)))
     setPendingBids(bids.filter(b => b.status === 'pending'))
     setWonBids(bids.filter(b => b.status === 'accepted'))
@@ -109,7 +109,7 @@ export default function PartnerRequestsPage() {
       .order('completed_at', { ascending: false })
       .limit(30)
 
-    setDoneJobs((jobs ?? []) as JobRow[])
+    setDoneJobs((jobs ?? []) as unknown as JobRow[])
     setLoading(false)
   }, [supabase, router])
 
