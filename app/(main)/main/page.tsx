@@ -2,6 +2,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
+// ── 알림 타입 ────────────────────────────────────────────────────────────
+interface NotifRow {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any
+  is_read: boolean
+  created_at: string
+}
+
+function fmtTimeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return '방금'
+  if (mins < 60) return `${mins}분 전`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return `${hrs}시간 전`
+  return `${Math.floor(hrs / 24)}일 전`
+}
 import { v4 as uuidv4 } from 'uuid'
 import type { ChatMessage, DiagnosticQuestion, UserProfile, FuelType } from '@/types'
 import { createMessage } from '@/lib/utils'
@@ -152,6 +174,10 @@ export default function MainPage() {
   const [explanation, setExplanation] = useState<string | null>(null)
   const [loadingExplain, setLoadingExplain] = useState(false)
 
+  // 알림 상태
+  const [notifs, setNotifs] = useState<NotifRow[]>([])
+  const [showNotif, setShowNotif] = useState(false)
+
   // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -164,6 +190,16 @@ export default function MainPage() {
       ])
       setUser(profile)
       setVehicle(vehicles?.[0] ?? null)
+
+      // 알림 조회
+      const { data: notifData } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', au.id)
+        .order('created_at', { ascending: false })
+        .limit(30)
+      setNotifs(notifData ?? [])
+
       setLoading(false)
       setMessages([{
         id: uuidv4(), role: 'assistant', type: 'text',
@@ -357,6 +393,19 @@ export default function MainPage() {
 
   const displayName = (user as any)?.display_name ?? (user as any)?.displayName ?? '사용자'
   const fuelLabel = FUEL_LABELS[vehicle?.fuel_type ?? ''] ?? vehicle?.fuel_type ?? ''
+  const unreadCount = notifs.filter(n => !n.is_read).length
+
+  const handleOpenNotif = async () => {
+    setShowNotif(true)
+    if (unreadCount > 0 && authUser) {
+      await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', authUser.id)
+        .eq('is_read', false)
+      setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
+    }
+  }
 
   // 뒤로가기 버튼 표시 조건: 질문 단계이고 체크포인트가 있고 로딩 중 아닐 때 항상 표시
   const showBackButton = phase === 'questioning' && checkpoints.length > 0 && !isLoading
@@ -376,15 +425,30 @@ export default function MainPage() {
           <h1 className="text-xl font-black text-gray-900">마이키</h1>
           <p className="text-sm text-gray-500 mt-0.5 italic">"차가 이상하다면, 제가 한번 봐드릴게요"</p>
         </div>
-        <Link href="/profile">
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
-            {(user as any)?.avatar_url || (user as any)?.avatarUrl ? (
-              <img src={(user as any)?.avatar_url ?? (user as any)?.avatarUrl} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-primary-600 font-bold text-sm">{displayName[0]?.toUpperCase()}</span>
+        <div className="flex items-center gap-2">
+          {/* 알림 벨 */}
+          <button
+            onClick={handleOpenNotif}
+            className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+          >
+            <span className="text-xl">🔔</span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
             )}
-          </div>
-        </Link>
+          </button>
+          {/* 프로필 */}
+          <Link href="/profile">
+            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+              {(user as any)?.avatar_url || (user as any)?.avatarUrl ? (
+                <img src={(user as any)?.avatar_url ?? (user as any)?.avatarUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-primary-600 font-bold text-sm">{displayName[0]?.toUpperCase()}</span>
+              )}
+            </div>
+          </Link>
+        </div>
       </header>
 
       {/* ── 차량 카드 ── */}
@@ -643,6 +707,62 @@ export default function MainPage() {
       {/* ── 차량 수정 모달 ── */}
       {showEditModal && vehicle && (
         <VehicleEditModal vehicle={vehicle} onClose={() => setShowEditModal(false)} onSave={handleVehicleSave} />
+      )}
+
+      {/* ── 알림 패널 ── */}
+      {showNotif && (
+        <div className="fixed inset-0 z-50" onClick={() => setShowNotif(false)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+          <div
+            className="absolute top-0 left-0 right-0 max-w-[480px] mx-auto bg-white shadow-xl rounded-b-3xl max-h-[75vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* 상단 헤더 */}
+            <div className="flex items-center justify-between px-5 pt-12 pb-3 border-b border-gray-100">
+              <h2 className="text-lg font-black text-gray-900">알림</h2>
+              <button
+                onClick={() => setShowNotif(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
+              >✕</button>
+            </div>
+
+            {/* 알림 목록 */}
+            <div className="overflow-y-auto flex-1">
+              {notifs.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-3xl mb-2">🔕</p>
+                  <p className="text-sm text-gray-400">아직 알림이 없습니다</p>
+                </div>
+              ) : notifs.map(n => (
+                <button
+                  key={n.id}
+                  className={`w-full text-left px-5 py-4 border-b border-gray-50 hover:bg-gray-50 transition-colors flex items-start gap-3 ${
+                    !n.is_read ? 'bg-blue-50/40' : ''
+                  }`}
+                  onClick={() => {
+                    setShowNotif(false)
+                    if (n.data?.requestId) router.push(`/repair/${n.data.requestId}`)
+                  }}
+                >
+                  {!n.is_read && (
+                    <span className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
+                  )}
+                  {n.is_read && <span className="w-2 h-2 flex-shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 leading-snug">{n.title}</p>
+                    {n.body && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2 leading-snug">{n.body}</p>
+                    )}
+                    <p className="text-xs text-gray-300 mt-1">{fmtTimeAgo(n.created_at)}</p>
+                  </div>
+                  {n.data?.requestId && (
+                    <span className="text-xs text-primary-500 flex-shrink-0 mt-0.5">보기 →</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

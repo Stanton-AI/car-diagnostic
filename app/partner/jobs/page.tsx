@@ -180,8 +180,10 @@ export default function PartnerJobsPage() {
             const bidTotal = job.shop_bids?.total_cost ?? 0
             const diagDecision = diagStatuses[job.id]
             const hasApprovedDiag = diagDecision === 'approved'
-            const hasPendingDiag = diagDecision === null // diagnosis exists but not yet decided — null in our map means "has entry but no decision"
-            // Note: if jobId not in diagStatuses, no diagnosis created yet
+            const hasPendingDiag = diagDecision === 'pending'
+            // 수리 시작 가능: 소비자가 명시적으로 거절하지 않은 경우
+            // (진단 없음 | pending | approved 모두 허용, rejected만 불가)
+            const canStartRepair = diagDecision !== 'rejected'
 
             return (
               <div key={job.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-3">
@@ -237,14 +239,18 @@ export default function PartnerJobsPage() {
                       >
                         🔍 정밀진단 결과 작성
                       </button>
-                      {/* 수리 시작 — 진단 승인 후 or 진단 없는 경우 */}
-                      {(hasApprovedDiag || !Object.prototype.hasOwnProperty.call(diagStatuses, job.id)) && (
+                      {/* 수리 시작 — 소비자가 거절하지 않은 경우 (pending/approved/없음 모두 허용) */}
+                      {canStartRepair && (
                         <button
                           onClick={() => updateJobStatus(job.id, 'in_progress')}
                           disabled={updating === job.id}
-                          className="w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50"
+                          className={`w-full py-2.5 rounded-xl text-sm font-bold disabled:opacity-50 ${
+                            hasApprovedDiag
+                              ? 'bg-purple-600 text-white hover:bg-purple-700'
+                              : 'bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200'
+                          }`}
                         >
-                          🔧 수리 시작
+                          🔧 수리 시작{hasPendingDiag ? ' (소비자 결정 대기 중)' : ''}
                         </button>
                       )}
                     </>

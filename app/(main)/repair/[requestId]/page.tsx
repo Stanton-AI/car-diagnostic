@@ -117,9 +117,12 @@ function BidCard({
         {/* 세부 정보 */}
         <div className="flex gap-3 text-xs text-gray-500 mb-3 flex-wrap">
           <span>🗓 예상 {bid.estimatedDays}일</span>
-          {bid.availableDate && <span>📅 {bid.availableDate}</span>}
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {(bid as any).availableTime && <span>🕐 {(bid as any).availableTime}</span>}
+          {bid.availableDate && (
+            <>
+              <span>📅 방문가능일: {bid.availableDate}</span>
+              <span>🕐 {bid.availableTime ?? '시간 미정'}</span>
+            </>
+          )}
           {bid.shop?.totalJobs ? <span>🔧 완료 {bid.shop.totalJobs}건</span> : null}
         </div>
 
@@ -229,7 +232,7 @@ export default function RepairStatusPage() {
       const res = await fetch(`/api/repair-jobs/${repairJob.id}/diagnose`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consumerDecision: decision }),
+        body: JSON.stringify({ decision }),
       })
       if (res.ok) {
         setDiagnosis(prev => prev ? { ...prev, consumer_decision: decision } : prev)
@@ -304,11 +307,10 @@ export default function RepairStatusPage() {
                   <div className="text-right flex-shrink-0">
                     <p className="text-base font-black text-primary-600">{formatKRW(acceptedBid.totalCost)}</p>
                     {acceptedBid.availableDate && (
-                      <p className="text-xs text-gray-500 mt-0.5">📅 {acceptedBid.availableDate}</p>
-                    )}
-                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-                    {(acceptedBid as any).availableTime && (
-                      <p className="text-xs text-gray-500">🕐 {(acceptedBid as any).availableTime}</p>
+                      <>
+                        <p className="text-xs text-gray-500 mt-0.5">📅 방문일: {acceptedBid.availableDate}</p>
+                        <p className="text-xs text-gray-500">🕐 {acceptedBid.availableTime ?? '시간 미정'}</p>
+                      </>
                     )}
                   </div>
                 </div>
