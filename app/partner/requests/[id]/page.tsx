@@ -30,22 +30,29 @@ export default function PartnerRequestDetailPage() {
       if (!myShop || myShop.status !== 'active') { router.replace('/partner'); return }
       setShop(myShop)
 
-      const { data: rr } = await supabase
-        .from('repair_requests')
-        .select('*')
-        .eq('id', requestId)
-        .single()
-      if (!rr) { router.replace('/partner/requests'); return }
-      setRequest(mapRequest(rr))
-
-      // 내 입찰 조회
+      // 내 입찰 먼저 조회 (낙찰 후에도 항상 볼 수 있음)
       const { data: bid } = await supabase
         .from('shop_bids')
         .select('*')
         .eq('request_id', requestId)
         .eq('shop_id', myShop.id)
-        .single()
+        .maybeSingle()
       if (bid) setMyBid(mapBid(bid))
+
+      // 요청 상세 조회 (낙찰 후 RLS에 막힐 수 있음 → null이어도 redirect 안 함)
+      const { data: rr } = await supabase
+        .from('repair_requests')
+        .select('*')
+        .eq('id', requestId)
+        .maybeSingle()
+
+      if (rr) {
+        setRequest(mapRequest(rr))
+      } else if (!bid) {
+        // bid도 없고 request도 없으면 잘못된 접근 → 올바른 탭으로 이동
+        router.replace('/partner/requests?tab=bidding')
+        return
+      }
 
       setLoading(false)
     }
@@ -100,6 +107,39 @@ export default function PartnerRequestDetailPage() {
       <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
     </div>
   )
+
+  // request가 null이지만 bid가 있는 경우 (낙찰 후 RLS로 request 접근 불가)
+  // → bid 결과만 보여주는 심플 뷰
+  if (!request && myBid) {
+    const bidStatusMap: Record<string, { label: string; color: string; icon: string }> = {
+      accepted: { label: '낙찰 완료', color: 'text-green-700', icon: '🎉' },
+      rejected: { label: '미낙찰', color: 'text-gray-500', icon: '❌' },
+      pending:  { label: '검토 대기', color: 'text-amber-600', icon: '⏳' },
+    }
+    const bs = bidStatusMap[myBid.status] ?? bidStatusMap.pending
+    return (
+      <div className="flex flex-col min-h-screen bg-surface-50">
+        <header className="bg-white px-4 pt-14 pb-4 flex items-center gap-3 border-b border-gray-100">
+          <button onClick={() => router.replace('/partner/requests?tab=bidding')} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500">←</button>
+          <h1 className="text-lg font-black text-gray-900">입찰 결과</h1>
+        </header>
+        <div className="px-4 py-8 text-center">
+          <p className="text-5xl mb-3">{bs.icon}</p>
+          <p className={`text-xl font-black mb-2 ${bs.color}`}>{bs.label}</p>
+          <p className="text-sm text-gray-500 mb-6">제출 견적: {myBid.totalCost.toLocaleString()}원</p>
+          {myBid.status === 'accepted' && (
+            <button onClick={() => router.push('/partner/jobs')} className="w-full py-3 bg-green-600 text-white font-bold rounded-2xl">
+              작업 관리하기 →
+            </button>
+          )}
+          <button onClick={() => router.replace('/partner/requests?tab=bidding')} className="mt-3 w-full py-3 border border-gray-200 rounded-2xl text-sm text-gray-500">
+            목록으로
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!request) return null
 
   const statusInfo = REQUEST_STATUS_LABEL[request.status]
