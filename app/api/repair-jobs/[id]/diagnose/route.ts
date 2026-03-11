@@ -50,7 +50,7 @@ export async function POST(
     }
 
     const body = await req.json()
-    const { diagnosisItems, partsNeeded, laborCost, totalCost, mechanicNotes } = body
+    const { diagnosisItems, partsNeeded, laborCost, totalCost, mechanicNotes, photos } = body
 
     const svc = createServiceClient()
 
@@ -71,6 +71,7 @@ export async function POST(
           labor_cost: laborCost ?? 0,
           total_cost: totalCost ?? 0,
           mechanic_notes: mechanicNotes || null,
+          photos: photos ?? [],
           updated_at: new Date().toISOString(),
         })
         .eq('id', existing.id)
@@ -89,6 +90,7 @@ export async function POST(
           labor_cost: laborCost ?? 0,
           total_cost: totalCost ?? 0,
           mechanic_notes: mechanicNotes || null,
+          photos: photos ?? [],
         })
         .select('*')
         .single()

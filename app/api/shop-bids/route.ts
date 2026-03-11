@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { requestId, partsCost, laborCost, estimatedDays, availableDate, bidNotes } = body
+    const { requestId, partsCost, laborCost, estimatedDays, availableDate, availableTime, bidNotes } = body
 
     if (!requestId || !partsCost || !laborCost) {
       return NextResponse.json({ error: '필수 항목 누락' }, { status: 400 })
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
         labor_cost: laborCost,
         estimated_days: estimatedDays ?? 1,
         available_date: availableDate || null,
+        available_time: availableTime || null,
         bid_notes: bidNotes || null,
       })
       .select('id, total_cost, commission_rate, status, created_at, updated_at')

@@ -19,6 +19,7 @@ interface PreciseDiagnosis {
   total_cost: number
   mechanic_notes: string | null
   consumer_decision: string | null
+  photos: string[]
   created_at: string
 }
 
@@ -402,6 +403,21 @@ export default function RepairStatusPage() {
                       </div>
                     )}
 
+                    {/* 진단 사진 */}
+                    {diagnosis.photos?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-bold text-gray-600 mb-2">📷 진단 사진</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {diagnosis.photos.map((url, pi) => (
+                            <a key={pi} href={url} target="_blank" rel="noopener noreferrer">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* 수리 결정 버튼 */}
                     {!diagnosis.consumer_decision && request.status !== 'completed' && (
                       <div className="space-y-2 pt-1">
@@ -471,20 +487,32 @@ export default function RepairStatusPage() {
                     <p className="text-sm text-gray-700 leading-relaxed">{repairJob.mechanic_final_comment}</p>
                   </div>
                 )}
-                {repairJob.invoice_url && (
-                  <a
-                    href={repairJob.invoice_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 bg-white rounded-xl p-3 border border-green-100 hover:border-primary-200 transition-colors mb-3"
-                  >
-                    <span className="text-2xl">📎</span>
-                    <div>
-                      <p className="text-xs font-bold text-gray-700">정비/점검 명세서</p>
-                      <p className="text-xs text-primary-600">클릭하여 확인하기</p>
+                {repairJob.invoice_url && (() => {
+                  const isImage = /\.(jpg|jpeg|png|webp|heic)(\?|$)/i.test(repairJob.invoice_url!)
+                  return isImage ? (
+                    <div className="mb-3">
+                      <p className="text-xs font-bold text-gray-600 mb-2">📎 정비/점검 명세서</p>
+                      <a href={repairJob.invoice_url!} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={repairJob.invoice_url!} alt="명세서" className="w-full rounded-xl border border-green-100 object-contain max-h-64" />
+                        <p className="text-xs text-primary-600 text-center mt-1">클릭하여 원본 보기</p>
+                      </a>
                     </div>
-                  </a>
-                )}
+                  ) : (
+                    <a
+                      href={repairJob.invoice_url!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 bg-white rounded-xl p-3 border border-green-100 hover:border-primary-200 transition-colors mb-3"
+                    >
+                      <span className="text-2xl">📎</span>
+                      <div>
+                        <p className="text-xs font-bold text-gray-700">정비/점검 명세서</p>
+                        <p className="text-xs text-primary-600">클릭하여 확인하기</p>
+                      </div>
+                    </a>
+                  )
+                })()}
                 <p className="text-xs text-green-700 text-center">차량을 수령해 주세요. 이용해 주셔서 감사합니다! 🚗</p>
               </div>
             )}

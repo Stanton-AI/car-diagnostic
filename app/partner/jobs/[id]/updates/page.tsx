@@ -226,11 +226,13 @@ export default function RepairUpdatesPage() {
 
           <button
             onClick={handlePost}
-            disabled={posting || !content.trim()}
+            disabled={posting || !content.trim() || uploading}
             className="w-full py-3 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {posting
               ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 전송 중...</>
+              : uploading
+              ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 사진 업로드 중...</>
               : '📤 업데이트 전송 (소비자 알림)'}
           </button>
         </div>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getMyShop } from '@/lib/marketplace'
@@ -20,9 +20,11 @@ export default function DiagnosePage() {
   const router = useRouter()
   const { id: jobId } = useParams<{ id: string }>()
   const supabase = createClient()
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [existing, setExisting] = useState<{ consumer_decision: string } | null>(null)
 
   const [diagItems, setDiagItems] = useState<DiagItem[]>([
@@ -33,6 +35,7 @@ export default function DiagnosePage() {
   ])
   const [laborCost, setLaborCost] = useState(0)
   const [mechanicNotes, setMechanicNotes] = useState('')
+  const [photos, setPhotos] = useState<string[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -52,6 +55,7 @@ export default function DiagnosePage() {
         if (data.parts_needed?.length)    setParts(data.parts_needed)
         if (data.labor_cost)              setLaborCost(data.labor_cost)
         if (data.mechanic_notes)          setMechanicNotes(data.mechanic_notes)
+        if (data.photos?.length)          setPhotos(data.photos)
       }
       setLoading(false)
     }
@@ -61,6 +65,28 @@ export default function DiagnosePage() {
 
   const partsTotal = parts.reduce((s, p) => s + (p.unit_cost * p.qty), 0)
   const totalCost  = partsTotal + laborCost
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const urls = await Promise.all(files.map(async (file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('folder', 'diagnose-photos')
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('업로드 실패')
+        return (await res.json()).url as string
+      }))
+      setPhotos(prev => [...prev, ...urls])
+    } catch {
+      alert('이미지 업로드에 실패했습니다.')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
 
   const handleSave = async () => {
     const validItems = diagItems.filter(d => d.name.trim())
@@ -76,6 +102,7 @@ export default function DiagnosePage() {
           laborCost,
           totalCost,
           mechanicNotes: mechanicNotes.trim() || undefined,
+          photos,
         }),
       })
       if (res.ok) {
@@ -302,16 +329,57 @@ export default function DiagnosePage() {
             className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 resize-none"
           />
         </div>
+
+        {/* 진단 사진 첨부 */}
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-bold text-gray-900">📷 진단 사진 첨부 (선택)</span>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="text-xs text-primary-600 font-bold px-2 py-1 rounded-lg border border-primary-200 hover:bg-primary-50 disabled:opacity-50"
+            >
+              {uploading ? '업로드 중...' : '+ 사진 추가'}
+            </button>
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handlePhotoUpload}
+          />
+          {photos.length > 0 ? (
+            <div className="flex gap-2 flex-wrap">
+              {photos.map((url, i) => (
+                <div key={i} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
+                  <button
+                    onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                  >×</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">진단 상태, 부품 상태 등의 사진을 첨부할 수 있습니다</p>
+          )}
+        </div>
       </div>
 
       {/* 하단 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4">
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || uploading}
           className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl hover:bg-primary-700 disabled:opacity-50 flex items-center justify-center gap-2"
         >
-          {saving ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 저장 중...</> : '📋 진단 결과 저장 및 소비자에게 알림'}
+          {saving ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 저장 중...</>
+          : uploading ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 사진 업로드 중...</>
+          : '📋 진단 결과 저장 및 소비자에게 알림'}
         </button>
         <p className="text-center text-xs text-gray-400 mt-2">소비자에게 정밀진단 결과가 전송됩니다</p>
       </div>
