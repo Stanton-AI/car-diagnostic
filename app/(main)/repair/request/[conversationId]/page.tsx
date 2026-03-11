@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { createRepairRequest, calcDealerPrice, SHOP_CATEGORIES } from '@/lib/marketplace'
+import { createRepairRequest, calcDealerPrice, SHOP_CATEGORIES, TIME_SLOTS } from '@/lib/marketplace'
 import { formatKRW } from '@/lib/utils'
 
 interface ConvSummary {
@@ -43,6 +43,7 @@ export default function RepairRequestPage() {
   const [preferredDate, setPreferredDate] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedCats, setSelectedCats] = useState<string[]>([])
+  const [preferredTimeSlot, setPreferredTimeSlot] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -118,6 +119,7 @@ export default function RepairRequestPage() {
       contactPhone: phone || undefined,
       preferredLocation: location,
       preferredDate: preferredDate || undefined,
+      preferredTimeSlot: preferredTimeSlot || undefined,
       consumerNotes: notes || undefined,
       vehicleMaker: conv.vehicle_maker ?? undefined,
       vehicleModel: conv.vehicle_model ?? undefined,
@@ -218,15 +220,30 @@ export default function RepairRequestPage() {
             />
           </div>
 
-          <div>
-            <label className="text-xs font-semibold text-gray-600 mb-1.5 block">희망 수리 날짜 (선택)</label>
-            <input
-              type="date"
-              value={preferredDate}
-              onChange={e => setPreferredDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">희망 수리 날짜 (선택)</label>
+              <input
+                type="date"
+                value={preferredDate}
+                onChange={e => setPreferredDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">희망 시간대 (선택)</label>
+              <select
+                value={preferredTimeSlot}
+                onChange={e => setPreferredTimeSlot(e.target.value)}
+                className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 bg-white"
+              >
+                <option value="">시간대 선택</option>
+                {TIME_SLOTS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>

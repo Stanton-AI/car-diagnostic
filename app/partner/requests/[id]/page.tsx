@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getMyShop, mapRequest, mapBid, formatDeadline, REQUEST_STATUS_LABEL } from '@/lib/marketplace'
+import { getMyShop, mapRequest, mapBid, formatDeadline, REQUEST_STATUS_LABEL, TIME_SLOTS } from '@/lib/marketplace'
 import { formatKRW } from '@/lib/utils'
 import type { RepairRequest, ShopBid, PartnerShop } from '@/types'
 
@@ -47,6 +47,7 @@ export default function PartnerRequestDetailPage() {
   const [laborCost, setLaborCost] = useState('')
   const [estimatedDays, setEstimatedDays] = useState('1')
   const [availableDate, setAvailableDate] = useState('')
+  const [availableTime, setAvailableTime] = useState('')
   const [bidNotes, setBidNotes] = useState('')
 
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function PartnerRequestDetailPage() {
         laborCost: lc,
         estimatedDays: parseInt(estimatedDays) || 1,
         availableDate: availableDate || undefined,
+        availableTime: availableTime || undefined,
         bidNotes: bidNotes.trim() || undefined,
       }),
     })
@@ -128,7 +130,9 @@ export default function PartnerRequestDetailPage() {
         partsCost: pc, laborCost: lc,
         totalCost: data.totalCost ?? (pc + lc),
         estimatedDays: parseInt(estimatedDays) || 1,
-        availableDate: availableDate || undefined, bidNotes: bidNotes || undefined,
+        availableDate: availableDate || undefined,
+        availableTime: availableTime || undefined,
+        bidNotes: bidNotes || undefined,
         status: 'pending',
         commissionRate: data.commissionRate ?? shop?.commissionRate ?? 0.10,
         createdAt: data.createdAt ?? new Date().toISOString(),
@@ -433,6 +437,19 @@ export default function PartnerRequestDetailPage() {
                   className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
                 />
               </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600 mb-1.5 block">작업 가능 시간대</label>
+              <select
+                value={availableTime}
+                onChange={e => setAvailableTime(e.target.value)}
+                className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 bg-white"
+              >
+                <option value="">시간대 선택 (선택)</option>
+                {TIME_SLOTS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
             </div>
 
             <div>

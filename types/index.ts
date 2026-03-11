@@ -238,6 +238,7 @@ export interface ShopBid {
   totalCost: number
   estimatedDays: number
   availableDate?: string
+  availableTime?: string
   bidNotes?: string
   status: BidStatus
   commissionRate: number

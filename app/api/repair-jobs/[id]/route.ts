@@ -11,7 +11,8 @@ export async function PATCH(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { status } = await req.json()
+    const body = await req.json()
+    const { status, mechanicFinalComment, invoiceUrl } = body
     const validStatuses = ['in_progress', 'completed', 'cancelled']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: '유효하지 않은 상태값' }, { status: 400 })
@@ -35,9 +36,13 @@ export async function PATCH(
     }
 
     // repair_jobs 상태 업데이트
-    const jobUpdate: Record<string, string> = { status, updated_at: new Date().toISOString() }
+    const jobUpdate: Record<string, string | null> = { status, updated_at: new Date().toISOString() }
     if (status === 'in_progress') jobUpdate.started_at = new Date().toISOString()
-    if (status === 'completed')   jobUpdate.completed_at = new Date().toISOString()
+    if (status === 'completed') {
+      jobUpdate.completed_at = new Date().toISOString()
+      if (mechanicFinalComment) jobUpdate.mechanic_final_comment = mechanicFinalComment
+      if (invoiceUrl)           jobUpdate.invoice_url = invoiceUrl
+    }
 
     const { error: updateErr } = await supabase
       .from('repair_jobs')
@@ -45,6 +50,8 @@ export async function PATCH(
       .eq('id', jobId)
 
     if (updateErr) throw updateErr
+
+    const svc = createServiceClient()
 
     // repair_requests 상태 동기화 (파트너는 RLS 상 직접 업데이트 불가 → service client 사용)
     if (job.request_id) {
@@ -55,11 +62,29 @@ export async function PATCH(
       }
       const newRequestStatus = requestStatusMap[status]
       if (newRequestStatus) {
-        const serviceSupabase = createServiceClient()
-        await serviceSupabase
+        await svc
           .from('repair_requests')
           .update({ status: newRequestStatus, updated_at: new Date().toISOString() })
           .eq('id', job.request_id)
+      }
+    }
+
+    // 수리 완료 시 소비자 알림
+    if (status === 'completed' && job.request_id) {
+      const { data: rr } = await svc
+        .from('repair_requests')
+        .select('user_id')
+        .eq('id', job.request_id)
+        .single()
+
+      if (rr?.user_id) {
+        await svc.from('notifications').insert({
+          user_id: rr.user_id,
+          type: 'repair_completed',
+          title: '✅ 수리가 완료되었습니다!',
+          body: mechanicFinalComment?.slice(0, 60) ?? '정비사가 수리를 완료했습니다. 차량을 수령해 주세요.',
+          data: { requestId: job.request_id, jobId },
+        })
       }
     }
 

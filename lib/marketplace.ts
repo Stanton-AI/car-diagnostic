@@ -1,6 +1,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PartnerShop, RepairRequest, ShopBid, RepairJob } from '@/types'
 
+// ─── 시간대 선택 옵션 ────────────────────────────────────────────────────
+export const TIME_SLOTS = [
+  { value: '오전 9-11시',        label: '오전 9-11시' },
+  { value: '오전 11시-오후 1시',  label: '오전 11시 ~ 오후 1시' },
+  { value: '오후 1-3시',          label: '오후 1-3시' },
+  { value: '오후 3-5시',          label: '오후 3-5시' },
+  { value: '오후 5-7시',          label: '오후 5-7시' },
+  { value: '종일 가능',           label: '종일 가능' },
+]
+
 // ─── 딜러 기준가 계산 (앵커 가격) ──────────────────────────────────────
 // 공임나라 독립정비소 기준 × 2.0~2.5배 → 블루핸즈/오토큐 수준
 export function calcDealerPrice(
@@ -71,6 +81,7 @@ export async function createRepairRequest(
     contactPhone?: string
     preferredLocation: string
     preferredDate?: string
+    preferredTimeSlot?: string
     consumerNotes?: string
     vehicleMaker?: string
     vehicleModel?: string
@@ -200,6 +211,7 @@ export function mapBid(row: any): ShopBid {
     totalCost: row.total_cost,
     estimatedDays: row.estimated_days ?? 1,
     availableDate: row.available_date,
+    availableTime: row.available_time,
     bidNotes: row.bid_notes,
     status: row.status,
     commissionRate: row.commission_rate ?? 0.10,

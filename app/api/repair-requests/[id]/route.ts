@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // GET /api/repair-requests/[id] — 단건 조회 (소비자 + 입찰 목록)
 export async function GET(
@@ -26,7 +26,17 @@ export async function GET(
       .single()
 
     if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(data)
+
+    // 수리 작업 정보도 함께 반환 (accepted 이후 상태 추적용)
+    const svc = createServiceClient()
+    const { data: repairJob } = await svc
+      .from('repair_jobs')
+      .select('id, status, estimated_completion_at, mechanic_final_comment, invoice_url, completion_change_count')
+      .eq('request_id', id)
+      .neq('status', 'cancelled')
+      .maybeSingle()
+
+    return NextResponse.json({ ...data, repair_job: repairJob ?? null })
   } catch (e) {
     console.error('[repair-requests/:id GET]', e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })

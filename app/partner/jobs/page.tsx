@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getMyShop } from '@/lib/marketplace'
@@ -21,6 +21,8 @@ interface JobRow {
   } | null
   shop_bids: {
     total_cost: number
+    available_date: string | null
+    available_time: string | null
   } | null
 }
 
@@ -31,13 +33,29 @@ const JOB_STATUS: Record<string, { label: string; color: string }> = {
   cancelled:   { label: '취소됨',    color: 'text-gray-400 bg-gray-50' },
 }
 
+const COMPLETION_MESSAGES = [
+  '고객님의 차량 수리가 완료되었습니다. 꼼꼼하게 점검하였으니 안심하고 방문해 주세요. 궁금한 점이 있으시면 언제든 연락 주세요! 😊',
+  '안전하게 수리가 완료되었습니다! 정성을 담아 작업했습니다. 앞으로도 안전 운전 하세요! 🙏',
+  '차량 수리가 완료되었습니다. 고품질 부품으로 꼼꼼히 수리했습니다. 오래오래 잘 운행하세요! 🚗',
+  '모든 작업이 깔끔하게 마무리되었습니다. 고객님 차량이 더욱 건강해졌습니다. 감사합니다! ✨',
+]
+
 export default function PartnerJobsPage() {
   const router = useRouter()
   const supabase = createClient()
+  const invoiceRef = useRef<HTMLInputElement>(null)
+
   const [shop, setShop] = useState<PartnerShop | null>(null)
   const [jobs, setJobs] = useState<JobRow[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  // 정밀진단 소비자 결정 상태 { jobId: 'approved'|'rejected'|'pending'|null }
+  const [diagStatuses, setDiagStatuses] = useState<Record<string, string | null>>({})
+  // 수리 완료 모달
+  const [completionJobId, setCompletionJobId] = useState<string | null>(null)
+  const [completionComment, setCompletionComment] = useState('')
+  const [invoiceUrl, setInvoiceUrl] = useState('')
+  const [uploadingInvoice, setUploadingInvoice] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -47,38 +65,88 @@ export default function PartnerJobsPage() {
 
       const { data } = await supabase
         .from('repair_jobs')
-        .select('*, repair_requests(symptom_summary, vehicle_maker, vehicle_model, preferred_location, contact_phone), shop_bids(total_cost)')
+        .select('*, repair_requests(symptom_summary, vehicle_maker, vehicle_model, preferred_location, contact_phone), shop_bids(total_cost, available_date, available_time)')
         .eq('shop_id', myShop.id)
         .order('created_at', { ascending: false })
 
-      setJobs(data ?? [])
+      const jobsList = data ?? []
+      setJobs(jobsList)
+
+      // 각 작업의 정밀진단 소비자 결정 조회
+      if (jobsList.length > 0) {
+        const { data: diagData } = await supabase
+          .from('precise_diagnoses')
+          .select('job_id, consumer_decision')
+          .in('job_id', jobsList.map(j => j.id))
+
+        const statusMap: Record<string, string | null> = {}
+        for (const d of diagData ?? []) {
+          statusMap[d.job_id] = d.consumer_decision
+        }
+        setDiagStatuses(statusMap)
+      }
+
       setLoading(false)
     }
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const updateJobStatus = async (jobId: string, status: string) => {
+  const openCompletionModal = (jobId: string) => {
+    const randomMsg = COMPLETION_MESSAGES[Math.floor(Math.random() * COMPLETION_MESSAGES.length)]
+    setCompletionComment(randomMsg)
+    setInvoiceUrl('')
+    setCompletionJobId(jobId)
+  }
+
+  const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingInvoice(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('folder', 'invoices')
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('업로드 실패')
+      const data = await res.json()
+      setInvoiceUrl(data.url)
+    } catch {
+      alert('파일 업로드에 실패했습니다.')
+    } finally {
+      setUploadingInvoice(false)
+      if (invoiceRef.current) invoiceRef.current.value = ''
+    }
+  }
+
+  const updateJobStatus = async (jobId: string, status: string, extras?: { mechanicFinalComment?: string; invoiceUrl?: string }) => {
     setUpdating(jobId)
     try {
       const res = await fetch(`/api/repair-jobs/${jobId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...extras }),
       })
       if (res.ok) {
         setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status } : j))
+        if (status === 'completed') setCompletionJobId(null)
       } else {
         const err = await res.json().catch(() => ({}))
-        console.error('Job update failed:', err)
-        alert('상태 변경에 실패했습니다.')
+        alert(err.error ?? '상태 변경에 실패했습니다.')
       }
-    } catch (e) {
-      console.error('Job update error:', e)
+    } catch {
       alert('상태 변경 중 오류가 발생했습니다.')
     } finally {
       setUpdating(null)
     }
+  }
+
+  const handleCompleteJob = async () => {
+    if (!completionJobId) return
+    await updateJobStatus(completionJobId, 'completed', {
+      mechanicFinalComment: completionComment.trim() || undefined,
+      invoiceUrl: invoiceUrl || undefined,
+    })
   }
 
   if (loading) return (
@@ -110,6 +178,10 @@ export default function PartnerJobsPage() {
             const si = JOB_STATUS[job.status]
             const rr = job.repair_requests
             const bidTotal = job.shop_bids?.total_cost ?? 0
+            const diagDecision = diagStatuses[job.id]
+            const hasApprovedDiag = diagDecision === 'approved'
+            const hasPendingDiag = diagDecision === null // diagnosis exists but not yet decided — null in our map means "has entry but no decision"
+            // Note: if jobId not in diagStatuses, no diagnosis created yet
 
             return (
               <div key={job.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-3">
@@ -129,28 +201,70 @@ export default function PartnerJobsPage() {
                       {rr.contact_phone && <p>📞 {rr.contact_phone}</p>}
                     </div>
                   )}
+                  {/* 방문 날짜/시간 */}
+                  {(job.shop_bids?.available_date || job.shop_bids?.available_time) && (
+                    <div className="flex gap-2 mt-2 text-xs text-primary-600 font-semibold">
+                      {job.shop_bids?.available_date && <span>📅 {job.shop_bids.available_date}</span>}
+                      {job.shop_bids?.available_time && <span>🕐 {job.shop_bids.available_time}</span>}
+                    </div>
+                  )}
                   <p className="text-sm font-bold text-primary-600 mt-2">{formatKRW(bidTotal)}</p>
+
+                  {/* 정밀진단 상태 뱃지 */}
+                  {job.status === 'scheduled' && (
+                    <div className="mt-2">
+                      {hasApprovedDiag && (
+                        <span className="text-xs bg-green-50 text-green-600 border border-green-200 px-2 py-0.5 rounded-full font-bold">✅ 소비자 수리 승인</span>
+                      )}
+                      {diagDecision === 'rejected' && (
+                        <span className="text-xs bg-gray-50 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-bold">❌ 소비자 수리 거절</span>
+                      )}
+                      {hasPendingDiag && (
+                        <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-bold">⏳ 소비자 결정 대기</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 상태 변경 버튼 */}
-                <div className="border-t border-gray-50 px-4 py-3 flex gap-2">
+                <div className="border-t border-gray-50 px-4 py-3 space-y-2">
                   {job.status === 'scheduled' && (
-                    <button
-                      onClick={() => updateJobStatus(job.id, 'in_progress')}
-                      disabled={updating === job.id}
-                      className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50"
-                    >
-                      수리 시작
-                    </button>
+                    <>
+                      {/* 정밀진단 작성 */}
+                      <button
+                        onClick={() => router.push(`/partner/jobs/${job.id}/diagnose`)}
+                        className="w-full py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-sm font-bold hover:bg-blue-100 transition-colors"
+                      >
+                        🔍 정밀진단 결과 작성
+                      </button>
+                      {/* 수리 시작 — 진단 승인 후 or 진단 없는 경우 */}
+                      {(hasApprovedDiag || !Object.prototype.hasOwnProperty.call(diagStatuses, job.id)) && (
+                        <button
+                          onClick={() => updateJobStatus(job.id, 'in_progress')}
+                          disabled={updating === job.id}
+                          className="w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          🔧 수리 시작
+                        </button>
+                      )}
+                    </>
                   )}
                   {job.status === 'in_progress' && (
-                    <button
-                      onClick={() => updateJobStatus(job.id, 'completed')}
-                      disabled={updating === job.id}
-                      className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50"
-                    >
-                      ✅ 수리 완료
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => router.push(`/partner/jobs/${job.id}/updates`)}
+                        className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-bold hover:bg-gray-200 transition-colors"
+                      >
+                        📸 수리 현황 업데이트
+                      </button>
+                      <button
+                        onClick={() => openCompletionModal(job.id)}
+                        disabled={updating === job.id}
+                        className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50"
+                      >
+                        ✅ 수리 완료
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -183,6 +297,74 @@ export default function PartnerJobsPage() {
           </section>
         )}
       </div>
+
+      {/* 수리 완료 모달 */}
+      {completionJobId && (
+        <div className="fixed inset-0 bg-black/50 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl px-4 pt-5 pb-8 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-black text-gray-900">✅ 수리 완료 처리</h2>
+              <button
+                onClick={() => setCompletionJobId(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
+              >×</button>
+            </div>
+            <p className="text-xs text-gray-400 mb-4">소비자에게 수리 완료 알림이 전송됩니다</p>
+
+            {/* 정비사 코멘트 */}
+            <div className="mb-4">
+              <label className="text-xs font-semibold text-gray-600 mb-2 block">💬 정비사 코멘트 (소비자에게 전달)</label>
+              <textarea
+                value={completionComment}
+                onChange={e => setCompletionComment(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 resize-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">기본 메시지를 수정하거나 직접 작성하세요</p>
+            </div>
+
+            {/* 명세서 첨부 */}
+            <div className="mb-5">
+              <label className="text-xs font-semibold text-gray-600 mb-2 block">📎 정비/점검 명세서 첨부 (선택)</label>
+              {invoiceUrl ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
+                  <span className="text-green-600 text-sm font-semibold flex-1 truncate">✅ 명세서 업로드 완료</span>
+                  <button
+                    onClick={() => setInvoiceUrl('')}
+                    className="text-xs text-gray-400 hover:text-red-500"
+                  >삭제</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => invoiceRef.current?.click()}
+                  disabled={uploadingInvoice}
+                  className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {uploadingInvoice ? '업로드 중...' : '📁 명세서 파일 선택 (PDF/이미지)'}
+                </button>
+              )}
+              <input
+                ref={invoiceRef}
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={handleInvoiceUpload}
+              />
+            </div>
+
+            <button
+              onClick={handleCompleteJob}
+              disabled={updating === completionJobId}
+              className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {updating === completionJobId
+                ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 처리 중...</>
+                : '✅ 수리 완료 확정 및 소비자 알림 전송'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
