@@ -38,6 +38,7 @@ interface RepairJob {
   mechanic_final_comment: string | null
   invoice_url: string | null
   completion_change_count: number
+  completion_photos: string[] | null
 }
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -513,6 +514,20 @@ export default function RepairStatusPage() {
                     </a>
                   )
                 })()}
+                {/* 수리 완료 사진 */}
+                {repairJob.completion_photos && repairJob.completion_photos.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-bold text-gray-600 mb-2">📷 수리 완료 사진</p>
+                    <div className="flex gap-2 flex-wrap">
+                      {repairJob.completion_photos.map((url, pi) => (
+                        <a key={pi} href={url} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover border border-green-100" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <p className="text-xs text-green-700 text-center">차량을 수령해 주세요. 이용해 주셔서 감사합니다! 🚗</p>
               </div>
             )}

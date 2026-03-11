@@ -31,7 +31,7 @@ export async function GET(
     const svc = createServiceClient()
     const { data: repairJob } = await svc
       .from('repair_jobs')
-      .select('id, status, estimated_completion_at, mechanic_final_comment, invoice_url, completion_change_count')
+      .select('id, status, estimated_completion_at, mechanic_final_comment, invoice_url, completion_change_count, completion_photos')
       .eq('request_id', id)
       .neq('status', 'cancelled')
       .maybeSingle()

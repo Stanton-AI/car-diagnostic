@@ -12,7 +12,7 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { status, mechanicFinalComment, invoiceUrl } = body
+    const { status, mechanicFinalComment, invoiceUrl, completionPhotos } = body
     const validStatuses = ['in_progress', 'completed', 'cancelled']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: '유효하지 않은 상태값' }, { status: 400 })
@@ -42,6 +42,7 @@ export async function PATCH(
       jobUpdate.completed_at = new Date().toISOString()
       if (mechanicFinalComment) jobUpdate.mechanic_final_comment = mechanicFinalComment
       if (invoiceUrl)           jobUpdate.invoice_url = invoiceUrl
+      if (completionPhotos?.length) jobUpdate.completion_photos = completionPhotos
     }
 
     const { error: updateErr } = await supabase

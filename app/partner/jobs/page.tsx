@@ -43,7 +43,8 @@ const COMPLETION_MESSAGES = [
 export default function PartnerJobsPage() {
   const router = useRouter()
   const supabase = createClient()
-  const invoiceRef = useRef<HTMLInputElement>(null)
+  const invoiceRef     = useRef<HTMLInputElement>(null)
+  const photoRef       = useRef<HTMLInputElement>(null)
 
   const [shop, setShop] = useState<PartnerShop | null>(null)
   const [jobs, setJobs] = useState<JobRow[]>([])
@@ -56,6 +57,8 @@ export default function PartnerJobsPage() {
   const [completionComment, setCompletionComment] = useState('')
   const [invoiceUrl, setInvoiceUrl] = useState('')
   const [uploadingInvoice, setUploadingInvoice] = useState(false)
+  const [completionPhotos, setCompletionPhotos] = useState<string[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -96,7 +99,30 @@ export default function PartnerJobsPage() {
     const randomMsg = COMPLETION_MESSAGES[Math.floor(Math.random() * COMPLETION_MESSAGES.length)]
     setCompletionComment(randomMsg)
     setInvoiceUrl('')
+    setCompletionPhotos([])
     setCompletionJobId(jobId)
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setUploadingPhotos(true)
+    try {
+      const urls = await Promise.all(files.map(async file => {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('folder', 'completion-photos')
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('업로드 실패')
+        return (await res.json()).url as string
+      }))
+      setCompletionPhotos(prev => [...prev, ...urls])
+    } catch {
+      alert('사진 업로드에 실패했습니다.')
+    } finally {
+      setUploadingPhotos(false)
+      if (photoRef.current) photoRef.current.value = ''
+    }
   }
 
   const handleInvoiceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,7 +145,7 @@ export default function PartnerJobsPage() {
     }
   }
 
-  const updateJobStatus = async (jobId: string, status: string, extras?: { mechanicFinalComment?: string; invoiceUrl?: string }) => {
+  const updateJobStatus = async (jobId: string, status: string, extras?: { mechanicFinalComment?: string; invoiceUrl?: string; completionPhotos?: string[] }) => {
     setUpdating(jobId)
     try {
       const res = await fetch(`/api/repair-jobs/${jobId}`, {
@@ -146,6 +172,7 @@ export default function PartnerJobsPage() {
     await updateJobStatus(completionJobId, 'completed', {
       mechanicFinalComment: completionComment.trim() || undefined,
       invoiceUrl: invoiceUrl || undefined,
+      completionPhotos: completionPhotos.length ? completionPhotos : undefined,
     })
   }
 
@@ -329,6 +356,45 @@ export default function PartnerJobsPage() {
               <p className="text-xs text-gray-400 mt-1">기본 메시지를 수정하거나 직접 작성하세요</p>
             </div>
 
+            {/* 수리 완료 사진 */}
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-600">📷 수리 완료 사진 (선택)</label>
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  disabled={uploadingPhotos}
+                  className="text-xs text-primary-600 font-bold px-2 py-1 rounded-lg border border-primary-200 hover:bg-primary-50 disabled:opacity-50"
+                >
+                  {uploadingPhotos ? '업로드 중...' : '+ 사진 추가'}
+                </button>
+              </div>
+              <input
+                ref={photoRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+              {completionPhotos.length > 0 ? (
+                <div className="flex gap-2 flex-wrap">
+                  {completionPhotos.map((url, i) => (
+                    <div key={i} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover border border-gray-200" />
+                      <button
+                        onClick={() => setCompletionPhotos(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">수리 후 차량 상태 사진을 첨부하면 소비자 신뢰도가 높아집니다</p>
+              )}
+            </div>
+
             {/* 명세서 첨부 */}
             <div className="mb-5">
               <label className="text-xs font-semibold text-gray-600 mb-2 block">📎 정비/점검 명세서 첨부 (선택)</label>
@@ -361,11 +427,13 @@ export default function PartnerJobsPage() {
 
             <button
               onClick={handleCompleteJob}
-              disabled={updating === completionJobId}
+              disabled={updating === completionJobId || uploadingPhotos || uploadingInvoice}
               className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {updating === completionJobId
                 ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 처리 중...</>
+                : uploadingPhotos || uploadingInvoice
+                ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> 업로드 중...</>
                 : '✅ 수리 완료 확정 및 소비자 알림 전송'}
             </button>
           </div>
