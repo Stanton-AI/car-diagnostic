@@ -36,11 +36,21 @@ export default function PartnerRequestsPage() {
       .from('repair_requests')
       .select('*')
       .in('status', ['open','bidding'])
-      .order('urgency_level', { ascending: true })
       .order('created_at', { ascending: false })
       .limit(50)
 
-    setRequests((rr ?? []).map(mapRequest))
+    // urgency_level은 DB에서 알파벳 정렬되므로 클라이언트에서 재정렬 (HIGH→MID→LOW)
+    const URGENCY_ORDER: Record<string, number> = { HIGH: 0, MID: 1, LOW: 2 }
+    setRequests(
+      (rr ?? [])
+        .map(mapRequest)
+        .sort((a, b) => {
+          const ao = URGENCY_ORDER[a.urgencyLevel ?? 'LOW'] ?? 2
+          const bo = URGENCY_ORDER[b.urgencyLevel ?? 'LOW'] ?? 2
+          if (ao !== bo) return ao - bo
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        })
+    )
 
     // 내가 이미 입찰한 요청 ID
     const { data: myBids } = await supabase

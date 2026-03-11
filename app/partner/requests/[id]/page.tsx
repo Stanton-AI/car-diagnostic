@@ -80,10 +80,14 @@ export default function PartnerRequestDetailPage() {
       const data = await res.json()
       setMyBid({
         id: data.id, requestId, shopId: shop!.id,
-        partsCost: pc, laborCost: lc, totalCost: pc + lc,
+        partsCost: pc, laborCost: lc,
+        totalCost: data.totalCost ?? (pc + lc),
         estimatedDays: parseInt(estimatedDays) || 1,
         availableDate: availableDate || undefined, bidNotes: bidNotes || undefined,
-        status: 'pending', commissionRate: 0.10, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+        status: 'pending',
+        commissionRate: data.commissionRate ?? shop?.commissionRate ?? 0.10,
+        createdAt: data.createdAt ?? new Date().toISOString(),
+        updatedAt: data.updatedAt ?? new Date().toISOString(),
       })
     } else {
       const err = await res.json()

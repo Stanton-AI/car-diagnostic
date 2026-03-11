@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         available_date: availableDate || null,
         bid_notes: bidNotes || null,
       })
-      .select('id')
+      .select('id, total_cost, commission_rate, status, created_at, updated_at')
       .single()
 
     if (error) throw error
@@ -106,7 +106,14 @@ export async function POST(req: NextRequest) {
       data: { requestId, bidId: bid.id },
     })
 
-    return NextResponse.json({ id: bid.id }, { status: 201 })
+    return NextResponse.json({
+      id: bid.id,
+      totalCost: bid.total_cost,
+      commissionRate: bid.commission_rate,
+      status: bid.status,
+      createdAt: bid.created_at,
+      updatedAt: bid.updated_at,
+    }, { status: 201 })
   } catch (e) {
     console.error('[shop-bids POST]', e)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
