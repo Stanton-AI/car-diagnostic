@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { getMyShop, mapRequest, REQUEST_STATUS_LABEL, formatDeadline, SHOP_CATEGORIES } from '@/lib/marketplace'
@@ -52,6 +52,14 @@ interface JobRow {
 }
 
 export default function PartnerRequestsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" /></div>}>
+      <PartnerRequestsContent />
+    </Suspense>
+  )
+}
+
+function PartnerRequestsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
