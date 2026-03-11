@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { DiagnosisResult, SelfCheckItem } from '@/types'
 import { formatKRW, getShareUrl, urgencyLabel } from '@/lib/utils'
 import { CauseNameWithExplain } from './TermTooltip'
@@ -42,6 +43,7 @@ export default function DiagnosisResultCard({
   defaultExpanded = true,
   isRediagnosis = false,
 }: Props) {
+  const router = useRouter()
   const [expanded, setExpanded] = useState(defaultExpanded)
   const [selfCheckItems, setSelfCheckItems] = useState<SelfCheckItem[]>(
     result.selfCheck.map(item => ({ ...item, checked: false, result: '' }))
@@ -249,11 +251,15 @@ export default function DiagnosisResultCard({
         </div>
       </div>
 
-      {/* P2: CTA — 방치 비용 문구 직후, 감정 피크에서 바로 행동 유도 */}
+      {/* CTA — 방치 비용 문구 직후, 감정 피크에서 바로 행동 유도 */}
       {result.urgency !== 'LOW' && (
-        <button className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2">
-          <span>📅</span>
-          <span>지금 근처 정비소 예약하기</span>
+        <button
+          onClick={() => router.push(`/repair/request/${conversationId}`)}
+          className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2"
+        >
+          <span>🔧</span>
+          <span>무료 수리 견적 받기</span>
+          <span className="text-xs opacity-75 font-normal ml-1">여러 정비소 비교</span>
         </button>
       )}
 
@@ -303,9 +309,12 @@ export default function DiagnosisResultCard({
 
       {/* LOW urgency CTA (덜 긴박하게) */}
       {result.urgency === 'LOW' && (
-        <button className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-          <span>📅</span>
-          <span>내 주변 정비소 예약하기</span>
+        <button
+          onClick={() => router.push(`/repair/request/${conversationId}`)}
+          className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          <span>🔧</span>
+          <span>무료 수리 견적 받기</span>
         </button>
       )}
 

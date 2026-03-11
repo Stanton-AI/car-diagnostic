@@ -158,6 +158,140 @@ export interface Workshop {
   joinedAt: string
 }
 
+// ─── 마켓플레이스 ────────────────────────────────────────────────────────
+
+export type ShopStatus = 'pending' | 'active' | 'suspended'
+export type SubscriptionPlan = 'free' | 'basic' | 'pro'
+export type RequestStatus = 'open' | 'bidding' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'
+export type BidStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
+export type JobStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled'
+export type PaymentStatus = 'pending' | 'paid' | 'refunded'
+
+export interface PartnerShop {
+  id: string
+  userId: string
+  name: string
+  ownerName: string
+  phone: string
+  address: string
+  latitude?: number
+  longitude?: number
+  categories: string[]
+  description?: string
+  profileImageUrl?: string
+  businessNumber?: string
+  status: ShopStatus
+  commissionRate: number
+  subscriptionPlan: SubscriptionPlan
+  subscriptionExpiresAt?: string
+  rating: number
+  reviewCount: number
+  totalJobs: number
+  distanceKm?: number   // 런타임 계산
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RepairRequest {
+  id: string
+  userId: string
+  conversationId?: string
+  symptomSummary: string
+  diagnosisCategory?: string
+  urgencyLevel?: 'HIGH' | 'MID' | 'LOW'
+  // 딜러 앵커 가격
+  dealerPartsMin?: number
+  dealerPartsMax?: number
+  dealerLaborMin?: number
+  dealerLaborMax?: number
+  dealerTotalMin?: number
+  dealerTotalMax?: number
+  // 소비자 입력
+  contactPhone?: string
+  preferredLocation: string
+  preferredLatitude?: number
+  preferredLongitude?: number
+  preferredDate?: string
+  consumerNotes?: string
+  // 차량 스냅샷
+  vehicleMaker?: string
+  vehicleModel?: string
+  vehicleYear?: number
+  vehicleMileage?: number
+  // 상태
+  status: RequestStatus
+  acceptedBidId?: string
+  bidCount: number
+  bidDeadline: string
+  // 조인 데이터
+  bids?: ShopBid[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ShopBid {
+  id: string
+  requestId: string
+  shopId: string
+  partsCost: number
+  laborCost: number
+  totalCost: number
+  estimatedDays: number
+  availableDate?: string
+  bidNotes?: string
+  status: BidStatus
+  commissionRate: number
+  commissionAmount?: number
+  // 조인 데이터
+  shop?: PartnerShop
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RepairJob {
+  id: string
+  requestId: string
+  bidId: string
+  shopId: string
+  userId: string
+  actualPartsCost?: number
+  actualLaborCost?: number
+  actualTotalCost?: number
+  startedAt?: string
+  completedAt?: string
+  status: JobStatus
+  paymentStatus: PaymentStatus
+  paymentMethod?: string
+  paymentKey?: string
+  orderId?: string
+  paidAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ShopReview {
+  id: string
+  jobId: string
+  shopId: string
+  userId: string
+  rating: number
+  content?: string
+  isVerified: boolean
+  createdAt: string
+}
+
+export interface Notification {
+  id: string
+  userId?: string
+  shopId?: string
+  type: 'new_request' | 'new_bid' | 'bid_accepted' | 'bid_rejected' | 'job_complete' | 'payment_required' | 'review_request'
+  title: string
+  body?: string
+  data: Record<string, unknown>
+  isRead: boolean
+  createdAt: string
+}
+
 // ─── 관리자 설정 ────────────────────────────────────────────────────────
 export type DiagnosisMode = 'free' | 'paid' | 'ab_test'
 
