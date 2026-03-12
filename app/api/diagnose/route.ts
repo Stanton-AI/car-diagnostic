@@ -37,7 +37,9 @@ function shouldForceFinish(messages: ChatMessage[], answeredCount: number): bool
 }
 
 const MAX_QUESTIONS = 4
-const CONFIDENCE_LOW = 40
+const MIN_QUESTIONS = 2   // 최소 2회 질문 (충분한 정보 수집)
+const CONFIDENCE_LOW = 50
+const CONFIDENCE_SUFFICIENT = 75  // 이 이상 + MIN 충족 시 진단
 
 export async function POST(req: NextRequest) {
   try {
@@ -97,7 +99,15 @@ export async function POST(req: NextRequest) {
           answeredCount,
         )
 
-        if (!check.sufficient && check.question) {
+        // 질문이 필요한 경우:
+        //   1) AI가 sufficient=false로 판단 (의미 있는 질문 있음)
+        //   2) 또는 MIN_QUESTIONS 미달 + 질문 생성 가능 (최소 수집 보장)
+        const needsQuestion = check.question && (
+          !check.sufficient ||
+          (answeredCount < MIN_QUESTIONS && check.confidence < CONFIDENCE_SUFFICIENT)
+        )
+
+        if (needsQuestion && check.question) {
           return NextResponse.json({
             success: true,
             data: {
@@ -108,7 +118,7 @@ export async function POST(req: NextRequest) {
           })
         }
 
-        // 4회 소진 후 confidence < 40%
+        // MAX 소진 후 confidence < 50%
         if (answeredCount >= MAX_QUESTIONS && check.confidence < CONFIDENCE_LOW) {
           return NextResponse.json({
             success: true,
