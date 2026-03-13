@@ -108,7 +108,6 @@ export default function DiagnosisPage() {
 
   // ── 사후 채팅 상태 ────────────────────────────────────────────────────
   const [postMessages, setPostMessages] = useState<PostChatMsg[]>([])
-  const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
 
@@ -189,7 +188,7 @@ export default function DiagnosisPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [postMessages, chatLoading])
 
-  // ── 사후 채팅 전송 ────────────────────────────────────────────────────
+  // ── 사후 채팅 전송 (추가 정보 반영 재진단) ───────────────────────────
   const handlePostChat = useCallback(async () => {
     const text = chatInput.trim()
     if (!text || !primaryResult || chatLoading) return
@@ -199,34 +198,56 @@ export default function DiagnosisPage() {
     setPostMessages(prev => [...prev, userMsg])
     setChatLoading(true)
 
-    const diagnosisContext = `
-진단 결과 요약: ${primaryResult.summary}
-예상 원인:
-${primaryResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enName})` : ''} - ${c.description}`).join('\n')}
-긴급도: ${primaryResult.urgency} - ${primaryResult.urgencyReason}
-예상 비용: ${primaryResult.cost.total.toLocaleString()}원 (부품비 ${primaryResult.cost.parts.toLocaleString()}원 + 공임비 ${primaryResult.cost.labor.toLocaleString()}원)
-    `.trim()
-
-    const newHistory = [...chatHistory, { role: 'user' as const, content: text }]
+    // 기존 conversation.messages + 이전 사후채팅 + 새 메시지 합산
+    const existingMessages: ChatMessage[] = Array.isArray(conversation?.messages)
+      ? conversation.messages : []
+    const prevPostAsMessages: ChatMessage[] = postMessages.map(m => ({
+      id: m.id,
+      role: m.role,
+      type: 'text' as const,
+      content: m.content,
+      timestamp: new Date().toISOString(),
+    }))
+    const newUserMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      type: 'text',
+      content: text,
+      timestamp: new Date().toISOString(),
+    }
+    const allMessages = [...existingMessages, ...prevPostAsMessages, newUserMsg]
 
     try {
-      const res = await fetch('/api/assist', {
+      const res = await fetch('/api/diagnose', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'result_chat', userMessage: text, diagnosisContext, chatHistory }),
+        body: JSON.stringify({
+          conversationId: id,
+          messages: allMessages,
+          isReDiagnosis: true,
+        }),
       })
       const data = await res.json()
-      const answer = data.answer ?? '답변을 불러오지 못했어요.'
-      const aiMsg: PostChatMsg = { role: 'assistant', content: answer, id: crypto.randomUUID() }
-      setPostMessages(prev => [...prev, aiMsg])
-      setChatHistory([...newHistory, { role: 'assistant', content: answer }])
+      if (data.success && data.data?.result) {
+        setRediagnosisResult(data.data.result)
+        setRediagnosisCount(c => c + 1)
+        const aiMsg: PostChatMsg = {
+          role: 'assistant',
+          content: '추가 정보를 반영하여 진단 리포트를 업데이트했습니다. ↑ 위의 갱신된 리포트를 확인해 주세요.',
+          id: crypto.randomUUID(),
+        }
+        setPostMessages(prev => [...prev, aiMsg])
+      } else {
+        const aiMsg: PostChatMsg = { role: 'assistant', content: '재진단 처리 중 오류가 발생했어요. 다시 시도해 주세요.', id: crypto.randomUUID() }
+        setPostMessages(prev => [...prev, aiMsg])
+      }
     } catch {
       const errMsg: PostChatMsg = { role: 'assistant', content: '오류가 발생했어요. 다시 시도해 주세요.', id: crypto.randomUUID() }
       setPostMessages(prev => [...prev, errMsg])
     } finally {
       setChatLoading(false)
     }
-  }, [chatInput, primaryResult, chatHistory, chatLoading])
+  }, [chatInput, primaryResult, chatLoading, conversation, postMessages, id])
 
   // ── 로딩 상태 ────────────────────────────────────────────────────────
   if (loading) return (
@@ -299,7 +320,7 @@ ${primaryResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enN
               <div className="h-px flex-1 bg-gray-200" />
               <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full">
                 <span className="text-amber-600 text-xs">🔄</span>
-                <span className="text-xs text-amber-700 font-semibold">자가점검 반영 재진단</span>
+                <span className="text-xs text-amber-700 font-semibold">추가 정보 반영 재진단</span>
               </div>
               <div className="h-px flex-1 bg-gray-200" />
             </div>
@@ -384,7 +405,7 @@ ${primaryResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enN
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostChat() } }}
-              placeholder="진단 결과에 대해 궁금한 점을 물어보세요..."
+              placeholder="새로운 증상이나 추가 정보를 입력하면 리포트가 갱신됩니다..."
               disabled={chatLoading}
               className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:border-primary-400 bg-gray-50 disabled:opacity-50 transition-colors"
             />

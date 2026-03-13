@@ -116,29 +116,36 @@ export default function ChatPage() {
       images: type === 'text' ? uploadedImages : undefined,
     }) as ChatMessage
 
-    // ── 진단 완료 후: 결과에 대한 자유 질문 모드 ──────────────────────
+    // ── 진단 완료 후: 추가 정보 반영 재진단 ──────────────────────────────
     if (diagnosisResult && type === 'text') {
       setMessages(prev => [...prev, userMsg])
       setIsLoading(true)
-      const newHistory = [...postChatHistory, { role: 'user' as const, content }]
-      const diagnosisContext = `
-진단 결과 요약: ${diagnosisResult.summary}
-예상 원인:
-${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.enName})` : ''} - ${c.description}`).join('\n')}
-긴급도: ${diagnosisResult.urgency} - ${diagnosisResult.urgencyReason}
-예상 비용: ${diagnosisResult.cost.total.toLocaleString()}원 (부품비 ${diagnosisResult.cost.parts.toLocaleString()}원 + 공임비 ${diagnosisResult.cost.labor.toLocaleString()}원)
-      `.trim()
+
+      // 전체 대화 컨텍스트 + 새 메시지로 재진단
+      const reDiagMessages = [...messages, userMsg]
 
       try {
-        const res = await fetch('/api/assist', {
+        const res = await fetch('/api/diagnose', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'result_chat', userMessage: content, diagnosisContext, chatHistory: postChatHistory }),
+          body: JSON.stringify({
+            conversationId,
+            vehicleInfo: vehicle,
+            messages: reDiagMessages,
+            symptomImages: uploadedImages,
+            isReDiagnosis: true,
+          }),
         })
         const data = await res.json()
-        const aiMsg = createMessage('assistant', data.answer ?? '답변을 불러오지 못했어요.', 'text') as ChatMessage
-        setMessages(prev => [...prev, aiMsg])
-        setPostChatHistory([...newHistory, { role: 'assistant', content: data.answer }])
+        if (data.success && data.data?.result) {
+          const result: DiagnosisResult = data.data.result
+          setDiagnosisResult(result)
+          const reDiagMsg = createMessage('assistant', '추가 정보를 반영하여 진단 리포트를 업데이트했습니다.', 're_diagnosis', { result }) as ChatMessage
+          setMessages(prev => [...prev, reDiagMsg])
+        } else {
+          const errMsg = createMessage('assistant', '재진단 처리 중 오류가 발생했어요. 다시 시도해 주세요.', 'text') as ChatMessage
+          setMessages(prev => [...prev, errMsg])
+        }
       } catch {
         const errMsg = createMessage('assistant', '오류가 발생했어요. 다시 시도해 주세요.', 'text') as ChatMessage
         setMessages(prev => [...prev, errMsg])
@@ -295,7 +302,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
           uploadedImages={uploadedImages}
           onRemoveImage={(url) => setUploadedImages(prev => prev.filter(u => u !== url))}
           disabled={isLoading}
-          placeholder={diagnosisResult ? '진단 결과에 대해 궁금한 점을 물어보세요...' : undefined}
+          placeholder={diagnosisResult ? '새로운 증상이나 추가 정보를 입력하면 리포트가 갱신됩니다...' : undefined}
         />
       )}
     </div>
