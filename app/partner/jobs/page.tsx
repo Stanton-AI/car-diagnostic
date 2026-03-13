@@ -59,6 +59,16 @@ export default function PartnerJobsPage() {
   const [uploadingInvoice, setUploadingInvoice] = useState(false)
   const [completionPhotos, setCompletionPhotos] = useState<string[]>([])
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  // OCR 분석 상태
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [parsedInvoice, setParsedInvoice] = useState<{
+    replacedParts: { name: string; partNumber: string | null; qty: number; unitCost: number; totalCost: number }[]
+    actionItems: { action: string; description: string | null; laborCost: number }[]
+    partsTotal: number
+    laborTotal: number
+    finalTotal: number
+    rawText: string
+  } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -100,6 +110,8 @@ export default function PartnerJobsPage() {
     setCompletionComment(randomMsg)
     setInvoiceUrl('')
     setCompletionPhotos([])
+    setParsedInvoice(null)
+    setOcrLoading(false)
     setCompletionJobId(jobId)
   }
 
@@ -129,6 +141,7 @@ export default function PartnerJobsPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingInvoice(true)
+    setParsedInvoice(null)
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -137,6 +150,26 @@ export default function PartnerJobsPage() {
       if (!res.ok) throw new Error('업로드 실패')
       const data = await res.json()
       setInvoiceUrl(data.url)
+
+      // 이미지인 경우 OCR 자동 실행
+      if (file.type.startsWith('image/') && completionJobId) {
+        setOcrLoading(true)
+        try {
+          const ocrRes = await fetch(`/api/repair-jobs/${completionJobId}/invoice-ocr`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl: data.url }),
+          })
+          if (ocrRes.ok) {
+            const ocrData = await ocrRes.json()
+            setParsedInvoice(ocrData.data)
+          }
+        } catch {
+          // OCR 실패는 조용히 처리 (업로드 자체는 성공)
+        } finally {
+          setOcrLoading(false)
+        }
+      }
     } catch {
       alert('파일 업로드에 실패했습니다.')
     } finally {
@@ -173,6 +206,15 @@ export default function PartnerJobsPage() {
       mechanicFinalComment: completionComment.trim() || undefined,
       invoiceUrl: invoiceUrl || undefined,
       completionPhotos: completionPhotos.length ? completionPhotos : undefined,
+      jobDetails: parsedInvoice ? {
+        replacedParts: parsedInvoice.replacedParts,
+        actionItems:   parsedInvoice.actionItems,
+        partsTotal:    parsedInvoice.partsTotal,
+        laborTotal:    parsedInvoice.laborTotal,
+        finalTotal:    parsedInvoice.finalTotal,
+        invoiceImages: invoiceUrl ? [invoiceUrl] : [],
+        ocrRawText:    parsedInvoice.rawText,
+      } : undefined,
     })
   }
 
@@ -396,13 +438,13 @@ export default function PartnerJobsPage() {
             </div>
 
             {/* 명세서 첨부 */}
-            <div className="mb-5">
+            <div className="mb-4">
               <label className="text-xs font-semibold text-gray-600 mb-2 block">📎 정비/점검 명세서 첨부 (선택)</label>
               {invoiceUrl ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
                   <span className="text-green-600 text-sm font-semibold flex-1 truncate">✅ 명세서 업로드 완료</span>
                   <button
-                    onClick={() => setInvoiceUrl('')}
+                    onClick={() => { setInvoiceUrl(''); setParsedInvoice(null) }}
                     className="text-xs text-gray-400 hover:text-red-500"
                   >삭제</button>
                 </div>
@@ -410,10 +452,10 @@ export default function PartnerJobsPage() {
                 <button
                   type="button"
                   onClick={() => invoiceRef.current?.click()}
-                  disabled={uploadingInvoice}
+                  disabled={uploadingInvoice || ocrLoading}
                   className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-gray-300 hover:bg-gray-50 disabled:opacity-50"
                 >
-                  {uploadingInvoice ? '업로드 중...' : '📁 명세서 파일 선택 (PDF/이미지)'}
+                  {uploadingInvoice ? '업로드 중...' : '📁 명세서 이미지 선택 (이미지 권장 — 자동 분석)'}
                 </button>
               )}
               <input
@@ -425,9 +467,68 @@ export default function PartnerJobsPage() {
               />
             </div>
 
+            {/* OCR 분석 중 */}
+            {ocrLoading && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-xl flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin flex-shrink-0" />
+                <span className="text-sm text-blue-600">🔍 명세서 자동 분석 중...</span>
+              </div>
+            )}
+
+            {/* OCR 분석 결과 */}
+            {parsedInvoice && !ocrLoading && (
+              <div className="mb-5 border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                  <p className="text-xs font-bold text-gray-600">📋 명세서 분석 결과 <span className="font-normal text-gray-400">(AI 자동 추출 — 오류 시 정비소에서 수정)</span></p>
+                </div>
+                <div className="px-3 py-3 space-y-3">
+                  {/* 교체 부품 */}
+                  {parsedInvoice.replacedParts.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-1">🔩 교체 부품</p>
+                      {parsedInvoice.replacedParts.map((p, i) => (
+                        <div key={i} className="flex justify-between text-xs text-gray-700 py-0.5">
+                          <span>{p.name}{p.qty > 1 ? ` × ${p.qty}` : ''}</span>
+                          <span className="font-medium">{p.totalCost.toLocaleString()}원</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 조치 내역 */}
+                  {parsedInvoice.actionItems.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-1">🔧 작업 내역</p>
+                      {parsedInvoice.actionItems.map((a, i) => (
+                        <div key={i} className="flex justify-between text-xs text-gray-700 py-0.5">
+                          <span>{a.action}</span>
+                          <span className="font-medium">{a.laborCost > 0 ? `${a.laborCost.toLocaleString()}원` : '-'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* 합계 */}
+                  <div className="border-t border-gray-100 pt-2 space-y-0.5">
+                    {parsedInvoice.partsTotal > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>부품비</span><span>{parsedInvoice.partsTotal.toLocaleString()}원</span>
+                      </div>
+                    )}
+                    {parsedInvoice.laborTotal > 0 && (
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>공임비</span><span>{parsedInvoice.laborTotal.toLocaleString()}원</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-bold text-gray-900">
+                      <span>합계</span><span>{parsedInvoice.finalTotal.toLocaleString()}원</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               onClick={handleCompleteJob}
-              disabled={updating === completionJobId || uploadingPhotos || uploadingInvoice}
+              disabled={updating === completionJobId || uploadingPhotos || uploadingInvoice || ocrLoading}
               className="w-full py-4 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {updating === completionJobId

@@ -12,7 +12,7 @@ export async function PATCH(
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json()
-    const { status, mechanicFinalComment, invoiceUrl, completionPhotos } = body
+    const { status, mechanicFinalComment, invoiceUrl, completionPhotos, jobDetails } = body
     const validStatuses = ['in_progress', 'completed', 'cancelled']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: '유효하지 않은 상태값' }, { status: 400 })
@@ -45,6 +45,11 @@ export async function PATCH(
       if (completionPhotos?.length) jobUpdate.completion_photos = completionPhotos
     }
 
+    // OCR 최종 비용이 있으면 actual_total_cost도 함께 업데이트
+    if (status === 'completed' && jobDetails?.finalTotal > 0) {
+      jobUpdate.actual_total_cost = jobDetails.finalTotal
+    }
+
     const { error: updateErr } = await supabase
       .from('repair_jobs')
       .update(jobUpdate)
@@ -53,6 +58,22 @@ export async function PATCH(
     if (updateErr) throw updateErr
 
     const svc = createServiceClient()
+
+    // 명세서 구조화 데이터 저장
+    if (status === 'completed' && jobDetails) {
+      await svc.from('repair_job_details').upsert({
+        job_id: jobId,
+        replaced_parts:  jobDetails.replacedParts  ?? [],
+        action_items:    jobDetails.actionItems    ?? [],
+        parts_total:     jobDetails.partsTotal     ?? 0,
+        labor_total:     jobDetails.laborTotal     ?? 0,
+        final_total:     jobDetails.finalTotal     ?? 0,
+        invoice_images:  jobDetails.invoiceImages  ?? [],
+        ocr_raw_text:    jobDetails.ocrRawText     ?? null,
+        ocr_parsed_at:   jobDetails.ocrRawText ? new Date().toISOString() : null,
+        updated_at:      new Date().toISOString(),
+      }, { onConflict: 'job_id' })
+    }
 
     // repair_requests 상태 동기화 (파트너는 RLS 상 직접 업데이트 불가 → service client 사용)
     if (job.request_id) {
