@@ -10,8 +10,8 @@ export default function MessageBubble({ message }: Props) {
     <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
       {/* AI 아바타 */}
       {!isUser && (
-        <div className="w-8 h-8 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm mb-1">
-          <span className="text-white text-xs font-black">M</span>
+        <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden shadow-sm mb-1">
+          <img src="/miky.png" alt="미키" className="w-full h-full object-cover" />
         </div>
       )}
 
