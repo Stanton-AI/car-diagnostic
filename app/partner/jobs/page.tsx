@@ -178,7 +178,7 @@ export default function PartnerJobsPage() {
     }
   }
 
-  const updateJobStatus = async (jobId: string, status: string, extras?: { mechanicFinalComment?: string; invoiceUrl?: string; completionPhotos?: string[] }) => {
+  const updateJobStatus = async (jobId: string, status: string, extras?: { mechanicFinalComment?: string; invoiceUrl?: string; completionPhotos?: string[]; jobDetails?: { replacedParts?: unknown; actionItems?: unknown; partsTotal?: number; laborTotal?: number; finalTotal?: number; invoiceImages?: string[]; ocrRawText?: string } }) => {
     setUpdating(jobId)
     try {
       const res = await fetch(`/api/repair-jobs/${jobId}`, {
