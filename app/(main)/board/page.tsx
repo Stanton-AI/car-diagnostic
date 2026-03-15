@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNav from '@/components/nav/BottomNav'
 import { createClient } from '@/lib/supabase/client'
 
-const CATEGORIES = ['전체', '정비후기', 'Q&A', '정보공유', '자유']
+const CATEGORIES = ['전체', '정비후기', 'Q&A', '정보공유', '자유', '내 글']
 const WRITE_CATEGORIES = ['정비후기', 'Q&A', '정보공유', '자유']
 
 interface Post {
@@ -72,14 +72,17 @@ function BoardPageInner() {
   const [userId, setUserId] = useState<string | null>(null)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
 
-  // 글쓰기 폼
+  // 글쓰기 / 수정 폼
+  const [editingPost, setEditingPost] = useState<Post | null>(null)   // null = 새 글, Post = 수정
   const [writeCategory, setWriteCategory] = useState('자유')
   const [writeTitle, setWriteTitle] = useState('')
   const [writeContent, setWriteContent] = useState('')
   const [writeImages, setWriteImages] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [imageUploading, setImageUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // 차량 정보 (작성자 표시용)
+  // 차량 정보
   const [vehicleNickname, setVehicleNickname] = useState<string | null>(null)
   const [vehicleModel, setVehicleModel] = useState<string | null>(null)
 
@@ -92,147 +95,177 @@ function BoardPageInner() {
   const [submittingComment, setSubmittingComment] = useState(false)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
 
+  // 댓글 수정
+  const [editingComment, setEditingComment] = useState<Comment | null>(null)
+  const [editCommentText, setEditCommentText] = useState('')
+
   // 좋아요
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set())
   const [likeCounts, setLikeCounts] = useState<Record<string, number>>({})
 
-  // 유저 + 차량 확인
+  // ── 유저 + 차량 확인 ─────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/'); return }
       setUserId(user.id)
-
       const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('nickname, model')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
+        .from('vehicles').select('nickname, model')
+        .eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
       if (vehicles && vehicles.length > 0) {
         setVehicleNickname(vehicles[0].nickname ?? null)
         setVehicleModel(vehicles[0].model ?? null)
       }
-
-      // 내가 좋아요한 목록
-      const { data: likes } = await supabase
-        .from('post_likes')
-        .select('post_id')
-        .eq('user_id', user.id)
-      if (likes) {
-        setLikedPosts(new Set(likes.map((l: { post_id: string }) => l.post_id)))
-      }
+      const { data: likes } = await supabase.from('post_likes').select('post_id').eq('user_id', user.id)
+      if (likes) setLikedPosts(new Set(likes.map((l: { post_id: string }) => l.post_id)))
     }
     init()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // URL 파라미터로 글쓰기 모달 자동 열기 (진단리포트 공유)
+  // ── URL 파라미터로 글쓰기 자동 열기 ─────────────────────────────────
   useEffect(() => {
-    const openWrite = searchParams.get('openWrite')
-    if (openWrite === '1') {
-      const title = searchParams.get('title') ?? ''
-      const content = searchParams.get('content') ?? ''
-      const category = searchParams.get('category') ?? '정비후기'
-      const imageUrl = searchParams.get('imageUrl') ?? ''
-      setWriteTitle(title)
-      setWriteContent(content)
-      setWriteCategory(category)
-      if (imageUrl) setWriteImages([imageUrl])
+    if (searchParams.get('openWrite') === '1') {
+      setWriteTitle(searchParams.get('title') ?? '')
+      setWriteContent(searchParams.get('content') ?? '')
+      setWriteCategory(searchParams.get('category') ?? '정비후기')
+      const img = searchParams.get('imageUrl') ?? ''
+      if (img) setWriteImages([img])
+      setEditingPost(null)
       setShowWrite(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 게시글 불러오기
+  // ── 게시글 불러오기 ─────────────────────────────────────────────────
   const loadPosts = useCallback(async () => {
     setLoading(true)
     try {
-      let query = supabase
-        .from('posts')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50)
-      if (activeTab !== '전체') query = query.eq('category', activeTab)
+      let query = supabase.from('posts').select('*').order('created_at', { ascending: false }).limit(50)
+      if (activeTab === '내 글') {
+        if (!userId) { setPosts([]); return }
+        query = supabase.from('posts').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50)
+      } else if (activeTab !== '전체') {
+        query = query.eq('category', activeTab)
+      }
       const { data, error } = await query
       if (error) { setPosts([]); return }
       const list = data ?? []
       setPosts(list)
-      // like_count 동기화
       const counts: Record<string, number> = {}
       list.forEach((p: Post) => { counts[p.id] = p.like_count })
       setLikeCounts(prev => ({ ...prev, ...counts }))
-    } finally {
-      setLoading(false)
-    }
-  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+    } finally { setLoading(false) }
+  }, [activeTab, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadPosts() }, [loadPosts])
 
-  // 댓글 불러오기
+  // ── 댓글 불러오기 ───────────────────────────────────────────────────
   const loadComments = useCallback(async (postId: string) => {
     setCommentsLoading(true)
     try {
-      const { data } = await supabase
-        .from('post_comments')
-        .select('*')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true })
+      const { data } = await supabase.from('post_comments').select('*').eq('post_id', postId).order('created_at', { ascending: true })
       setComments(data ?? [])
-    } finally {
-      setCommentsLoading(false)
-    }
+    } finally { setCommentsLoading(false) }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
-    if (selectedPost) {
-      loadComments(selectedPost.id)
-      setCommentText('')
-      setReplyTo(null)
-      setReplyText('')
-    }
+    if (selectedPost) { loadComments(selectedPost.id); setCommentText(''); setReplyTo(null); setReplyText('') }
   }, [selectedPost, loadComments])
 
-  // 글쓰기 제출
+  // ── 이미지 업로드 ───────────────────────────────────────────────────
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !userId) return
+    setImageUploading(true)
+    try {
+      const uploaded: string[] = []
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue
+        const ext = file.name.split('.').pop() ?? 'jpg'
+        const path = `board-images/${userId}-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { data, error } = await supabase.storage.from('repair-files').upload(path, file, { contentType: file.type, upsert: true })
+        if (!error && data) {
+          const { data: url } = supabase.storage.from('repair-files').getPublicUrl(path)
+          uploaded.push(url.publicUrl)
+        }
+      }
+      if (uploaded.length > 0) setWriteImages(prev => [...prev, ...uploaded])
+    } finally { setImageUploading(false) }
+  }
+
+  // ── 글쓰기 / 수정 모달 열기 헬퍼 ────────────────────────────────────
+  const openWrite = (post?: Post) => {
+    if (post) {
+      setEditingPost(post)
+      setWriteCategory(post.category)
+      setWriteTitle(post.title)
+      setWriteContent(post.content)
+      setWriteImages(post.images ?? [])
+    } else {
+      setEditingPost(null)
+      setWriteCategory('자유')
+      setWriteTitle('')
+      setWriteContent('')
+      setWriteImages([])
+    }
+    setShowWrite(true)
+  }
+
+  const closeWrite = () => {
+    setShowWrite(false)
+    setEditingPost(null)
+    setWriteTitle('')
+    setWriteContent('')
+    setWriteCategory('자유')
+    setWriteImages([])
+  }
+
+  // ── 글 등록 / 수정 제출 ──────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!writeTitle.trim() || !writeContent.trim() || !userId) return
     setSubmitting(true)
     try {
-      const { error } = await supabase.from('posts').insert({
-        user_id: userId,
-        category: writeCategory,
-        title: writeTitle.trim(),
-        content: writeContent.trim(),
-        vehicle_nickname: vehicleNickname,
-        vehicle_model: vehicleModel,
-        images: writeImages.length > 0 ? writeImages : [],
-      })
-      if (!error) {
-        setShowWrite(false)
-        setWriteTitle('')
-        setWriteContent('')
-        setWriteCategory('자유')
-        setWriteImages([])
-        await loadPosts()
+      if (editingPost) {
+        // 수정
+        const { error } = await supabase.from('posts').update({
+          category: writeCategory, title: writeTitle.trim(),
+          content: writeContent.trim(), images: writeImages,
+          updated_at: new Date().toISOString(),
+        }).eq('id', editingPost.id).eq('user_id', userId)
+        if (!error) {
+          // selectedPost도 동기화
+          setSelectedPost(prev => prev ? { ...prev, category: writeCategory, title: writeTitle.trim(), content: writeContent.trim(), images: writeImages } : null)
+          closeWrite()
+          await loadPosts()
+        }
+      } else {
+        // 새 글
+        const { error } = await supabase.from('posts').insert({
+          user_id: userId, category: writeCategory,
+          title: writeTitle.trim(), content: writeContent.trim(),
+          vehicle_nickname: vehicleNickname, vehicle_model: vehicleModel,
+          images: writeImages.length > 0 ? writeImages : [],
+        })
+        if (!error) { closeWrite(); await loadPosts() }
       }
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
-  // 좋아요 토글
+  // ── 글 삭제 ─────────────────────────────────────────────────────────
+  const handleDeletePost = async (post: Post) => {
+    if (!confirm('정말 삭제하시겠어요?')) return
+    await supabase.from('posts').delete().eq('id', post.id).eq('user_id', userId!)
+    setSelectedPost(null)
+    await loadPosts()
+  }
+
+  // ── 좋아요 토글 ─────────────────────────────────────────────────────
   const handleLike = async (post: Post) => {
     if (!userId) return
     const liked = likedPosts.has(post.id)
-    // 낙관적 업데이트
-    setLikedPosts(prev => {
-      const next = new Set(prev)
-      liked ? next.delete(post.id) : next.add(post.id)
-      return next
-    })
+    setLikedPosts(prev => { const n = new Set(prev); liked ? n.delete(post.id) : n.add(post.id); return n })
     setLikeCounts(prev => ({ ...prev, [post.id]: (prev[post.id] ?? post.like_count) + (liked ? -1 : 1) }))
-
     if (liked) {
       await supabase.from('post_likes').delete().eq('post_id', post.id).eq('user_id', userId)
       await supabase.from('posts').update({ like_count: Math.max(0, (likeCounts[post.id] ?? post.like_count) - 1) }).eq('id', post.id)
@@ -242,57 +275,61 @@ function BoardPageInner() {
     }
   }
 
-  // 댓글 등록
+  // ── 댓글 등록 ────────────────────────────────────────────────────────
   const handleCommentSubmit = async () => {
     if (!commentText.trim() || !userId || !selectedPost) return
     setSubmittingComment(true)
     try {
       await supabase.from('post_comments').insert({
-        post_id: selectedPost.id,
-        user_id: userId,
-        content: commentText.trim(),
-        parent_id: null,
-        vehicle_nickname: vehicleNickname,
-        vehicle_model: vehicleModel,
+        post_id: selectedPost.id, user_id: userId,
+        content: commentText.trim(), parent_id: null,
+        vehicle_nickname: vehicleNickname, vehicle_model: vehicleModel,
       })
       setCommentText('')
       await loadComments(selectedPost.id)
-    } finally {
-      setSubmittingComment(false)
-    }
+    } finally { setSubmittingComment(false) }
   }
 
-  // 대댓글 등록
+  // ── 대댓글 등록 ──────────────────────────────────────────────────────
   const handleReplySubmit = async () => {
     if (!replyText.trim() || !userId || !selectedPost || !replyTo) return
     setSubmittingComment(true)
     try {
       await supabase.from('post_comments').insert({
-        post_id: selectedPost.id,
-        user_id: userId,
-        content: replyText.trim(),
-        parent_id: replyTo.id,
-        vehicle_nickname: vehicleNickname,
-        vehicle_model: vehicleModel,
+        post_id: selectedPost.id, user_id: userId,
+        content: replyText.trim(), parent_id: replyTo.id,
+        vehicle_nickname: vehicleNickname, vehicle_model: vehicleModel,
       })
-      setReplyText('')
-      setReplyTo(null)
+      setReplyText(''); setReplyTo(null)
       await loadComments(selectedPost.id)
-    } finally {
-      setSubmittingComment(false)
-    }
+    } finally { setSubmittingComment(false) }
   }
 
-  // 최상위 댓글만
+  // ── 댓글 수정 ────────────────────────────────────────────────────────
+  const handleEditComment = async () => {
+    if (!editingComment || !editCommentText.trim() || !userId) return
+    setSubmittingComment(true)
+    try {
+      await supabase.from('post_comments').update({ content: editCommentText.trim() })
+        .eq('id', editingComment.id).eq('user_id', userId)
+      setEditingComment(null); setEditCommentText('')
+      if (selectedPost) await loadComments(selectedPost.id)
+    } finally { setSubmittingComment(false) }
+  }
+
+  // ── 댓글 삭제 ────────────────────────────────────────────────────────
+  const handleDeleteComment = async (comment: Comment) => {
+    if (!confirm('댓글을 삭제하시겠어요?')) return
+    await supabase.from('post_comments').delete().eq('id', comment.id).eq('user_id', userId!)
+    if (selectedPost) await loadComments(selectedPost.id)
+  }
+
+  // ── 댓글 트리 구조 ────────────────────────────────────────────────────
   const rootComments = comments.filter(c => !c.parent_id)
-  // 대댓글 맵
   const repliesMap: Record<string, Comment[]> = {}
-  comments.forEach(c => {
-    if (c.parent_id) {
-      if (!repliesMap[c.parent_id]) repliesMap[c.parent_id] = []
-      repliesMap[c.parent_id].push(c)
-    }
-  })
+  comments.forEach(c => { if (c.parent_id) { if (!repliesMap[c.parent_id]) repliesMap[c.parent_id] = []; repliesMap[c.parent_id].push(c) } })
+
+  const isMyPost = selectedPost?.user_id === userId
 
   return (
     <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
@@ -300,11 +337,9 @@ function BoardPageInner() {
       <header className="bg-white px-5 pt-12 pb-3 border-b border-gray-100 flex-shrink-0">
         <h1 className="text-xl font-black text-gray-900">게시판</h1>
         <p className="text-sm text-gray-400 mt-0.5">정비 정보와 후기를 공유해요</p>
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
           {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveTab(cat)}
+            <button key={cat} onClick={() => setActiveTab(cat)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 activeTab === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
               }`}
@@ -322,15 +357,13 @@ function BoardPageInner() {
         ) : posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-center px-6">
             <span className="text-5xl">💬</span>
-            <p className="text-base font-bold text-gray-700">아직 게시글이 없어요</p>
+            <p className="text-base font-bold text-gray-700">{activeTab === '내 글' ? '아직 작성한 글이 없어요' : '아직 게시글이 없어요'}</p>
             <p className="text-sm text-gray-400">첫 번째 글을 작성해보세요!</p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {posts.map(post => (
-              <button
-                key={post.id}
-                onClick={() => setSelectedPost(post)}
+              <button key={post.id} onClick={() => setSelectedPost(post)}
                 className="w-full text-left bg-white px-5 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1.5">
@@ -338,13 +371,16 @@ function BoardPageInner() {
                     {post.category}
                   </span>
                   <span className="text-xs text-gray-400">{fmtTimeAgo(post.created_at)}</span>
+                  {post.user_id === userId && <span className="text-[10px] text-primary-500 font-bold ml-auto">내 글</span>}
                 </div>
                 <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-1">{post.title}</p>
                 <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{post.content}</p>
-                {/* 첨부 이미지 썸네일 */}
                 {post.images && post.images.length > 0 && (
-                  <div className="mt-2">
-                    <img src={post.images[0]} alt="" className="w-16 h-16 object-cover rounded-lg border border-gray-100" />
+                  <div className="mt-2 flex gap-1.5">
+                    {post.images.slice(0, 3).map((url, i) => (
+                      <img key={i} src={url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-100" />
+                    ))}
+                    {post.images.length > 3 && <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-500 font-bold">+{post.images.length - 3}</div>}
                   </div>
                 )}
                 <div className="flex items-center gap-2 mt-2">
@@ -360,8 +396,7 @@ function BoardPageInner() {
 
       {/* 글쓰기 FAB */}
       {!showWrite && !selectedPost && (
-        <button
-          onClick={() => setShowWrite(true)}
+        <button onClick={() => openWrite()}
           className="fixed z-10 w-12 h-12 bg-primary-600 text-white rounded-full shadow-lg shadow-primary-200 flex items-center justify-center text-xl hover:bg-primary-700 active:scale-95 transition-all"
           style={{ bottom: '80px', right: 'max(16px, calc(50% - 224px))' }}
         >✏️</button>
@@ -373,19 +408,26 @@ function BoardPageInner() {
       {selectedPost && (
         <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setSelectedPost(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* 헤더 */}
+          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col"
+            onClick={e => e.stopPropagation()}>
+
+            {/* 상세 헤더 */}
             <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${CATEGORY_COLORS[selectedPost.category] ?? 'bg-gray-100 text-gray-600'}`}>
                 {selectedPost.category}
               </span>
-              <button
-                onClick={() => setSelectedPost(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm"
-              >✕</button>
+              <div className="flex items-center gap-2">
+                {isMyPost && (
+                  <>
+                    <button onClick={() => { setSelectedPost(null); openWrite(selectedPost) }}
+                      className="text-xs text-primary-500 font-bold px-2 py-1 rounded-lg hover:bg-primary-50">수정</button>
+                    <button onClick={() => handleDeletePost(selectedPost)}
+                      className="text-xs text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50">삭제</button>
+                  </>
+                )}
+                <button onClick={() => setSelectedPost(null)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
+              </div>
             </div>
 
             {/* 본문 */}
@@ -407,16 +449,12 @@ function BoardPageInner() {
                 </div>
               )}
 
-              {/* 좋아요 버튼 */}
-              <div className="mt-5 flex items-center gap-3">
-                <button
-                  onClick={() => handleLike(selectedPost)}
+              {/* 좋아요 */}
+              <div className="mt-5">
+                <button onClick={() => handleLike(selectedPost)}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                    likedPosts.has(selectedPost.id)
-                      ? 'bg-primary-600 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
+                    likedPosts.has(selectedPost.id) ? 'bg-primary-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}>
                   👍 {likeCounts[selectedPost.id] ?? selectedPost.like_count}
                 </button>
               </div>
@@ -440,18 +478,37 @@ function BoardPageInner() {
                             <span className="text-xs font-semibold text-gray-700">
                               🚗 {authorLabel(comment.vehicle_nickname, comment.vehicle_model)}
                             </span>
-                            <span className="text-[10px] text-gray-400">{fmtTimeAgo(comment.created_at)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-400">{fmtTimeAgo(comment.created_at)}</span>
+                              {comment.user_id === userId && (
+                                <div className="flex gap-1">
+                                  <button onClick={() => { setEditingComment(comment); setEditCommentText(comment.content) }}
+                                    className="text-[10px] text-primary-400 font-bold">수정</button>
+                                  <button onClick={() => handleDeleteComment(comment)}
+                                    className="text-[10px] text-red-400 font-bold">삭제</button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>
+                          {editingComment?.id === comment.id ? (
+                            <div className="flex gap-2 items-end mt-1">
+                              <textarea value={editCommentText} onChange={e => setEditCommentText(e.target.value)}
+                                rows={2} className="flex-1 px-2 py-1.5 rounded-lg border border-primary-200 text-xs resize-none focus:outline-none" />
+                              <div className="flex flex-col gap-1">
+                                <button onClick={handleEditComment} disabled={submittingComment}
+                                  className="px-2 py-1 bg-primary-600 text-white text-[10px] font-bold rounded-lg disabled:opacity-40">저장</button>
+                                <button onClick={() => { setEditingComment(null); setEditCommentText('') }}
+                                  className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-lg">취소</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-700 leading-relaxed">{comment.content}</p>
+                          )}
                           <button
-                            onClick={() => {
-                              setReplyTo(replyTo?.id === comment.id ? null : comment)
-                              setReplyText('')
-                              setTimeout(() => commentInputRef.current?.focus(), 100)
-                            }}
-                            className="mt-1 text-[11px] text-primary-500 font-semibold"
-                          >답글 달기</button>
+                            onClick={() => { setReplyTo(replyTo?.id === comment.id ? null : comment); setReplyText(''); setTimeout(() => commentInputRef.current?.focus(), 100) }}
+                            className="mt-1 text-[11px] text-primary-500 font-semibold">답글 달기</button>
                         </div>
+
                         {/* 대댓글 */}
                         {(repliesMap[comment.id] ?? []).map(reply => (
                           <div key={reply.id} className="ml-4 mt-1.5 bg-blue-50 rounded-xl px-3 py-2.5 border-l-2 border-primary-200">
@@ -459,27 +516,43 @@ function BoardPageInner() {
                               <span className="text-xs font-semibold text-gray-700">
                                 ↩ 🚗 {authorLabel(reply.vehicle_nickname, reply.vehicle_model)}
                               </span>
-                              <span className="text-[10px] text-gray-400">{fmtTimeAgo(reply.created_at)}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-gray-400">{fmtTimeAgo(reply.created_at)}</span>
+                                {reply.user_id === userId && (
+                                  <div className="flex gap-1">
+                                    <button onClick={() => { setEditingComment(reply); setEditCommentText(reply.content) }}
+                                      className="text-[10px] text-primary-400 font-bold">수정</button>
+                                    <button onClick={() => handleDeleteComment(reply)}
+                                      className="text-[10px] text-red-400 font-bold">삭제</button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-700 leading-relaxed">{reply.content}</p>
+                            {editingComment?.id === reply.id ? (
+                              <div className="flex gap-2 items-end mt-1">
+                                <textarea value={editCommentText} onChange={e => setEditCommentText(e.target.value)}
+                                  rows={2} className="flex-1 px-2 py-1.5 rounded-lg border border-primary-200 text-xs resize-none focus:outline-none" />
+                                <div className="flex flex-col gap-1">
+                                  <button onClick={handleEditComment} disabled={submittingComment}
+                                    className="px-2 py-1 bg-primary-600 text-white text-[10px] font-bold rounded-lg disabled:opacity-40">저장</button>
+                                  <button onClick={() => { setEditingComment(null); setEditCommentText('') }}
+                                    className="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded-lg">취소</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-700 leading-relaxed">{reply.content}</p>
+                            )}
                           </div>
                         ))}
+
                         {/* 대댓글 입력 */}
                         {replyTo?.id === comment.id && (
                           <div className="ml-4 mt-1.5 flex gap-2 items-end">
-                            <textarea
-                              ref={commentInputRef}
-                              value={replyText}
-                              onChange={e => setReplyText(e.target.value)}
+                            <textarea ref={commentInputRef} value={replyText} onChange={e => setReplyText(e.target.value)}
                               placeholder={`${authorLabel(comment.vehicle_nickname, comment.vehicle_model)}에게 답글...`}
-                              rows={2}
-                              className="flex-1 px-3 py-2 rounded-xl border border-primary-200 text-xs focus:outline-none focus:border-primary-400 resize-none bg-blue-50"
-                            />
-                            <button
-                              onClick={handleReplySubmit}
-                              disabled={!replyText.trim() || submittingComment}
-                              className="px-3 py-2 bg-primary-600 text-white text-xs font-bold rounded-xl disabled:opacity-40"
-                            >등록</button>
+                              rows={2} className="flex-1 px-3 py-2 rounded-xl border border-primary-200 text-xs focus:outline-none focus:border-primary-400 resize-none bg-blue-50" />
+                            <button onClick={handleReplySubmit} disabled={!replyText.trim() || submittingComment}
+                              className="px-3 py-2 bg-primary-600 text-white text-xs font-bold rounded-xl disabled:opacity-40">등록</button>
                           </div>
                         )}
                       </div>
@@ -491,18 +564,11 @@ function BoardPageInner() {
 
             {/* 댓글 입력 */}
             <div className="px-4 pb-8 pt-3 border-t border-gray-100 flex-shrink-0 flex gap-2 items-end">
-              <textarea
-                value={commentText}
-                onChange={e => setCommentText(e.target.value)}
-                placeholder="댓글을 입력하세요..."
-                rows={2}
-                className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 resize-none"
-              />
-              <button
-                onClick={handleCommentSubmit}
-                disabled={!commentText.trim() || submittingComment}
-                className="px-4 py-2.5 bg-primary-600 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex-shrink-0"
-              >
+              <textarea value={commentText} onChange={e => setCommentText(e.target.value)}
+                placeholder="댓글을 입력하세요..." rows={2}
+                className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 resize-none" />
+              <button onClick={handleCommentSubmit} disabled={!commentText.trim() || submittingComment}
+                className="px-4 py-2.5 bg-primary-600 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex-shrink-0">
                 {submittingComment ? '...' : '등록'}
               </button>
             </div>
@@ -510,91 +576,81 @@ function BoardPageInner() {
         </div>
       )}
 
-      {/* ── 글쓰기 모달 ── */}
+      {/* ── 글쓰기 / 수정 모달 ── */}
       {showWrite && (
-        <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setShowWrite(false)}>
+        <div className="fixed inset-0 z-50 flex flex-col" onClick={closeWrite}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div
-            className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
-              <h2 className="text-lg font-black text-gray-900">글쓰기</h2>
-              <button onClick={() => setShowWrite(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
+              <h2 className="text-lg font-black text-gray-900">{editingPost ? '글 수정' : '글쓰기'}</h2>
+              <button onClick={closeWrite} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {/* 작성자 표시 미리보기 */}
+              {/* 작성자 */}
               <div className="bg-gray-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
                 <span className="text-xs text-gray-400">작성자</span>
-                <span className="text-xs font-semibold text-gray-700">
-                  🚗 {authorLabel(vehicleNickname, vehicleModel)}
-                </span>
+                <span className="text-xs font-semibold text-gray-700">🚗 {authorLabel(vehicleNickname, vehicleModel)}</span>
               </div>
               {/* 카테고리 */}
               <div>
                 <label className="text-xs font-bold text-gray-500 mb-2 block">카테고리</label>
                 <div className="flex gap-2 flex-wrap">
                   {WRITE_CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => setWriteCategory(cat)}
+                    <button key={cat} onClick={() => setWriteCategory(cat)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                         writeCategory === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    >{cat}</button>
+                      }`}>{cat}</button>
                   ))}
                 </div>
               </div>
               {/* 제목 */}
               <div>
                 <label className="text-xs font-bold text-gray-500 mb-2 block">제목 <span className="text-red-500">*</span></label>
-                <input
-                  value={writeTitle}
-                  onChange={e => setWriteTitle(e.target.value)}
-                  placeholder="제목을 입력하세요"
-                  maxLength={100}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400"
-                />
+                <input value={writeTitle} onChange={e => setWriteTitle(e.target.value)}
+                  placeholder="제목을 입력하세요" maxLength={100}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400" />
               </div>
               {/* 내용 */}
               <div>
                 <label className="text-xs font-bold text-gray-500 mb-2 block">내용 <span className="text-red-500">*</span></label>
-                <textarea
-                  value={writeContent}
-                  onChange={e => setWriteContent(e.target.value)}
-                  placeholder="내용을 입력하세요"
-                  rows={6}
-                  maxLength={2000}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 resize-none"
-                />
+                <textarea value={writeContent} onChange={e => setWriteContent(e.target.value)}
+                  placeholder="내용을 입력하세요" rows={6} maxLength={2000}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 resize-none" />
                 <p className="text-right text-xs text-gray-400 mt-1">{writeContent.length}/2000</p>
               </div>
-              {/* 첨부 이미지 미리보기 */}
-              {writeImages.length > 0 && (
-                <div>
-                  <label className="text-xs font-bold text-gray-500 mb-2 block">첨부 이미지</label>
-                  <div className="space-y-2">
+              {/* 이미지 첨부 */}
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-2 block">이미지 첨부</label>
+                <input ref={fileInputRef} type="file" accept="image/*" multiple className="hidden"
+                  onChange={e => handleImageUpload(e.target.files)} />
+                <button onClick={() => fileInputRef.current?.click()} disabled={imageUploading}
+                  className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-500 hover:border-primary-300 hover:text-primary-500 transition-colors disabled:opacity-50 w-full justify-center">
+                  {imageUploading ? (
+                    <><span className="animate-spin">⟳</span> 업로드 중...</>
+                  ) : (
+                    <>📷 사진 추가하기</>
+                  )}
+                </button>
+                {/* 이미지 미리보기 */}
+                {writeImages.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
                     {writeImages.map((url, i) => (
-                      <div key={i} className="relative">
-                        <img src={url} alt="첨부" className="w-full rounded-xl border border-gray-100" />
-                        <button
-                          onClick={() => setWriteImages(prev => prev.filter((_, j) => j !== i))}
-                          className="absolute top-2 right-2 w-6 h-6 bg-black/50 text-white rounded-full text-xs flex items-center justify-center"
-                        >✕</button>
+                      <div key={i} className="relative aspect-square">
+                        <img src={url} alt="첨부" className="w-full h-full object-cover rounded-xl border border-gray-100" />
+                        <button onClick={() => setWriteImages(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white rounded-full text-[10px] flex items-center justify-center">✕</button>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <div className="px-5 pb-8 pt-3 border-t border-gray-100 flex-shrink-0">
-              <button
-                onClick={handleSubmit}
-                disabled={!writeTitle.trim() || !writeContent.trim() || submitting}
-                className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
-              >
+              <button onClick={handleSubmit} disabled={!writeTitle.trim() || !writeContent.trim() || submitting}
+                className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
                 {submitting ? <span className="animate-spin">⟳</span> : null}
-                등록하기
+                {editingPost ? '수정 완료' : '등록하기'}
               </button>
             </div>
           </div>
