@@ -265,30 +265,36 @@ export default function DiagnosisResultCard({
 
       {/* 예상 수리 비용 */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <h4 className="font-bold text-gray-900 text-sm mb-3">표준 정비 견적</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="font-bold text-gray-900 text-sm">공식 서비스 센터 예상견적</h4>
+          <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">블루핸즈·오토큐 기준</span>
+        </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center text-xs">🔩</span>
-              <span>부품비</span>
+              <span>부품비 (예상)</span>
             </div>
             <span className="font-semibold text-gray-800">{formatKRW(result.cost.parts)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center text-xs">🔧</span>
-              <div>
-                <span>공임비 (예상)</span>
-                {/* P2: 공임 시간 근거 추가 — 바가지 불안 제거 */}
-                <span className="text-[10px] text-gray-400 ml-1">약 3~5시간 작업 기준</span>
-              </div>
+              <span>공임비 (예상)</span>
             </div>
             <span className="font-semibold text-gray-800">{formatKRW(result.cost.labor)}</span>
           </div>
           <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
-            <span className="font-bold text-gray-900">최종 예상 견적</span>
+            <span className="font-bold text-gray-900">공식센터 예상 합계</span>
             <span className="text-xl font-black text-primary-600">{formatKRW(result.cost.total)}</span>
           </div>
+        </div>
+        {/* 독립 정비소 절감 안내 */}
+        <div className="mt-3 flex items-start gap-1.5 p-2.5 bg-primary-50 rounded-xl border border-primary-100">
+          <span className="text-primary-500 text-xs mt-0.5 flex-shrink-0">💡</span>
+          <p className="text-xs text-primary-700 leading-relaxed">
+            독립 정비소 견적 비교 시 <span className="font-semibold">30~50% 절감</span> 가능합니다. 아래에서 무료로 비교 견적을 받아보세요.
+          </p>
         </div>
         {result.cost.note && (
           <p className="text-xs text-gray-400 mt-2 leading-relaxed">* {result.cost.note}</p>
