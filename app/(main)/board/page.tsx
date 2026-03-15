@@ -80,7 +80,7 @@ export default function BoardPage() {
         setPosts([])
       } else {
         // 작성자 이름 조회
-        const userIds = [...new Set((data ?? []).map((p: Post) => p.user_id))]
+        const userIds = Array.from(new Set((data ?? []).map((p: Post) => p.user_id)))
         let nameMap: Record<string, string> = {}
         if (userIds.length > 0) {
           const { data: users } = await supabase
