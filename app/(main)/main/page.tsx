@@ -390,6 +390,17 @@ export default function MainPage() {
     }
   }
 
+  // ── 차고 드래그 핸들러 (훅은 조건부 return 전에 선언) ──────────────
+  const handleGarageTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleGarageTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
+    if (garageOpen && deltaY > 50) setGarageOpen(false)
+    else if (!garageOpen && deltaY < -50) setGarageOpen(true)
+  }, [garageOpen])
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="w-10 h-10 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
@@ -411,17 +422,6 @@ export default function MainPage() {
       setNotifs(prev => prev.map(n => ({ ...n, is_read: true })))
     }
   }
-
-  // ── 차고 드래그 핸들러 ─────────────────────────────────────────────
-  const handleGarageTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartY.current = e.touches[0].clientY
-  }, [])
-
-  const handleGarageTouchEnd = useCallback((e: React.TouchEvent) => {
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current
-    if (garageOpen && deltaY > 50) setGarageOpen(false)
-    else if (!garageOpen && deltaY < -50) setGarageOpen(true)
-  }, [garageOpen])
 
   // 뒤로가기 버튼 표시 조건: 질문 단계이고 체크포인트가 있고 로딩 중 아닐 때 항상 표시
   const showBackButton = phase === 'questioning' && checkpoints.length > 0 && !isLoading
