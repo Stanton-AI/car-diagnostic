@@ -51,13 +51,19 @@ export async function POST(
 - 합계가 명시된 경우 그 값을 finalTotal로 사용
 - 부품비와 공임비가 구분된 경우 각각 partsTotal/laborTotal로 분리`
 
+    // URL → base64 변환 (SDK가 url 타입 미지원)
+    const imgRes = await fetch(imageUrl)
+    const imgBuffer = await imgRes.arrayBuffer()
+    const imgBase64 = Buffer.from(imgBuffer).toString('base64')
+    const imgMediaType = (imgRes.headers.get('content-type') ?? 'image/jpeg') as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+
     const response = await getClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       messages: [{
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'url', url: imageUrl } },
+          { type: 'image', source: { type: 'base64', media_type: imgMediaType, data: imgBase64 } },
           { type: 'text', text: prompt },
         ],
       }],
