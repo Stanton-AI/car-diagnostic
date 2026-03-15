@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS post_likes (
 
 ALTER TABLE post_likes ENABLE ROW LEVEL SECURITY;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'likes_select' AND tablename = 'post_likes') THEN
     EXECUTE 'CREATE POLICY likes_select ON post_likes FOR SELECT USING (true)';
@@ -26,4 +26,4 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'likes_delete' AND tablename = 'post_likes') THEN
     EXECUTE 'CREATE POLICY likes_delete ON post_likes FOR DELETE USING (auth.uid() = user_id)';
   END IF;
-END $;
+END $$;

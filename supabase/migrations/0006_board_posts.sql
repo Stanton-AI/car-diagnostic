@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS post_comments (
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE post_comments ENABLE ROW LEVEL SECURITY;
 
-DO $
+DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'posts_select' AND tablename = 'posts') THEN
     EXECUTE 'CREATE POLICY posts_select ON posts FOR SELECT USING (true)';
@@ -47,4 +47,4 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'comments_delete' AND tablename = 'post_comments') THEN
     EXECUTE 'CREATE POLICY comments_delete ON post_comments FOR DELETE USING (auth.uid() = user_id)';
   END IF;
-END $;
+END $$;
