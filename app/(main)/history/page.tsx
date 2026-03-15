@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { getOrCreateGuestSessionId, formatDate, formatKRW, urgencyLabel } from '@/lib/utils'
 import { REQUEST_STATUS_LABEL, formatDeadline } from '@/lib/marketplace'
+import BottomNav from '@/components/nav/BottomNav'
 
 interface ConvoSummary {
   id: string
@@ -313,6 +314,7 @@ export default function HistoryPage() {
           )
         )}
       </div>
+      <BottomNav />
     </div>
   )
 }

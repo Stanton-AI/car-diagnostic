@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { UserProfile } from '@/types'
+import BottomNav from '@/components/nav/BottomNav'
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -143,6 +144,7 @@ export default function ProfilePage() {
           {loggingOut ? '로그아웃 중...' : '로그아웃'}
         </button>
       </div>
+      <BottomNav />
     </div>
   )
 }
