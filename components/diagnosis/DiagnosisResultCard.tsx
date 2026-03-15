@@ -255,11 +255,15 @@ export default function DiagnosisResultCard({
       {result.urgency !== 'LOW' && (
         <button
           onClick={() => router.push(`/repair/request/${conversationId}`)}
-          className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex items-center justify-center gap-2"
+          className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex flex-col items-center justify-center gap-0.5"
         >
-          <span>🔧</span>
-          <span>무료 수리 견적 받기</span>
-          <span className="text-xs opacity-75 font-normal ml-1">여러 정비소 비교</span>
+          <div className="flex items-center gap-2">
+            <span>🔧</span>
+            <span>무료 견적 받기</span>
+          </div>
+          <span className="text-xs font-normal opacity-90">
+            최대 {formatKRW(Math.round(result.cost.total * 0.5 / 10000) * 10000)} 아낄 수 있어요
+          </span>
         </button>
       )}
 
@@ -288,13 +292,6 @@ export default function DiagnosisResultCard({
             <span className="text-xl font-black text-primary-600">{formatKRW(result.cost.total)}</span>
           </div>
         </div>
-        {/* 독립 정비소 절감 안내 */}
-        <div className="mt-3 flex items-start gap-1.5 p-2.5 bg-primary-50 rounded-xl border border-primary-100">
-          <span className="text-primary-500 text-xs mt-0.5 flex-shrink-0">💡</span>
-          <p className="text-xs text-primary-700 leading-relaxed">
-            독립 정비소 견적 비교 시 <span className="font-semibold">30~50% 절감</span> 가능합니다. 아래에서 무료로 비교 견적을 받아보세요.
-          </p>
-        </div>
         {result.cost.note && (
           <p className="text-xs text-gray-400 mt-2 leading-relaxed">* {result.cost.note}</p>
         )}
@@ -320,10 +317,15 @@ export default function DiagnosisResultCard({
       {result.urgency === 'LOW' && (
         <button
           onClick={() => router.push(`/repair/request/${conversationId}`)}
-          className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-0.5"
         >
-          <span>🔧</span>
-          <span>무료 수리 견적 받기</span>
+          <div className="flex items-center gap-2">
+            <span>🔧</span>
+            <span>무료 견적 받기</span>
+          </div>
+          <span className="text-xs font-normal opacity-90">
+            최대 {formatKRW(Math.round(result.cost.total * 0.5 / 10000) * 10000)} 아낄 수 있어요
+          </span>
         </button>
       )}
 
