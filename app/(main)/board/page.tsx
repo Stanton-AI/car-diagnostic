@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import BottomNav from '@/components/nav/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -60,7 +60,7 @@ function authorLabel(nick?: string | null, model?: string | null) {
   return '익명'
 }
 
-export default function BoardPage() {
+function BoardPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()
@@ -601,5 +601,17 @@ export default function BoardPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function BoardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+      </div>
+    }>
+      <BoardPageInner />
+    </Suspense>
   )
 }
