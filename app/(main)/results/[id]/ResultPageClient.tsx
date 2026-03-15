@@ -1,6 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import type { DiagnosisResult, ChatMessage } from '@/types'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
@@ -55,6 +55,8 @@ export default function ResultPageClient({ conversation }: Props) {
   const result = conversation.self_check_result ?? conversation.final_result
   const [showChat, setShowChat] = useState(false)
   const [repairRequest, setRepairRequest] = useState<{ id: string; status: string; bid_count: number } | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -82,6 +84,82 @@ export default function ResultPageClient({ conversation }: Props) {
   const displayMessages = (conversation.messages ?? []).filter(
     m => m.content?.trim() && m.type !== 'result' && m.type !== 're_diagnosis'
   )
+
+  // 게시판 공유 (html2canvas 캡쳐 → Supabase Storage 업로드 → 게시판 글쓰기)
+  const handleShareToBoard = async () => {
+    if (!cardRef.current) return
+    setSharing(true)
+    try {
+      // html2canvas 동적 import
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#f8f9fa',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+
+      // canvas → blob
+      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/png'))
+      if (!blob) throw new Error('캡쳐 실패')
+
+      // Supabase Storage 업로드
+      const filename = `diagnosis-share/${conversation.id}-${Date.now()}.png`
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from('repair-files')
+        .upload(filename, blob, { contentType: 'image/png', upsert: true })
+
+      let imageUrl = ''
+      if (!uploadErr && uploadData) {
+        const { data: urlData } = supabase.storage.from('repair-files').getPublicUrl(filename)
+        imageUrl = urlData.publicUrl
+      }
+
+      // 진단 요약 텍스트 생성
+      const topCause = result.causes?.[0]
+      const titleText = `🔧 진단 결과 공유 — ${topCause?.name ?? conversation.initial_symptom}`
+      const contentLines: string[] = [
+        `증상: ${conversation.initial_symptom}`,
+        '',
+      ]
+      if (result.causes && result.causes.length > 0) {
+        contentLines.push('📋 주요 원인:')
+        result.causes.slice(0, 3).forEach((c, i) => {
+          contentLines.push(`${i + 1}. ${c.name} (가능성 ${c.probability ?? '?'}%)`)
+        })
+        contentLines.push('')
+      }
+      if (result.cost?.total) {
+        contentLines.push(`💰 예상 수리비: ${result.cost.total.toLocaleString()}원`)
+        contentLines.push('')
+      }
+      contentLines.push('— MIKY 자동차 AI 진단')
+
+      const params = new URLSearchParams({
+        openWrite: '1',
+        title: titleText,
+        content: contentLines.join('\n'),
+        category: '정비후기',
+        ...(imageUrl ? { imageUrl } : {}),
+      })
+
+      router.push(`/board?${params.toString()}`)
+    } catch (err) {
+      console.error('[share-to-board]', err)
+      // 이미지 없이도 이동
+      const topCause = result.causes?.[0]
+      const titleText = `🔧 진단 결과 공유 — ${topCause?.name ?? conversation.initial_symptom}`
+      const params = new URLSearchParams({
+        openWrite: '1',
+        title: titleText,
+        content: `증상: ${conversation.initial_symptom}`,
+        category: '정비후기',
+      })
+      router.push(`/board?${params.toString()}`)
+    } finally {
+      setSharing(false)
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-50">
@@ -145,11 +223,26 @@ export default function ResultPageClient({ conversation }: Props) {
           )
         })()}
 
-        {/* 진단 결과 카드 */}
-        <DiagnosisResultCard
-          result={result}
-          conversationId={conversation.id}
-        />
+        {/* 진단 결과 카드 (캡쳐 대상) */}
+        <div ref={cardRef}>
+          <DiagnosisResultCard
+            result={result}
+            conversationId={conversation.id}
+          />
+        </div>
+
+        {/* 게시판 공유 버튼 */}
+        <button
+          onClick={handleShareToBoard}
+          disabled={sharing}
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-primary-200 bg-primary-50 text-primary-700 font-bold text-sm hover:bg-primary-100 transition-colors disabled:opacity-50"
+        >
+          {sharing ? (
+            <><span className="animate-spin inline-block">⟳</span> 캡쳐 중...</>
+          ) : (
+            <>💬 이 진단결과 게시판에 공유하기</>
+          )}
+        </button>
 
         {/* 대화 내역 섹션 */}
         {displayMessages.length > 0 && (
