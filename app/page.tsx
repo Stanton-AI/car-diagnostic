@@ -65,10 +65,10 @@ export default function HomePage() {
       {/* 상단 로고 + 파트너 링크 */}
       <div className="relative z-10 flex items-center justify-between px-6 pt-14">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-900">
-            <span className="text-white text-sm font-black">M</span>
+          <div className="w-9 h-9 rounded-xl overflow-hidden shadow-lg shadow-primary-900">
+            <img src="/logo.png" alt="정비톡" className="w-full h-full object-cover" />
           </div>
-          <span className="text-white font-black text-lg tracking-tight">MIKY</span>
+          <span className="text-white font-black text-lg tracking-tight">정비톡</span>
         </div>
         {/* 파트너 진입점 */}
         <button
@@ -88,9 +88,9 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-3xl font-black text-white leading-tight mb-4">
-          내 차의 문제,<br />
-          <span className="text-primary-400">AI가 먼저</span><br />
-          알려드립니다
+          내 차 증상,<br />
+          <span className="text-primary-400">3분이면</span><br />
+          알 수 있어요
         </h1>
 
         <p className="text-gray-400 text-sm leading-relaxed mb-8">
@@ -102,9 +102,9 @@ export default function HomePage() {
         {/* 특장점 3가지 */}
         <div className="space-y-3 mb-10">
           {[
-            { icon: '🔍', title: '원인 확률 분석', desc: 'AI가 증상으로 가능한 원인을 확률순으로 분석' },
-            { icon: '💰', title: '수리비 사전 파악', desc: '부품비·공임비 포함 예상 견적 즉시 산출' },
-            { icon: '🏪', title: '정비소 견적 비교', desc: '진단 결과로 여러 파트너 정비소 견적을 한번에 비교' },
+            { icon: '🔍', title: '원인 분석', desc: '증상으로 가능한 원인을 가능성 높은 순서로 알려드려요' },
+            { icon: '💰', title: '예상 수리비 확인', desc: '부품비랑 공임비까지 미리 파악하세요' },
+            { icon: '🏪', title: '정비소 견적 비교', desc: '진단 결과로 근처 정비소 견적을 한번에 받아보세요' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3.5">
               <span className="text-2xl flex-shrink-0">{item.icon}</span>
