@@ -267,20 +267,19 @@ export default function DiagnosisResultCard({
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-bold text-gray-900 text-sm">공식 서비스 센터 예상견적</h4>
-          <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">블루핸즈·오토큐 기준</span>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center text-xs">🔩</span>
-              <span>부품비 (예상)</span>
+              <span>부품비</span>
             </div>
             <span className="font-semibold text-gray-800">{formatKRW(result.cost.parts)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2 text-gray-600">
               <span className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center text-xs">🔧</span>
-              <span>공임비 (예상)</span>
+              <span>공임비</span>
             </div>
             <span className="font-semibold text-gray-800">{formatKRW(result.cost.labor)}</span>
           </div>
@@ -299,6 +298,10 @@ export default function DiagnosisResultCard({
         {result.cost.note && (
           <p className="text-xs text-gray-400 mt-2 leading-relaxed">* {result.cost.note}</p>
         )}
+        {/* 보호 문구 각주 */}
+        <p className="text-[11px] text-gray-400 mt-2 leading-relaxed">
+          ※ AI가 증상 기반으로 추정한 참고 견적입니다. 실제 금액은 차량 상태·지역·시기에 따라 다를 수 있습니다.
+        </p>
 
         {/* 재진단 시 비용 변동 안내 */}
         {isRediagnosis && (
