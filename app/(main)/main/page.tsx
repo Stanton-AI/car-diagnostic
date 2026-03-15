@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import BottomNav from '@/components/nav/BottomNav'
 
 // ── 알림 타입 ────────────────────────────────────────────────────────────
 interface NotifRow {
@@ -178,6 +179,10 @@ export default function MainPage() {
   const [notifs, setNotifs] = useState<NotifRow[]>([])
   const [showNotif, setShowNotif] = useState(false)
 
+  // 차고 패널 드래그 상태
+  const [garageOpen, setGarageOpen] = useState(true)
+  const touchStartY = useRef(0)
+
   // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -203,7 +208,7 @@ export default function MainPage() {
       setLoading(false)
       setMessages([{
         id: uuidv4(), role: 'assistant', type: 'text',
-        content: '안녕하세요! MIKY 자동차 진단 AI입니다. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
+        content: '안녕하세요! 저는 미키예요. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
         timestamp: new Date().toISOString(),
       }])
     }
@@ -407,6 +412,17 @@ export default function MainPage() {
     }
   }
 
+  // ── 차고 드래그 핸들러 ─────────────────────────────────────────────
+  const handleGarageTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleGarageTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
+    if (garageOpen && deltaY > 50) setGarageOpen(false)
+    else if (!garageOpen && deltaY < -50) setGarageOpen(true)
+  }, [garageOpen])
+
   // 뒤로가기 버튼 표시 조건: 질문 단계이고 체크포인트가 있고 로딩 중 아닐 때 항상 표시
   const showBackButton = phase === 'questioning' && checkpoints.length > 0 && !isLoading
 
@@ -422,8 +438,11 @@ export default function MainPage() {
       {/* ── 헤더 ── */}
       <header className="bg-white px-5 pt-12 pb-4 flex items-start justify-between flex-shrink-0 border-b border-gray-100">
         <div>
-          <h1 className="text-xl font-black text-gray-900">마이키</h1>
-          <p className="text-sm text-gray-500 mt-0.5 italic">"차가 이상하다면, 제가 한번 봐드릴게요"</p>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="정비톡" className="w-7 h-7 rounded-lg object-contain" />
+            <h1 className="text-xl font-black text-gray-900">정비톡</h1>
+          </div>
+          <p className="text-sm text-gray-500 mt-0.5">"내 차 증상, 3분이면 알 수 있어요"</p>
         </div>
         <div className="flex items-center gap-2">
           {/* 알림 벨 */}
@@ -451,33 +470,70 @@ export default function MainPage() {
         </div>
       </header>
 
-      {/* ── 차량 카드 ── */}
-      <div className="px-4 pt-4 flex-shrink-0">
-        {vehicle ? (
-          <button onClick={() => setShowEditModal(true)}
-            className="w-full text-left relative bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 text-white overflow-hidden shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform">
-            {fuelLabel && <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">{fuelLabel}</div>}
-            <div className="absolute bottom-4 right-4 bg-white/20 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-              <span className="text-[10px]">✏️</span><span className="text-[11px] font-semibold">수정</span>
+      {/* ── 차량 카드 (드래그 차고) ── */}
+      <div className="flex-shrink-0">
+        {/* 차고 콘텐츠 — 열릴 때만 표시 */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            garageOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <div className="px-4 pt-4">
+            {vehicle ? (
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="w-full text-left relative bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 text-white overflow-hidden shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
+              >
+                {fuelLabel && (
+                  <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">{fuelLabel}</div>
+                )}
+                <div className="absolute bottom-4 right-4 bg-white/20 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <span className="text-[10px]">✏️</span><span className="text-[11px] font-semibold">수정</span>
+                </div>
+                <p className="text-white/70 text-xs mb-1 font-medium">
+                  {vehicle.nickname ? `🚗 ${vehicle.nickname}의 차고` : vehicle.maker}
+                </p>
+                <h2 className="text-2xl font-black mb-1">{vehicle.model}</h2>
+                <p className="text-white/70 text-sm">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</p>
+              </button>
+            ) : (
+              <Link href="/vehicles/new" className="block bg-white rounded-3xl p-5 border-2 border-dashed border-primary-200 text-center hover:border-primary-400 transition-colors">
+                <span className="text-3xl mb-2 block">🚗</span>
+                <p className="font-semibold text-gray-700 text-sm">차량 정보 등록하기</p>
+                <p className="text-xs text-gray-400 mt-1">등록 시 진단 정확도가 올라가요</p>
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {/* 드래그 핸들 바 */}
+        <div
+          onTouchStart={handleGarageTouchStart}
+          onTouchEnd={handleGarageTouchEnd}
+          onClick={() => setGarageOpen(v => !v)}
+          className="flex flex-col items-center justify-center gap-1 py-2 cursor-pointer select-none"
+        >
+          {/* 접혔을 때 미니 차량 정보 */}
+          {!garageOpen && vehicle && (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-bold text-gray-600">🚗 {vehicle.nickname || vehicle.model}</span>
+              <span className="text-xs text-gray-400">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</span>
             </div>
-            <p className="text-white/70 text-xs mb-1 font-medium">{vehicle.nickname ? `🚗 ${vehicle.nickname}의 차고` : vehicle.maker}</p>
-            <h2 className="text-2xl font-black mb-1">{vehicle.model}</h2>
-            <p className="text-white/70 text-sm">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</p>
-          </button>
-        ) : (
-          <Link href="/vehicles/new" className="block bg-white rounded-3xl p-5 border-2 border-dashed border-primary-200 text-center hover:border-primary-400 transition-colors">
-            <span className="text-3xl mb-2 block">🚗</span>
-            <p className="font-semibold text-gray-700 text-sm">차량 정보 등록하기</p>
-            <p className="text-xs text-gray-400 mt-1">등록 시 진단 정확도가 올라가요</p>
-          </Link>
-        )}
+          )}
+          {/* 드래그 인디케이터 */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-8 h-1 bg-gray-300 rounded-full" />
+            <span className="text-[10px] text-gray-400">{garageOpen ? '▲ 차고 숨기기' : '▼ 차고 열기'}</span>
+            <div className="w-8 h-1 bg-gray-300 rounded-full" />
+          </div>
+        </div>
       </div>
 
       {/* ── 채팅 영역 ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 mt-3">
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="text-primary-600">✦</span>
-          <h3 className="font-bold text-gray-900 text-sm">AI 정비 어드바이저</h3>
+          <h3 className="font-bold text-gray-900 text-sm">미키와 상담하기</h3>
         </div>
 
         {/* 메시지 목록 */}
@@ -764,6 +820,8 @@ export default function MainPage() {
           </div>
         </div>
       )}
+
+      <BottomNav />
     </div>
   )
 }
