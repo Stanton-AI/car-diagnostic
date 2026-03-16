@@ -16,8 +16,12 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleSend = () => {
-    if (!text.trim() || disabled) return
-    onSend(text.trim())
+    if (disabled) return
+    const hasText = text.trim().length > 0
+    const hasImage = uploadedImages.length > 0
+    if (!hasText && !hasImage) return
+    // 이미지만 있고 텍스트 없으면 기본 문구로 전송
+    onSend(hasText ? text.trim() : '이미지를 첨부했습니다.')
     setText('')
   }
 
@@ -107,7 +111,7 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
         {/* 전송 버튼 */}
         <button
           onClick={handleSend}
-          disabled={!text.trim() || disabled}
+          disabled={(!text.trim() && uploadedImages.length === 0) || disabled}
           className="w-10 h-10 flex items-center justify-center rounded-full bg-primary-600 text-white flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors active:scale-95"
           aria-label="전송"
         >
