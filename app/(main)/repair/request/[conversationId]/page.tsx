@@ -9,6 +9,9 @@ interface ConvSummary {
   symptom_summary: string
   diagnosis_category: string | null
   urgency_level: string | null
+  cost_total: number
+  cost_parts: number
+  cost_labor: number
   dealer_parts_min: number | null
   dealer_parts_max: number | null
   dealer_labor_min: number | null
@@ -85,6 +88,9 @@ export default function RepairRequestPage() {
         symptom_summary: conv.initial_symptom,
         diagnosis_category: conv.category ?? null,
         urgency_level: conv.urgency ?? result?.urgency ?? null,
+        cost_total: result?.cost?.total ?? 0,
+        cost_parts: result?.cost?.parts ?? 0,
+        cost_labor: result?.cost?.labor ?? 0,
         dealer_parts_min: dealerParts.min,
         dealer_parts_max: dealerParts.max,
         dealer_labor_min: dealerLabor.min,
@@ -140,6 +146,8 @@ export default function RepairRequestPage() {
   )
 
   const dealerTotal = conv ? (conv.dealer_parts_max ?? 0) + (conv.dealer_labor_max ?? 0) : 0
+  const costTotal = conv?.cost_total ?? 0
+  const maxSavings = Math.round(costTotal * 0.5 / 10000) * 10000
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-50">
@@ -154,16 +162,20 @@ export default function RepairRequestPage() {
 
       <div className="px-4 py-4 space-y-4 pb-32">
 
-        {/* 딜러 기준가 앵커 */}
-        {dealerTotal > 0 && (
+        {/* 공식 서비스센터 기준가 앵커 */}
+        {costTotal > 0 && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
             <p className="text-xs text-blue-500 font-semibold mb-1">🏢 공식 서비스센터 기준 예상 수리비</p>
-            <p className="text-2xl font-black text-blue-800">
-              {formatKRW((conv?.dealer_parts_min ?? 0) + (conv?.dealer_labor_min ?? 0))} ~{' '}
-              {formatKRW(dealerTotal)}
-            </p>
-            <p className="text-xs text-blue-400 mt-1">
-              견적을 통해 최대 {formatKRW(Math.round(dealerTotal * 0.5 / 10000) * 10000)} 저렴하게 고치세요
+            <div className="flex items-baseline gap-3 mb-1">
+              <p className="text-2xl font-black text-blue-800">{formatKRW(costTotal)}</p>
+              {(conv?.cost_parts ?? 0) > 0 && (
+                <p className="text-xs text-blue-400">
+                  부품비 {formatKRW(conv?.cost_parts ?? 0)} + 공임비 {formatKRW(conv?.cost_labor ?? 0)}
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-blue-400">
+              견적을 통해 최대 {formatKRW(maxSavings)} 저렴하게 고치세요
             </p>
           </div>
         )}
