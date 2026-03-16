@@ -540,7 +540,7 @@ export default function RepairStatusPage() {
             {dealerTotal > 0 && (
               <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500">제조사 대리점 기준가</p>
+                  <p className="text-xs text-gray-500">공식 서비스센터 기준가</p>
                   <p className="text-sm font-bold text-gray-700 line-through">
                     {formatKRW(request.dealerTotalMin ?? 0)} ~ {formatKRW(dealerTotal)}
                   </p>
@@ -549,11 +549,18 @@ export default function RepairStatusPage() {
             )}
 
             {bids.length === 0 ? (
-              <div className="bg-white rounded-2xl p-8 border border-gray-100 text-center">
-                <p className="text-4xl mb-3">⏳</p>
-                <p className="font-bold text-gray-700">아직 입찰이 없습니다</p>
-                <p className="text-sm text-gray-400 mt-1">파트너 정비소들이 견적을 준비 중입니다</p>
-                <p className="text-xs text-gray-300 mt-3">마감까지 {formatDeadline(request.bidDeadline)}</p>
+              <div className="bg-gradient-to-br from-primary-50 to-blue-50 rounded-2xl p-6 border border-primary-100 text-center">
+                <p className="text-4xl mb-3">🛠️</p>
+                <p className="font-bold text-gray-800">파트너 정비소 입점 준비 중이에요</p>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                  서비스 지역 내 정비소를 모집하고 있어요.<br />
+                  입점 완료 시 바로 알림을 보내드릴게요!
+                </p>
+                <div className="mt-4 inline-flex items-center gap-1.5 bg-primary-600 text-white text-xs font-bold px-4 py-2.5 rounded-full">
+                  <span>🔔</span>
+                  <span>알림 신청 완료</span>
+                </div>
+                <p className="text-xs text-gray-300 mt-4">견적 요청이 접수되었습니다. 정비소 오픈 시 연락드릴게요.</p>
               </div>
             ) : (
               <>

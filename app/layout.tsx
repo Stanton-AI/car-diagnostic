@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import FeedbackButton from '@/components/shared/FeedbackButton'
 
 export const metadata: Metadata = {
   title: 'MIKY — AI 자동차 진단',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="min-h-screen max-w-[480px] mx-auto bg-white shadow-xl relative">
           {children}
+          <FeedbackButton />
         </div>
       </body>
     </html>
