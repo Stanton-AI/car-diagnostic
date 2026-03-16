@@ -42,7 +42,7 @@ const CONFIDENCE_LOW = 50
 export async function POST(req: NextRequest) {
   try {
     const body: DiagnoseRequest = await req.json()
-    const { conversationId, vehicleInfo, messages, symptomImages, isReDiagnosis } = body
+    const { conversationId, vehicleInfo, messages, symptomImages, symptomImagesB64, isReDiagnosis } = body
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -83,8 +83,16 @@ export async function POST(req: NextRequest) {
     const answeredCount = getAnsweredCount(messages)
     const hasResult = messages.some(m => m.type === 'result')
 
+    // 이미지만 첨부한 경우 Q&A 건너뛰고 바로 진단
+    const imageOnlySymptom = (symptomImagesB64?.length ?? 0) > 0 && answeredCount === 0 &&
+      (!symptomText || symptomText === '이미지를 첨부했습니다.')
+
+    console.log('[diagnose] symptomImagesB64 count:', symptomImagesB64?.length ?? 0,
+      '| imageOnlySymptom:', imageOnlySymptom,
+      '| symptomText:', symptomText?.slice(0, 30))
+
     // ── 역질문 단계 (재진단/결과 없는 경우만) ──────────────────────────────
-    if (!hasResult && !isReDiagnosis) {
+    if (!hasResult && !isReDiagnosis && !imageOnlySymptom) {
       const forceFinish = shouldForceFinish(messages, answeredCount)
 
       if (!forceFinish && answeredCount < MAX_QUESTIONS) {
@@ -95,6 +103,7 @@ export async function POST(req: NextRequest) {
           vehicleInfo,
           existingQAs,
           answeredCount,
+          symptomImagesB64,
         )
 
         // AI가 계통 좁히기에 의미 있는 질문이 있다고 판단한 경우에만 질문
@@ -137,8 +146,7 @@ export async function POST(req: NextRequest) {
     const repairCostsCtx = formatRepairCostsContext(repairCosts)
 
     // ── 최종 진단 실행 ──────────────────────────────────────────────────────
-    // v1 route는 symptomImages가 string[]이므로 b64 변환 불필요 (이미지 없이 진단)
-    const result = await requestDiagnosis(messages, vehicleInfo, undefined, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
+    const result = await requestDiagnosis(messages, vehicleInfo, symptomImagesB64, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
 
     // ── 결과 저장 + 임베딩 생성 ─────────────────────────────────────────────
     const guestSessionId = req.headers.get('x-guest-session-id')

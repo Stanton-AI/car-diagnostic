@@ -137,6 +137,27 @@ function VehicleEditModal({ vehicle, onClose, onSave }: { vehicle: any; onClose:
 }
 
 // ── 메인 페이지 ──────────────────────────────────────────────────────────
+// ── 이미지 리사이즈 + base64 인코딩 (canvas 사용) ────────────────────────
+function resizeAndEncodeImage(file: File, maxPx = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1])
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 export default function MainPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -155,6 +176,7 @@ export default function MainPage() {
   const [conversationId] = useState(() => uuidv4())
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploadedImagesB64, setUploadedImagesB64] = useState<Array<{data: string; mediaType: string}>>([])
 
   // 차량 정보 (이번 대화에 사용할 차량 정보)
   const [activeVehicleInfo, setActiveVehicleInfo] = useState<any>(null)
@@ -223,7 +245,16 @@ export default function MainPage() {
   const handleImageUpload = async (files: File[]) => {
     if (!authUser) return []
     const urls: string[] = []
+    const b64List: Array<{data: string; mediaType: string}> = []
     for (const file of files.slice(0, 3)) {
+      // 1) canvas로 리사이즈 후 base64 인코딩 (Claude Vision용)
+      try {
+        const b64 = await resizeAndEncodeImage(file, 1024)
+        b64List.push({ data: b64, mediaType: 'image/jpeg' })
+      } catch (e) {
+        console.warn('Image encode failed:', e)
+      }
+      // 2) Supabase 저장 (기록용)
       const path = `${authUser.id}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
       const { data, error } = await supabase.storage.from('symptom-images').upload(path, file)
       if (!error && data) {
@@ -232,6 +263,7 @@ export default function MainPage() {
       }
     }
     setUploadedImages(prev => [...prev, ...urls].slice(0, 3))
+    setUploadedImagesB64(prev => [...prev, ...b64List].slice(0, 3))
     return urls
   }
 
@@ -345,7 +377,7 @@ export default function MainPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId, vehicleInfo: activeVehicleInfo,
-          messages: newMessages, symptomImages: uploadedImages, isReDiagnosis: false,
+          messages: newMessages, symptomImages: uploadedImages, symptomImagesB64: uploadedImagesB64, isReDiagnosis: false,
         }),
       })
       const data = await response.json()
@@ -377,8 +409,9 @@ export default function MainPage() {
     } finally {
       setIsLoading(false)
       setUploadedImages([])
+      setUploadedImagesB64([])
     }
-  }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, uploadedImages, conversationId, router])
+  }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, uploadedImages, uploadedImagesB64, conversationId, router])
 
   // ── 차량 수정 저장 ───────────────────────────────────────────────────
   const handleVehicleSave = async (data: any) => {
