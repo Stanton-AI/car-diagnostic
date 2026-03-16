@@ -54,6 +54,9 @@ export default function ChatV2Page() {
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploadedImagesB64, setUploadedImagesB64] = useState<Array<{data: string; mediaType: string}>>([])
+  // ref로 최신값 항상 참조 (useCallback stale closure 완전 방지)
+  const uploadedImagesB64Ref = useRef<Array<{data: string; mediaType: string}>>([])
+  const uploadedImagesRef = useRef<string[]>([])
   const [vehicle, setVehicle] = useState<Partial<Vehicle> | null>(null)
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [showWorkshopCTA, setShowWorkshopCTA] = useState(false)
@@ -118,8 +121,12 @@ export default function ChatV2Page() {
       }
     }
 
-    setUploadedImages(prev => [...prev, ...urls].slice(0, 3))
-    setUploadedImagesB64(prev => [...prev, ...b64List].slice(0, 3))
+    const newUrls = [...uploadedImagesRef.current, ...urls].slice(0, 3)
+    const newB64 = [...uploadedImagesB64Ref.current, ...b64List].slice(0, 3)
+    uploadedImagesRef.current = newUrls
+    uploadedImagesB64Ref.current = newB64
+    setUploadedImages(newUrls)
+    setUploadedImagesB64(newB64)
     return urls
   }
 
@@ -185,8 +192,8 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
           conversationId,
           vehicleInfo: vehicle,
           messages: newMessages,
-          symptomImages: uploadedImages,
-          symptomImagesB64: uploadedImagesB64,
+          symptomImages: uploadedImagesRef.current,
+          symptomImagesB64: uploadedImagesB64Ref.current,
           isReDiagnosis: false,
         }),
       })
@@ -220,10 +227,12 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
       setMessages(prev => [...prev, errMsg])
     } finally {
       setIsLoading(false)
+      uploadedImagesRef.current = []
+      uploadedImagesB64Ref.current = []
       setUploadedImages([])
       setUploadedImagesB64([])
     }
-  }, [messages, user, vehicle, uploadedImages, uploadedImagesB64, conversationId])
+  }, [messages, user, vehicle, conversationId])
 
   const handleSelfCheckSubmit = async (selfCheckResults: string) => {
     const reDiagMsg = createMessage('user', `자가점검 결과: ${selfCheckResults}`, 'self_check_input') as ChatMessage
