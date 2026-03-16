@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { FuelType } from '@/types'
 
-const MAKERS = ['현대', '기아', '제네시스', 'KG 모빌리티', '르노코리아', 'GM 한국', '테슬라', 'BMW', '메르세데스-벤츠', '아우디', '볼보', '기타']
+const MAKERS = ['현대', '기아', '제네시스', 'KG 모빌리티(쌍용)', '르노코리아', 'GM 한국', '테슬라', 'BMW', '메르세데스-벤츠', '아우디', '볼보', '기타']
 const FUEL_TYPES: { value: FuelType; label: string }[] = [
   { value: 'gasoline', label: '가솔린' },
   { value: 'diesel', label: '디젤' },

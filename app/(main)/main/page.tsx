@@ -37,7 +37,7 @@ import TypingIndicator from '@/components/chat/TypingIndicator'
 const FUEL_LABELS: Record<string, string> = {
   gasoline: '가솔린', diesel: '디젤', hybrid: '하이브리드', electric: '전기', lpg: 'LPG',
 }
-const MAKERS = ['현대', '기아', '제네시스', 'KG 모빌리티', '르노코리아', 'GM 한국', '테슬라', 'BMW', '메르세데스-벤츠', '아우디', '볼보', '기타']
+const MAKERS = ['현대', '기아', '제네시스', 'KG 모빌리티(쌍용)', '르노코리아', 'GM 한국', '테슬라', 'BMW', '메르세데스-벤츠', '아우디', '볼보', '기타']
 const FUEL_TYPES: { value: FuelType; label: string }[] = [
   { value: 'gasoline', label: '가솔린' }, { value: 'diesel', label: '디젤' },
   { value: 'hybrid', label: '하이브리드' }, { value: 'electric', label: '전기' }, { value: 'lpg', label: 'LPG' },
