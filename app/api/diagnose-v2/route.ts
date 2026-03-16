@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
           vehicleInfo,
           existingQAs,
           answeredCount,
+          symptomImages,
         )
 
         if (!check.sufficient && check.question) {
