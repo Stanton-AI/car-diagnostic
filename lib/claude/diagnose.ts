@@ -316,8 +316,13 @@ JSON만 반환하세요 (설명 없이):
   }
   qContent.push({ type: 'text', text: prompt })
 
+  // 이미지 있으면 vision 모델, 없으면 저렴한 Haiku로 비용 최적화
+  const qModel = (symptomImages && symptomImages.length > 0)
+    ? 'claude-sonnet-4-20250514'
+    : 'claude-haiku-4-5-20251001'
+
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-20250514',  // vision 지원 모델로 변경
+    model: qModel,
     max_tokens: 400,
     messages: [{ role: 'user', content: qContent as any }],
   })
