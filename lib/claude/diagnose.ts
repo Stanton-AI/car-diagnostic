@@ -159,7 +159,11 @@ export async function requestDiagnosis(
 
   const reDiagCtx = isReDiagnosis ? '\n\n**재진단**: 자가점검 결과를 반영하여 진단을 업데이트하세요.' : ''
 
-  const userPrompt = `${vehicleCtx}${knownIssuesCtx}
+  const imgCtx = (symptomImages && symptomImages.length > 0)
+    ? '\n\n**[중요] 첨부 이미지 분석**: 위 이미지를 먼저 분석하여 경고등 종류, 손상 부위, 오일/냉각수 상태 등을 직접 파악하세요. 이미지에서 확인된 정보를 진단의 핵심 근거로 사용하세요.'
+    : ''
+
+  const userPrompt = `${vehicleCtx}${knownIssuesCtx}${imgCtx}
 
 **대화 내역**:
 ${conversationCtx}${reDiagCtx}
