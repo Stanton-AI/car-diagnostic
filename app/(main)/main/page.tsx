@@ -137,8 +137,25 @@ function VehicleEditModal({ vehicle, onClose, onSave }: { vehicle: any; onClose:
 }
 
 // ── 메인 페이지 ──────────────────────────────────────────────────────────
-// ── 이미지 리사이즈 + base64 인코딩 (canvas 사용) ────────────────────────
-function resizeAndEncodeImage(file: File, maxPx = 1024): Promise<string> {
+// ── FileReader로 base64 읽기 (HEIC 등 모든 포맷 대응) ────────────────────
+function readFileAsBase64(file: File): Promise<{data: string; mediaType: string}> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      const commaIdx = result.indexOf(',')
+      const header = result.slice(0, commaIdx)
+      const data = result.slice(commaIdx + 1)
+      const mediaType = header.match(/data:([^;]+)/)?.[1] ?? 'image/jpeg'
+      resolve({ data, mediaType })
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// ── canvas 리사이즈 후 base64 (JPEG/PNG/WebP만 지원) ─────────────────────
+function resizeViaCanvas(file: File, maxPx = 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     const url = URL.createObjectURL(file)
@@ -149,13 +166,35 @@ function resizeAndEncodeImage(file: File, maxPx = 1024): Promise<string> {
       const canvas = document.createElement('canvas')
       canvas.width = w
       canvas.height = h
-      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error('no ctx')); return }
+      ctx.drawImage(img, 0, 0, w, h)
       URL.revokeObjectURL(url)
       resolve(canvas.toDataURL('image/jpeg', 0.85).split(',')[1])
     }
-    img.onerror = reject
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('img load fail')) }
     img.src = url
   })
+}
+
+// ── 이미지 → base64 변환 (canvas 우선, HEIC 등 실패 시 FileReader 폴백) ──
+async function encodeImageForClaude(file: File): Promise<{data: string; mediaType: string}> {
+  // 2MB 이하이거나 HEIC 파일이면 바로 FileReader (canvas는 HEIC 지원 안 함)
+  const isHeic = file.type === 'image/heic' || file.type === 'image/heif' ||
+    file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
+  if (isHeic || file.size <= 500_000) {
+    const result = await readFileAsBase64(file)
+    return result
+  }
+  // 큰 파일(>500KB)은 canvas로 1024px 리사이즈
+  try {
+    const data = await resizeViaCanvas(file, 1024)
+    return { data, mediaType: 'image/jpeg' }
+  } catch (e) {
+    console.warn('[encodeImageForClaude] canvas 실패, FileReader 폴백:', e)
+    // canvas 실패(HEIC 등) → 원본 FileReader (용량 클 수 있음)
+    return readFileAsBase64(file)
+  }
 }
 
 export default function MainPage() {
@@ -177,6 +216,9 @@ export default function MainPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [uploadedImagesB64, setUploadedImagesB64] = useState<Array<{data: string; mediaType: string}>>([])
+  // ref: stale closure 방지 (sendMessage useCallback 안에서 항상 최신값 참조)
+  const uploadedImagesB64Ref = useRef<Array<{data: string; mediaType: string}>>([])
+  const uploadedImagesRef = useRef<string[]>([])
 
   // 차량 정보 (이번 대화에 사용할 차량 정보)
   const [activeVehicleInfo, setActiveVehicleInfo] = useState<any>(null)
@@ -247,12 +289,13 @@ export default function MainPage() {
     const urls: string[] = []
     const b64List: Array<{data: string; mediaType: string}> = []
     for (const file of files.slice(0, 3)) {
-      // 1) canvas로 리사이즈 후 base64 인코딩 (Claude Vision용)
+      // 1) base64 인코딩 (Claude Vision용) — HEIC/HEIF 포함 전 포맷 대응
       try {
-        const b64 = await resizeAndEncodeImage(file, 1024)
-        b64List.push({ data: b64, mediaType: 'image/jpeg' })
+        const encoded = await encodeImageForClaude(file)
+        b64List.push(encoded)
+        console.log('[img upload] encoded size (bytes):', Math.round(encoded.data.length * 0.75), 'type:', encoded.mediaType)
       } catch (e) {
-        console.warn('Image encode failed:', e)
+        console.warn('[img upload] encode failed:', e)
       }
       // 2) Supabase 저장 (기록용)
       const path = `${authUser.id}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
@@ -262,8 +305,12 @@ export default function MainPage() {
         urls.push(publicUrl)
       }
     }
-    setUploadedImages(prev => [...prev, ...urls].slice(0, 3))
-    setUploadedImagesB64(prev => [...prev, ...b64List].slice(0, 3))
+    const newUrls = [...uploadedImagesRef.current, ...urls].slice(0, 3)
+    const newB64 = [...uploadedImagesB64Ref.current, ...b64List].slice(0, 3)
+    uploadedImagesRef.current = newUrls
+    uploadedImagesB64Ref.current = newB64
+    setUploadedImages(newUrls)
+    setUploadedImagesB64(newB64)
     return urls
   }
 
@@ -377,7 +424,7 @@ export default function MainPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId, vehicleInfo: activeVehicleInfo,
-          messages: newMessages, symptomImages: uploadedImages, symptomImagesB64: uploadedImagesB64, isReDiagnosis: false,
+          messages: newMessages, symptomImages: uploadedImagesRef.current, symptomImagesB64: uploadedImagesB64Ref.current, isReDiagnosis: false,
         }),
       })
       const data = await response.json()
@@ -408,10 +455,12 @@ export default function MainPage() {
       setMessages(prev => [...prev, errMsg])
     } finally {
       setIsLoading(false)
+      uploadedImagesRef.current = []
+      uploadedImagesB64Ref.current = []
       setUploadedImages([])
       setUploadedImagesB64([])
     }
-  }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, uploadedImages, uploadedImagesB64, conversationId, router])
+  }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, conversationId, router])
 
   // ── 차량 수정 저장 ───────────────────────────────────────────────────
   const handleVehicleSave = async (data: any) => {
@@ -788,7 +837,15 @@ export default function MainPage() {
           onSend={(text) => sendMessage(text)}
           onImageUpload={handleImageUpload}
           uploadedImages={uploadedImages}
-          onRemoveImage={(url) => setUploadedImages(prev => prev.filter(u => u !== url))}
+          onRemoveImage={(url) => {
+            const idx = uploadedImagesRef.current.indexOf(url)
+            if (idx !== -1) {
+              uploadedImagesRef.current = uploadedImagesRef.current.filter((_, i) => i !== idx)
+              uploadedImagesB64Ref.current = uploadedImagesB64Ref.current.filter((_, i) => i !== idx)
+              setUploadedImages([...uploadedImagesRef.current])
+              setUploadedImagesB64([...uploadedImagesB64Ref.current])
+            }
+          }}
           disabled={isLoading}
         />
       )}
