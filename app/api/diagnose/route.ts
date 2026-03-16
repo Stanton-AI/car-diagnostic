@@ -137,7 +137,8 @@ export async function POST(req: NextRequest) {
     const repairCostsCtx = formatRepairCostsContext(repairCosts)
 
     // ── 최종 진단 실행 ──────────────────────────────────────────────────────
-    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
+    // v1 route는 symptomImages가 string[]이므로 b64 변환 불필요 (이미지 없이 진단)
+    const result = await requestDiagnosis(messages, vehicleInfo, undefined, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
 
     // ── 결과 저장 + 임베딩 생성 ─────────────────────────────────────────────
     const guestSessionId = req.headers.get('x-guest-session-id')
