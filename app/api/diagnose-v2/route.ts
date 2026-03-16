@@ -45,7 +45,7 @@ const CONFIDENCE_LOW = 40
 export async function POST(req: NextRequest) {
   try {
     const body: DiagnoseRequest = await req.json()
-    const { conversationId, vehicleInfo, messages, symptomImages, isReDiagnosis } = body
+    const { conversationId, vehicleInfo, messages, symptomImages, symptomImagesB64, isReDiagnosis } = body
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
           vehicleInfo,
           existingQAs,
           answeredCount,
-          symptomImages,
+          symptomImagesB64,
         )
 
         if (!check.sufficient && check.question) {
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     const similarCasesCtx = formatSimilarCasesContext(similarCases)
     const repairCostsCtx = formatRepairCostsContext(repairCosts)
 
-    const result = await requestDiagnosis(messages, vehicleInfo, symptomImages, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
+    const result = await requestDiagnosis(messages, vehicleInfo, symptomImagesB64, isReDiagnosis, knownIssuesCtx + similarCasesCtx + repairCostsCtx)
 
     // ── 결과 저장 + 임베딩 생성 ─────────────────────────────────────────
     const guestSessionId = req.headers.get('x-guest-session-id')

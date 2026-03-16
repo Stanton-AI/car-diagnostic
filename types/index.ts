@@ -312,11 +312,17 @@ export interface ApiResponse<T = void> {
   error?: string
 }
 
+export interface ImageBase64 {
+  data: string        // base64 encoded image data
+  mediaType: string   // e.g. 'image/jpeg'
+}
+
 export interface DiagnoseRequest {
   conversationId: string
   vehicleInfo?: Partial<Vehicle>
   messages: ChatMessage[]
-  symptomImages?: string[]   // Supabase Storage URLs
+  symptomImages?: string[]      // Supabase Storage URLs (저장용)
+  symptomImagesB64?: ImageBase64[] // base64 직접 전달 (Claude API용)
   isReDiagnosis?: boolean
 }
 

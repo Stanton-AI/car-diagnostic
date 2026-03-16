@@ -138,7 +138,7 @@ JSON만 반환하세요 (설명 없이):
 export async function requestDiagnosis(
   messages: ChatMessage[],
   vehicleInfo?: Partial<Vehicle>,
-  symptomImages?: string[],
+  symptomImages?: Array<{data: string; mediaType: string}>,
   isReDiagnosis = false,
   knownIssuesCtx = ''   // 고질병 DB 매칭 컨텍스트 (선택)
 ): Promise<DiagnosisResult> {
@@ -195,19 +195,13 @@ ${conversationCtx}${reDiagCtx}
   "disclaimer": "본 진단은 AI가 증상 정보를 바탕으로 예측한 결과예요. 실제 정비사의 직접 점검이 최종 판단이며, 비용은 지역·차종·정비소에 따라 달라질 수 있어요."
 }`
 
-  // 이미지가 있으면 멀티모달 — base64 변환 (Supabase URL은 Claude API가 직접 접근 불가)
+  // 이미지가 있으면 멀티모달 — 브라우저에서 변환된 base64 직접 사용
   type ContentBlock = { type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
   const content: ContentBlock[] = []
 
   if (symptomImages && symptomImages.length > 0) {
-    for (const imgUrl of symptomImages.slice(0, 3)) {
-      try {
-        const imgRes = await fetch(imgUrl)
-        const imgBuffer = await imgRes.arrayBuffer()
-        const imgBase64 = Buffer.from(imgBuffer).toString('base64')
-        const imgMediaType = imgRes.headers.get('content-type') ?? 'image/jpeg'
-        content.push({ type: 'image', source: { type: 'base64', media_type: imgMediaType, data: imgBase64 } })
-      } catch { /* 이미지 로딩 실패 시 무시 */ }
+    for (const img of symptomImages.slice(0, 3)) {
+      content.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })
     }
   }
   content.push({ type: 'text', text: userPrompt })
@@ -253,7 +247,7 @@ export async function checkAndGenerateQuestion(
   vehicleInfo?: Partial<Vehicle>,
   existingQAs?: Array<{ question: string; answer: string }>,
   questionCount = 0,
-  symptomImages?: string[],
+  symptomImages?: Array<{data: string; mediaType: string}>,
 ): Promise<AIQuestionCheckResponse> {
   const vehicleCtx = vehicleInfo
     ? `차량: ${vehicleInfo.maker ?? ''} ${vehicleInfo.model ?? ''} ${vehicleInfo.year ?? ''}년식, ${vehicleInfo.mileage?.toLocaleString() ?? '?'}km, 연료: ${vehicleInfo.fuelType ?? '미상'}`
@@ -303,18 +297,12 @@ JSON만 반환하세요 (설명 없이):
   }
 }`
 
-  // 이미지가 있으면 멀티모달 — base64 변환
+  // 이미지가 있으면 멀티모달 — 브라우저에서 변환된 base64 직접 사용
   type QBlock = { type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
   const qContent: QBlock[] = []
   if (symptomImages && symptomImages.length > 0) {
-    for (const imgUrl of symptomImages.slice(0, 3)) {
-      try {
-        const res = await fetch(imgUrl)
-        const buf = await res.arrayBuffer()
-        const b64 = Buffer.from(buf).toString('base64')
-        const mime = res.headers.get('content-type') ?? 'image/jpeg'
-        qContent.push({ type: 'image', source: { type: 'base64', media_type: mime, data: b64 } })
-      } catch { /* 이미지 로딩 실패 시 무시 */ }
+    for (const img of symptomImages.slice(0, 3)) {
+      qContent.push({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } })
     }
   }
   qContent.push({ type: 'text', text: prompt })

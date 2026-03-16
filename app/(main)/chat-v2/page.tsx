@@ -31,6 +31,7 @@ export default function ChatV2Page() {
   const [isLoading, setIsLoading] = useState(false)
   const [diagnosisResult, setDiagnosisResult] = useState<DiagnosisResult | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [uploadedImagesB64, setUploadedImagesB64] = useState<Array<{data: string; mediaType: string}>>([])
   const [vehicle, setVehicle] = useState<Partial<Vehicle> | null>(null)
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [showWorkshopCTA, setShowWorkshopCTA] = useState(false)
@@ -74,8 +75,15 @@ export default function ChatV2Page() {
   const handleImageUpload = async (files: File[]) => {
     if (!user) return []
     const urls: string[] = []
+    const b64List: Array<{data: string; mediaType: string}> = []
 
     for (const file of files.slice(0, 3)) {
+      // 1) 브라우저에서 base64 변환 (서버 fetch 불필요)
+      const arrayBuf = await file.arrayBuffer()
+      const b64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)))
+      b64List.push({ data: b64, mediaType: file.type || 'image/jpeg' })
+
+      // 2) Supabase에도 저장 (기록용)
       const path = `${user.id}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
       const { data, error } = await supabase.storage
         .from('symptom-images')
@@ -90,6 +98,7 @@ export default function ChatV2Page() {
     }
 
     setUploadedImages(prev => [...prev, ...urls].slice(0, 3))
+    setUploadedImagesB64(prev => [...prev, ...b64List].slice(0, 3))
     return urls
   }
 
@@ -156,6 +165,7 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
           vehicleInfo: vehicle,
           messages: newMessages,
           symptomImages: uploadedImages,
+          symptomImagesB64: uploadedImagesB64,
           isReDiagnosis: false,
         }),
       })
