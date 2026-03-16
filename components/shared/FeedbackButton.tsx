@@ -33,7 +33,7 @@ export default function FeedbackButton() {
       {/* 플로팅 버튼 */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-40 bg-white border border-gray-200 text-gray-500 text-xs font-semibold px-3 py-2 rounded-full shadow-md hover:shadow-lg hover:border-primary-300 hover:text-primary-600 transition-all active:scale-95"
+        className="fixed bottom-24 left-4 z-40 bg-white border border-gray-200 text-gray-500 text-xs font-semibold px-3 py-2 rounded-full shadow-md hover:shadow-lg hover:border-primary-300 hover:text-primary-600 transition-all active:scale-95"
       >
         💬 피드백
       </button>
