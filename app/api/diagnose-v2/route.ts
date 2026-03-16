@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
     const answeredCount = getAnsweredCount(messages)
     const hasResult = messages.some(m => m.type === 'result')
 
+    // 🔍 디버그: 이미지 수신 확인
+    console.log('[diagnose-v2] symptomImagesB64 count:', symptomImagesB64?.length ?? 0,
+      '| first image size (bytes):', symptomImagesB64?.[0] ? Math.round(symptomImagesB64[0].data.length * 0.75) : 0)
+
     // 이미지만 첨부한 경우 Q&A 건너뛰고 바로 진단 (이미지가 곧 증상 정보)
     const imageOnlySymptom = (symptomImagesB64?.length ?? 0) > 0 && answeredCount === 0 &&
       (!symptomText || symptomText === '이미지를 첨부했습니다.')
