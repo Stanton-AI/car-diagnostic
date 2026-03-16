@@ -442,8 +442,13 @@ export default function MainPage() {
         setCurrentQuestion(firstQ)
         setQuestionQueue(restQ)
         setPhase('questioning')
+        // Q&A 단계: 이미지 ref 유지 (최종 진단 시에도 이미지 전달되도록)
       } else {
-        // 진단 완료 → 결과 페이지로 이동
+        // 진단 완료 → 이미지 클리어 후 결과 페이지로 이동
+        uploadedImagesRef.current = []
+        uploadedImagesB64Ref.current = []
+        setUploadedImages([])
+        setUploadedImagesB64([])
         const doneMsg = createMessage('assistant', '✅ 진단 분석이 완료되었습니다!\n잠시 후 결과 리포트를 확인하실 수 있어요.', 'text') as ChatMessage
         setMessages(prev => [...prev, doneMsg])
         setPhase('done')
@@ -453,12 +458,13 @@ export default function MainPage() {
     } catch {
       const errMsg = createMessage('assistant', '죄송합니다, 진단 처리 중 오류가 발생했습니다. 다시 시도해 주세요.', 'text') as ChatMessage
       setMessages(prev => [...prev, errMsg])
-    } finally {
-      setIsLoading(false)
+      // 에러 시에도 이미지 클리어
       uploadedImagesRef.current = []
       uploadedImagesB64Ref.current = []
       setUploadedImages([])
       setUploadedImagesB64([])
+    } finally {
+      setIsLoading(false)
     }
   }, [messages, phase, currentQuestion, questionQueue, activeVehicleInfo, conversationId, router])
 
