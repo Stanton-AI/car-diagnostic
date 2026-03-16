@@ -80,7 +80,8 @@ export default function ChatV2Page() {
     for (const file of files.slice(0, 3)) {
       // 1) 브라우저에서 base64 변환 (서버 fetch 불필요)
       const arrayBuf = await file.arrayBuffer()
-      const b64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuf)))
+      const uint8 = new Uint8Array(arrayBuf)
+      const b64 = btoa(Array.from(uint8).map(c => String.fromCharCode(c)).join(''))
       b64List.push({ data: b64, mediaType: file.type || 'image/jpeg' })
 
       // 2) Supabase에도 저장 (기록용)
