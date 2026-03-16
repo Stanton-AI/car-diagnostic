@@ -261,11 +261,32 @@ export async function checkAndGenerateQuestion(
     ? `\n\n기존 질문/답변:\n${existingQAs.map((qa, i) => `Q${i + 1}: ${qa.question}\nA${i + 1}: ${qa.answer}`).join('\n')}`
     : ''
 
+  // 이미지 첨부 여부 및 첫 번째 Q&A 여부
+  const hasImage = (symptomImages?.length ?? 0) > 0
+  const isFirstQAWithImage = hasImage && questionCount === 0
+
+  // 이미지만 첨부된 경우 symptomText placeholder 처리
+  const effectiveSymptomText = (symptomText === '이미지를 첨부했습니다.' || !symptomText)
+    ? '[이미지 첨부됨 — 아래 이미지에서 증상 직접 파악]'
+    : symptomText
+
+  // 이미지 첨부 첫 Q&A 전용 sufficient 기준 안내
+  const imageFirstQANote = isFirstQAWithImage ? `
+[⚠️ 이미지 첨부 + 첫 번째 질문 — 반드시 읽을 것]
+이미지로 경고등 종류·손상 위치 등 "무엇이 문제인지"는 파악할 수 있습니다.
+그러나 다음 컨텍스트는 이미지로 절대 알 수 없으므로 반드시 1개 질문이 필요합니다:
+  - 언제부터 증상이 생겼는지 (방금인지, 몇 주 됐는지)
+  - 이미 어떤 조치를 해봤는지 (공기 주입, 점검 등)
+  - 증상이 항상인지, 특정 상황에서만인지
+sufficient 판단 기준: confidence >= 90 이어야만 sufficient: true 허용.
+(이미지로 경고등을 봤더라도 위 컨텍스트 없이는 90%를 넘기 어렵습니다.)
+첫 번째 질문에서는 이미지에서 파악한 증상에 맞는 컨텍스트 질문 1개를 생성하세요.` : ''
+
   const prompt = `당신은 자동차 정비 전문가입니다. 실제 정비사처럼 계통별 가설 검증 방식으로 진단합니다.
 
 ${vehicleCtx}
-증상: "${symptomText}"${qaCtx}
-
+증상: "${effectiveSymptomText}"${qaCtx}
+${imageFirstQANote}
 [이미지가 첨부된 경우 — 최우선 처리]
 - 첨부된 이미지를 먼저 분석하여 경고등 종류, 손상 부위, 오염 상태 등을 직접 파악하세요.
 - 이미지에서 경고등이 확인된 경우: "어떤 경고등인지" 다시 묻지 말고, 해당 경고등에 맞는 다음 단계 질문으로 바로 진행하세요.
@@ -282,7 +303,7 @@ ${vehicleCtx}
    - 발생 조건이 파악되면 → 계통과 원인이 동시에 좁혀짐 (허브베어링 vs 등속조인트 vs 쇼크업소버 등)
 3. 발생 조건이 이미 파악됐거나 비소음 계통: 계통 → 하위계통 → 특정 원인 순으로 좁히는 질문
 4. 기존 Q&A가 있다면 → 이미 좁혀진 방향을 파악하고 다음 단계 질문 생성
-5. 충분히 좁혀졌다면 (confidence >= 75) → sufficient: true
+5. 충분히 좁혀졌다면 (이미지 첫 Q&A 전: confidence >= 90, 그 외: confidence >= 75) → sufficient: true
 
 [질문 원칙]
 - 각 질문은 "어떤 가설을 검증하는가"가 명확해야 함

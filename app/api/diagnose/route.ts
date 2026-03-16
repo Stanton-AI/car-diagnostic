@@ -83,16 +83,12 @@ export async function POST(req: NextRequest) {
     const answeredCount = getAnsweredCount(messages)
     const hasResult = messages.some(m => m.type === 'result')
 
-    // 이미지만 첨부한 경우 Q&A 건너뛰고 바로 진단
-    const imageOnlySymptom = (symptomImagesB64?.length ?? 0) > 0 && answeredCount === 0 &&
-      (!symptomText || symptomText === '이미지를 첨부했습니다.')
-
     console.log('[diagnose] symptomImagesB64 count:', symptomImagesB64?.length ?? 0,
-      '| imageOnlySymptom:', imageOnlySymptom,
+      '| answeredCount:', answeredCount,
       '| symptomText:', symptomText?.slice(0, 30))
 
     // ── 역질문 단계 (재진단/결과 없는 경우만) ──────────────────────────────
-    if (!hasResult && !isReDiagnosis && !imageOnlySymptom) {
+    if (!hasResult && !isReDiagnosis) {
       const forceFinish = shouldForceFinish(messages, answeredCount)
 
       if (!forceFinish && answeredCount < MAX_QUESTIONS) {
