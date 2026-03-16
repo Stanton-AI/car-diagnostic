@@ -92,7 +92,7 @@ export function formatRepairCostsContext(costs: RepairCostItem[]): string {
     return `- ${c.repair_item}: 부품 ${c.parts_min.toLocaleString()}~${c.parts_max.toLocaleString()}원 / 공임 ${c.labor_min.toLocaleString()}~${c.labor_max.toLocaleString()}원${hoursNote ? ' ' + hoursNote : ''} / 합계 ${totalMin.toLocaleString()}~${totalMax.toLocaleString()}원${sampleNote}`
   })
 
-  return `\n\n**수리비 참고 데이터 (독립 정비소 실측 기반)**:\n${lines.join('\n')}\n\n⚠️ cost 필드 산정 기준: 공식 서비스 센터(블루핸즈·기아오토큐) 기준 = 공임 100,000원/시간 × 표준공임시간 + 순정부품 정가. 위 데이터는 독립 정비소 기준이므로 공식 센터 기준으로 변환 시 공임 약 2.2배, 부품 약 1.1배 적용하세요. DB에 없는 항목은 공식 센터 기준 자체 추정값 사용.`
+  return `\n\n**수리비 참고 데이터**:\n${lines.join('\n')}\n\n⚠️ cost 필드 산정 시 위 데이터를 참고하여 현실적인 범위로 추정하세요. DB에 없는 항목은 일반적인 시장 평균으로 추정하세요.`
 }
 
 // 피드백으로 수리비 DB 업데이트 (실제 수리 결과 반영)
