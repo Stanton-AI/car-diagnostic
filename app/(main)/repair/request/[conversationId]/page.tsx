@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { createRepairRequest, calcDealerPrice, SHOP_CATEGORIES, TIME_SLOTS } from '@/lib/marketplace'
+import { createRepairRequest, calcDealerPrice, TIME_SLOTS } from '@/lib/marketplace'
 import { formatKRW } from '@/lib/utils'
 
 interface ConvSummary {
@@ -42,7 +42,6 @@ export default function RepairRequestPage() {
   const [location, setLocation] = useState('')
   const [preferredDate, setPreferredDate] = useState('')
   const [notes, setNotes] = useState('')
-  const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [preferredTimeSlot, setPreferredTimeSlot] = useState('')
 
   useEffect(() => {
@@ -159,12 +158,14 @@ export default function RepairRequestPage() {
         {/* 딜러 기준가 앵커 */}
         {dealerTotal > 0 && (
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100">
-            <p className="text-xs text-blue-500 font-semibold mb-1">📊 제조사 대리점 기준 예상 수리비</p>
+            <p className="text-xs text-blue-500 font-semibold mb-1">🏢 공식 서비스센터 기준 예상 수리비</p>
             <p className="text-2xl font-black text-blue-800">
               {formatKRW((conv?.dealer_parts_min ?? 0) + (conv?.dealer_labor_min ?? 0))} ~{' '}
               {formatKRW(dealerTotal)}
             </p>
-            <p className="text-xs text-blue-400 mt-1">독립 정비소 견적을 받으면 평균 30~50% 절감 가능</p>
+            <p className="text-xs text-blue-400 mt-1">
+              견적을 통해 최대 {formatKRW(Math.round(dealerTotal * 0.5 / 10000) * 10000)} 저렴하게 고치세요
+            </p>
           </div>
         )}
 
@@ -255,28 +256,6 @@ export default function RepairRequestPage() {
               rows={3}
               className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400 resize-none"
             />
-          </div>
-        </div>
-
-        {/* 수리 카테고리 선택 */}
-        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-          <h2 className="font-bold text-gray-900 mb-3">🔧 수리 분야</h2>
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(SHOP_CATEGORIES).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setSelectedCats(prev =>
-                  prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]
-                )}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                  selectedCats.includes(key)
-                    ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
           </div>
         </div>
 
