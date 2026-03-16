@@ -317,7 +317,7 @@ JSON만 반환하세요 (설명 없이):
   qContent.push({ type: 'text', text: prompt })
 
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-6',
+    model: 'claude-sonnet-4-20250514',  // vision 지원 모델로 변경
     max_tokens: 400,
     messages: [{ role: 'user', content: qContent as any }],
   })

@@ -12,6 +12,28 @@ import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
 
+// 이미지를 canvas로 리사이즈 후 base64 반환 (휴대폰 사진 크기 축소용)
+function resizeAndEncodeImage(file: File, maxPx: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(img, 0, 0, w, h)
+      URL.revokeObjectURL(url)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+      resolve(dataUrl.split(',')[1]) // base64 부분만
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 // 비증상 입력 패턴
 const GREETING_PATTERNS = ['안녕', '안녕하세요', '안녕히', 'hi', 'hello', '헬로', '반가워', '반갑습니다', '테스트', 'test']
 function isNonSymptom(text: string): boolean {
@@ -78,11 +100,9 @@ export default function ChatV2Page() {
     const b64List: Array<{data: string; mediaType: string}> = []
 
     for (const file of files.slice(0, 3)) {
-      // 1) 브라우저에서 base64 변환 (서버 fetch 불필요)
-      const arrayBuf = await file.arrayBuffer()
-      const uint8 = new Uint8Array(arrayBuf)
-      const b64 = btoa(Array.from(uint8).map(c => String.fromCharCode(c)).join(''))
-      b64List.push({ data: b64, mediaType: file.type || 'image/jpeg' })
+      // 1) canvas로 1024px 이하 리사이즈 후 base64 (휴대폰 사진 크기 축소)
+      const b64 = await resizeAndEncodeImage(file, 1024)
+      b64List.push({ data: b64, mediaType: 'image/jpeg' })
 
       // 2) Supabase에도 저장 (기록용)
       const path = `${user.id}/${conversationId}/${uuidv4()}.${file.name.split('.').pop()}`
