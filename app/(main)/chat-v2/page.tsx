@@ -221,8 +221,9 @@ ${diagnosisResult.causes.map((c, i) => `${i + 1}. ${c.name}${c.enName ? ` (${c.e
     } finally {
       setIsLoading(false)
       setUploadedImages([])
+      setUploadedImagesB64([])
     }
-  }, [messages, user, vehicle, uploadedImages, conversationId])
+  }, [messages, user, vehicle, uploadedImages, uploadedImagesB64, conversationId])
 
   const handleSelfCheckSubmit = async (selfCheckResults: string) => {
     const reDiagMsg = createMessage('user', `자가점검 결과: ${selfCheckResults}`, 'self_check_input') as ChatMessage
