@@ -95,7 +95,6 @@ export default function RepairRequestPage() {
         vehicle_mileage: v?.mileage ?? null,
       })
 
-      if (conv.category) setSelectedCats([conv.category])
       setLoading(false)
     }
     load()
