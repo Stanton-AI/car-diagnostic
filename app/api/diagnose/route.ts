@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
               needsMoreInfo: true,
               additionalQuestions: [check.question],
               confidence: check.confidence,
+              imageAnalysis: check.imageDescription ?? null,  // 이미지 설명 (첫 Q&A 시)
             }
           })
         }

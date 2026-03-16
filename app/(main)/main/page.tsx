@@ -435,8 +435,11 @@ export default function MainPage() {
         const firstQ = questions[0]
         const restQ = questions.slice(1)
 
-        // 추가 질문 안내 메시지 + 첫 번째 질문을 메시지로 추가
-        const introMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 문의드려요.', 'text') as ChatMessage
+        // 이미지 분석 결과가 있으면 그걸 intro로, 없으면 기본 안내문
+        const introText = data.data.imageAnalysis
+          ? data.data.imageAnalysis
+          : '정확한 진단을 위해 몇 가지 더 문의드려요.'
+        const introMsg = createMessage('assistant', introText, 'text') as ChatMessage
         const qMsg = createMessage('assistant', firstQ.question, 'question', { questionId: firstQ.id, choices: firstQ.choices }) as ChatMessage
         setMessages(prev => [...prev, introMsg, qMsg])
         setCurrentQuestion(firstQ)

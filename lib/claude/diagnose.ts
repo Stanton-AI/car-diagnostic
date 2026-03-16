@@ -243,6 +243,7 @@ export interface AIGeneratedQuestion {
 export interface AIQuestionCheckResponse {
   sufficient: boolean
   confidence: number
+  imageDescription?: string        // 이미지 첨부 첫 Q&A 시: 이미지 분석 설명
   question?: AIGeneratedQuestion   // sufficient=false일 때만 존재
 }
 
@@ -270,17 +271,30 @@ export async function checkAndGenerateQuestion(
     ? '[이미지 첨부됨 — 아래 이미지에서 증상 직접 파악]'
     : symptomText
 
-  // 이미지 첨부 첫 Q&A 전용 sufficient 기준 안내
+  // 이미지 첨부 첫 Q&A 전용 지시
   const imageFirstQANote = isFirstQAWithImage ? `
 [⚠️ 이미지 첨부 + 첫 번째 질문 — 반드시 읽을 것]
-이미지로 경고등 종류·손상 위치 등 "무엇이 문제인지"는 파악할 수 있습니다.
-그러나 다음 컨텍스트는 이미지로 절대 알 수 없으므로 반드시 1개 질문이 필요합니다:
-  - 언제부터 증상이 생겼는지 (방금인지, 몇 주 됐는지)
-  - 이미 어떤 조치를 해봤는지 (공기 주입, 점검 등)
-  - 증상이 항상인지, 특정 상황에서만인지
-sufficient 판단 기준: confidence >= 90 이어야만 sufficient: true 허용.
-(이미지로 경고등을 봤더라도 위 컨텍스트 없이는 90%를 넘기 어렵습니다.)
-첫 번째 질문에서는 이미지에서 파악한 증상에 맞는 컨텍스트 질문 1개를 생성하세요.` : ''
+1) imageDescription 필드: 이미지에서 파악한 내용을 MIKY 말투(~요 체)로 1문장 작성.
+   예) "타이어 저압 경고등이 켜져 있네요 🔵"
+   - 틀릴 수 있으니 단정하지 말고 "~처럼 보이네요" 같은 표현 사용 가능
+   - 경고등 이름·색깔·위치 등 이미지에서 보이는 것만 서술
+2) question: 이미지에서 파악한 내용을 제외하고, 진단에 필요한 컨텍스트 1가지 질문
+   (언제부터인지 / 이미 어떤 조치를 했는지 / 증상 패턴 등)
+3) choices: 질문에 맞는 선택지 3~4개 + 반드시 마지막에 "기타 (직접 입력)" 추가
+4) sufficient 판단 기준: confidence >= 90 이어야만 sufficient: true 허용
+   (이미지 봤어도 컨텍스트 없으면 90% 넘기 어려움 → 거의 항상 질문 생성)
+
+JSON 형식 (imageDescription 필드 포함):
+{
+  "sufficient": false,
+  "confidence": 40,
+  "imageDescription": "타이어 저압 경고등이 켜져 있는 것처럼 보이네요 🔵",
+  "question": {
+    "id": "ai_q_XXX",
+    "question": "이 경고등이 켜진 지 얼마나 됐나요?",
+    "choices": ["방금 켜졌어요", "며칠 됐어요", "몇 주 이상 됐어요", "기타 (직접 입력)"]
+  }
+}` : ''
 
   const prompt = `당신은 자동차 정비 전문가입니다. 실제 정비사처럼 계통별 가설 검증 방식으로 진단합니다.
 
@@ -344,14 +358,19 @@ JSON만 반환하세요 (설명 없이):
 
   const response = await getClient().messages.create({
     model: qModel,
-    max_tokens: 400,
+    max_tokens: 500,  // imageDescription 필드 추가로 여유 확보
     messages: [{ role: 'user', content: qContent as any }],
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
   try {
     const clean = text.replace(/```json|```/g, '').trim()
-    return JSON.parse(clean)
+    const parsed = JSON.parse(clean)
+    // 이미지 첫 Q&A: "기타 (직접 입력)" 없으면 자동 추가
+    if (isFirstQAWithImage && parsed.question?.choices && !parsed.question.choices.includes('기타 (직접 입력)')) {
+      parsed.question.choices.push('기타 (직접 입력)')
+    }
+    return parsed
   } catch {
     return { sufficient: true, confidence: 70 }
   }
