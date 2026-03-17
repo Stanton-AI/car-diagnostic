@@ -110,9 +110,7 @@ export async function POST(req: NextRequest) {
     const answeredCount = getAnsweredCount(messages)
     const hasResult = messages.some(m => m.type === 'result')
 
-    console.log('[diagnose] symptomImagesB64 count:', symptomImagesB64?.length ?? 0,
-      '| answeredCount:', answeredCount,
-      '| symptomText:', symptomText?.slice(0, 30))
+    // 디버그 로그 제거 (프로덕션 배포 - 증상 텍스트 등 개인정보 보호)
 
     // ── 역질문 단계 (재진단/결과 없는 경우만) ──────────────────────────────
     if (!hasResult && !isReDiagnosis) {
