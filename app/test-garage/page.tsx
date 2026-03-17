@@ -75,14 +75,14 @@ export default function TestGaragePage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="text-primary-600">✦</span>
-          <h3 className="font-bold text-gray-900 text-sm">미키와 상담하기</h3>
+          <h3 className="font-bold text-gray-900 text-sm">정비톡 AI와 상담하기</h3>
         </div>
         <div className="flex gap-2">
           <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden">
-            <img src="/miky.png" alt="미키" className="w-full h-full object-cover" />
+            <img src="/miky.png" alt="정비톡 AI" className="w-full h-full object-cover" />
           </div>
           <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm border border-gray-100 max-w-[80%]">
-            <p className="text-sm text-gray-800 leading-relaxed">안녕하세요! 저는 미키예요. 🔧<br/><br/>진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?</p>
+            <p className="text-sm text-gray-800 leading-relaxed">안녕하세요! 저는 정비톡 AI예요. 🔧<br/><br/>진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?</p>
           </div>
         </div>
         <div className="flex gap-3 ml-10">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 // GET /api/repair-requests/[id]/report
-// 파트너가 수리 요청에 연결된 MIKY 진단 리포트를 조회
+// 파트너가 수리 요청에 연결된 정비톡 AI 진단 리포트를 조회
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }

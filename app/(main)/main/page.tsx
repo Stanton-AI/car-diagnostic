@@ -276,14 +276,14 @@ export default function MainPage() {
       setLoading(false)
       setMessages([{
         id: uuidv4(), role: 'assistant', type: 'text',
-        content: '안녕하세요! 저는 미키예요. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
+        content: '안녕하세요! 저는 정비톡 AI예요. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
         timestamp: new Date().toISOString(),
       }])
 
       // 유입 경로 세션 기록 (최초 1회 / 탭별)
       try {
         const params = new URLSearchParams(window.location.search)
-        const sessionKey = 'miky_session_recorded'
+        const sessionKey = 'jbt_session_recorded'
         if (!sessionStorage.getItem(sessionKey)) {
           sessionStorage.setItem(sessionKey, '1')
           fetch('/api/sessions', {
@@ -655,7 +655,7 @@ export default function MainPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 mt-3">
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="text-primary-600">✦</span>
-          <h3 className="font-bold text-gray-900 text-sm">미키와 상담하기</h3>
+          <h3 className="font-bold text-gray-900 text-sm">정비톡 AI와 상담하기</h3>
         </div>
 
         {/* 메시지 목록 */}

@@ -288,7 +288,7 @@ export default function DiagnosisPage() {
             <div className="w-6 h-6 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <span className="text-white text-xs font-black">M</span>
             </div>
-            <h1 className="text-base font-black text-gray-900 truncate">MIKY 진단 리포트</h1>
+            <h1 className="text-base font-black text-gray-900 truncate">정비톡 AI 진단 리포트</h1>
           </div>
           {createdAt && <p className="text-xs text-gray-400 mt-0.5 ml-8">{createdAt}</p>}
         </div>

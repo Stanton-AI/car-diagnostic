@@ -133,7 +133,7 @@ export default function ResultPageClient({ conversation }: Props) {
         contentLines.push(`💰 예상 수리비: ${result.cost.total.toLocaleString()}원`)
         contentLines.push('')
       }
-      contentLines.push('— MIKY 자동차 AI 진단')
+      contentLines.push('— 정비톡 AI 진단')
 
       const params = new URLSearchParams({
         openWrite: '1',

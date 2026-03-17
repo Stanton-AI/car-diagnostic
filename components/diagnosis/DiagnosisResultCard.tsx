@@ -73,7 +73,7 @@ export default function DiagnosisResultCard({
   const handleShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'MIKY 자동차 진단 결과', text: result.summary, url: shareUrl })
+        await navigator.share({ title: '정비톡 자동차 진단 결과', text: result.summary, url: shareUrl })
       } else {
         await navigator.clipboard.writeText(shareUrl)
         setShared(true)
@@ -121,11 +121,11 @@ export default function DiagnosisResultCard({
       >
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
-            <span className="text-white text-xs font-black">M</span>
+            <span className="text-white text-xs font-black">정</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-gray-400 font-medium leading-none mb-0.5">
-              {isRediagnosis ? '이전 진단' : 'MIKY AI 진단 리포트'}
+              {isRediagnosis ? '이전 진단' : '정비톡 AI 진단 리포트'}
             </p>
             <p className="text-sm font-bold text-gray-700 truncate">{result.summary}</p>
           </div>
@@ -146,9 +146,9 @@ export default function DiagnosisResultCard({
       {/* AI 아바타 + 헤더 */}
       <div className="flex items-center gap-2 px-1">
         <div className="w-8 h-8 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
-          <span className="text-white text-xs font-black">M</span>
+          <span className="text-white text-xs font-black">정</span>
         </div>
-        <span className="text-sm font-semibold text-gray-700">MIKY AI 진단 리포트</span>
+        <span className="text-sm font-semibold text-gray-700">정비톡 AI 진단 리포트</span>
         <div className="ml-auto flex items-center gap-1.5">
           <HealthScoreBadge score={healthScore} />
           <button

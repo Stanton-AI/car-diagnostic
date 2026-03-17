@@ -11,7 +11,7 @@ export default function MessageBubble({ message }: Props) {
       {/* AI 아바타 */}
       {!isUser && (
         <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden shadow-sm mb-1">
-          <img src="/miky.png" alt="미키" className="w-full h-full object-cover" />
+          <img src="/miky.png" alt="정비톡 AI" className="w-full h-full object-cover" />
         </div>
       )}
 

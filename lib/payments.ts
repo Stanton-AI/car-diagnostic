@@ -19,7 +19,7 @@ export function calcCommission(totalCost: number, rate = 0.10): number {
 export function generateOrderId(requestId: string): string {
   const ts = Date.now().toString(36).toUpperCase()
   const suffix = Math.random().toString(36).slice(2, 6).toUpperCase()
-  return `MIKY-${ts}-${suffix}`
+  return `JBT-${ts}-${suffix}`
 }
 
 // ─── 결제 요청 파라미터 생성 (프론트엔드) ────────────────────────────────

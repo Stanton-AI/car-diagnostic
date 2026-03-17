@@ -2,8 +2,8 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: '개인정보처리방침 — MIKY',
-  description: 'MIKY AI 자동차 진단 서비스 개인정보처리방침',
+  title: '개인정보처리방침 — 정비톡',
+  description: '정비톡 AI 자동차 진단 서비스 개인정보처리방침',
 }
 
 export default function PrivacyPage() {
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
 
         <section>
           <h2 className="font-bold text-gray-900 mb-3">1. 개인정보 수집 항목 및 목적</h2>
-          <p>MIKY(이하 "서비스")는 다음과 같은 개인정보를 수집합니다.</p>
+          <p>정비톡(이하 "서비스")는 다음과 같은 개인정보를 수집합니다.</p>
           <ul className="mt-3 space-y-2 list-disc list-inside text-gray-600">
             <li>이메일 주소: 로그인 계정 식별 및 고객 응대</li>
             <li>이름(닉네임): 서비스 내 사용자 표시</li>
@@ -78,7 +78,7 @@ export default function PrivacyPage() {
           <h2 className="font-bold text-gray-900 mb-3">8. 개인정보 보호책임자</h2>
           <p>개인정보 처리에 관한 문의, 불만, 피해 구제 등은 아래로 연락해 주세요.</p>
           <div className="mt-3 bg-gray-50 rounded-xl p-4 space-y-1 text-gray-600">
-            <p>서비스명: MIKY</p>
+            <p>서비스명: 정비톡</p>
             <p>이메일: <a href="mailto:superteshyeong@gmail.com" className="text-blue-600 underline">superteshyeong@gmail.com</a></p>
           </div>
         </section>
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
       </div>
 
       <div className="mt-12 pt-6 border-t border-gray-100">
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">← MIKY 홈으로 돌아가기</Link>
+        <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">← 정비톡 홈으로 돌아가기</Link>
       </div>
     </div>
   )

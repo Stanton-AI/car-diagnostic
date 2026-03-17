@@ -28,11 +28,11 @@ export default function ChatHeader({ vehicle, onBack, step = 1, totalSteps = 4 }
 
         <div className="flex items-center gap-2 flex-1">
           <div className="w-9 h-9 bg-primary-600 rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-white text-sm font-black">M</span>
+            <span className="text-white text-sm font-black">정</span>
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-gray-900 text-sm">MIKY 증상 채팅 상담</span>
+              <span className="font-bold text-gray-900 text-sm">정비톡 AI 증상 상담</span>
               <span className="flex items-center gap-1">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
                 <span className="text-xs text-green-600 font-medium">AI 온라인</span>

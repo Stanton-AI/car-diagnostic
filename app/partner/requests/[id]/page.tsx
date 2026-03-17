@@ -75,7 +75,7 @@ export default function PartnerRequestDetailPage() {
       if (rr) {
         setRequest(mapRequest(rr))
 
-        // MIKY 진단 리포트 조회 (입찰 후에만 가능)
+        // 정비톡 AI 진단 리포트 조회 (입찰 후에만 가능)
         if (bid) {
           try {
             const reportRes = await fetch(`/api/repair-requests/${requestId}/report`)
@@ -233,7 +233,7 @@ export default function PartnerRequestDetailPage() {
           )}
         </div>
 
-        {/* MIKY 진단 리포트 (입찰 후 또는 입찰 전 요청 상세에서 표시) */}
+        {/* 정비톡 AI 진단 리포트 (입찰 후 또는 입찰 전 요청 상세에서 표시) */}
         {report?.hasReport && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* 헤더 (토글 가능) */}
@@ -243,7 +243,7 @@ export default function PartnerRequestDetailPage() {
             >
               <div className="flex items-center gap-2">
                 <span className="text-base">🤖</span>
-                <span className="text-sm font-bold text-gray-800">MIKY 진단 리포트</span>
+                <span className="text-sm font-bold text-gray-800">정비톡 AI 진단 리포트</span>
                 {urgencyStyle && (
                   <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${urgencyStyle.bg} ${urgencyStyle.color}`}>
                     {urgencyStyle.label}
@@ -302,7 +302,7 @@ export default function PartnerRequestDetailPage() {
                 {/* 딜러 예상 견적 (AI 추정) */}
                 {report.cost && report.cost.total > 0 && (
                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-xs font-bold text-gray-600 mb-1.5">💰 MIKY AI 추정 수리비</p>
+                    <p className="text-xs font-bold text-gray-600 mb-1.5">💰 정비톡 AI 추정 수리비</p>
                     <div className="flex justify-between text-xs text-gray-500">
                       <span>부품비</span><span>{formatKRW(report.cost.parts)}</span>
                     </div>

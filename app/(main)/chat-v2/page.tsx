@@ -86,7 +86,7 @@ export default function ChatV2Page() {
         id: uuidv4(),
         role: 'assistant',
         type: 'text',
-        content: '안녕하세요! 저는 MIKY 자동차 진단 AI입니다. 🚗\n\n현재 차량의 어떤 증상이 불편하신가요? 최대한 자세히 알려주시면 더 정확하게 분석해 드릴 수 있어요.',
+        content: '안녕하세요! 저는 정비톡 AI입니다. 🚗\n\n현재 차량의 어떤 증상이 불편하신가요? 최대한 자세히 알려주시면 더 정확하게 분석해 드릴 수 있어요.',
         timestamp: new Date().toISOString(),
       }])
     }
