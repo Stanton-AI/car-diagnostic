@@ -36,7 +36,13 @@ interface PendingShop {
 }
 
 interface FeedbackItem {
-  id: string; content: string; page: string | null; created_at: string; user_id: string | null
+  id: string
+  content: string
+  page: string | null
+  phone: string | null
+  created_at: string
+  user_id: string | null
+  users: { display_name: string | null; email: string | null } | null
 }
 
 interface BoardPost {
@@ -391,33 +397,12 @@ export default function AdminPage() {
 
         {/* ─── 탭: 피드백 ─── */}
         {tab === 'feedback' && (
-          <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900">💬 사용자 피드백</h2>
-              <button onClick={loadFeedback} className="text-xs text-primary-600 font-semibold hover:underline">새로고침</button>
-            </div>
-            {feedbackList.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">접수된 피드백이 없습니다</p>
-            ) : feedbackList.map(fb => (
-              <div key={fb.id} className="border-b border-gray-50 last:border-0 py-3 flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-800 leading-relaxed">{fb.content}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {fb.page && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{fb.page}</span>}
-                    <span className="text-[10px] text-gray-300">{new Date(fb.created_at).toLocaleDateString('ko-KR')} {new Date(fb.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    {!fb.user_id && <span className="text-[10px] text-gray-300">비로그인</span>}
-                  </div>
-                </div>
-                <button
-                  onClick={() => deleteFeedback(fb.id)}
-                  disabled={deletingId === fb.id}
-                  className="flex-shrink-0 text-gray-300 hover:text-red-400 transition-colors disabled:opacity-30 text-lg leading-none"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </section>
+          <FeedbackTab
+            feedbackList={feedbackList}
+            deletingId={deletingId}
+            onDelete={deleteFeedback}
+            onRefresh={loadFeedback}
+          />
         )}
 
         {/* ─── 탭: 게시판 ─── */}
@@ -547,5 +532,95 @@ export default function AdminPage() {
 
       </div>
     </div>
+  )
+}
+
+/* ─── 피드백 탭 서브컴포넌트 ─── */
+function FeedbackTab({
+  feedbackList,
+  deletingId,
+  onDelete,
+  onRefresh,
+}: {
+  feedbackList: FeedbackItem[]
+  deletingId: string | null
+  onDelete: (id: string) => void
+  onRefresh: () => void
+}) {
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  return (
+    <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-bold text-gray-900">💬 사용자 피드백</h2>
+        <button onClick={onRefresh} className="text-xs text-primary-600 font-semibold hover:underline">새로고침</button>
+      </div>
+      {feedbackList.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-8">접수된 피드백이 없습니다</p>
+      ) : feedbackList.map(fb => {
+        const isLong = fb.content.length > 80
+        const isExpanded = expandedId === fb.id
+        const author = fb.users?.display_name ?? fb.users?.email ?? null
+
+        return (
+          <div key={fb.id} className="border-b border-gray-100 last:border-0 py-4">
+            {/* 작성자 정보 행 */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-gray-700">
+                  {author ?? (fb.user_id ? '회원' : '비로그인')}
+                </span>
+                {fb.users?.email && (
+                  <span className="text-[11px] text-gray-400">{fb.users.email}</span>
+                )}
+                {fb.phone && (
+                  <a
+                    href={`tel:${fb.phone}`}
+                    className="text-[11px] text-primary-600 font-semibold bg-primary-50 px-2 py-0.5 rounded-full hover:bg-primary-100 transition-colors"
+                  >
+                    📞 {fb.phone}
+                  </a>
+                )}
+                {fb.page && (
+                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{fb.page}</span>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-300 shrink-0 ml-2">
+                {new Date(fb.created_at).toLocaleDateString('ko-KR')}{' '}
+                {new Date(fb.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+
+            {/* 본문 */}
+            <div className="bg-gray-50 rounded-xl px-4 py-3">
+              <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                {isLong && !isExpanded
+                  ? fb.content.slice(0, 80) + '…'
+                  : fb.content}
+              </p>
+              {isLong && (
+                <button
+                  onClick={() => setExpandedId(isExpanded ? null : fb.id)}
+                  className="text-xs text-primary-500 font-semibold mt-1 hover:underline"
+                >
+                  {isExpanded ? '접기 ▲' : '전문 보기 ▼'}
+                </button>
+              )}
+            </div>
+
+            {/* 삭제 버튼 */}
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={() => onDelete(fb.id)}
+                disabled={deletingId === fb.id}
+                className="text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-3 py-1 rounded-lg disabled:opacity-30 transition-colors"
+              >
+                {deletingId === fb.id ? '삭제 중…' : '삭제'}
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </section>
   )
 }

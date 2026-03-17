@@ -17,6 +17,7 @@ export default function ProfilePage() {
   // 피드백 모달
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackPhone, setFeedbackPhone] = useState('')
   const [feedbackSending, setFeedbackSending] = useState(false)
   const [feedbackDone, setFeedbackDone] = useState(false)
 
@@ -51,11 +52,12 @@ export default function ProfilePage() {
     await fetch('/api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: feedbackText.trim(), page: 'profile' }),
+      body: JSON.stringify({ content: feedbackText.trim(), page: 'profile', phone: feedbackPhone.trim() || null }),
     })
     setFeedbackSending(false)
     setFeedbackDone(true)
     setFeedbackText('')
+    setFeedbackPhone('')
     setTimeout(() => { setFeedbackOpen(false); setFeedbackDone(false) }, 1800)
   }
 
@@ -204,10 +206,20 @@ export default function ProfilePage() {
                   value={feedbackText}
                   onChange={e => setFeedbackText(e.target.value)}
                   placeholder="예) 진단 결과가 너무 어려워요 / 이런 기능이 있으면 좋겠어요 / ..."
-                  rows={5}
+                  rows={4}
                   className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 resize-none focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-200"
                 />
-                <p className="text-xs text-gray-400 mt-1 mb-4 text-right">{feedbackText.length}자</p>
+                <p className="text-xs text-gray-400 mt-1 mb-3 text-right">{feedbackText.length}자</p>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  연락처 <span className="font-normal text-gray-300">(선택 · 답장 원하시면 입력해 주세요)</span>
+                </label>
+                <input
+                  type="tel"
+                  value={feedbackPhone}
+                  onChange={e => setFeedbackPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-200 mb-4"
+                />
                 <button
                   onClick={sendFeedback}
                   disabled={feedbackText.trim().length < 5 || feedbackSending}

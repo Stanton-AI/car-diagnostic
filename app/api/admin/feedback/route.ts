@@ -8,7 +8,7 @@ export async function GET() {
   const service = createServiceClient()
   const { data, error } = await service
     .from('feedback')
-    .select('id, content, page, created_at, user_id')
+    .select('id, content, page, phone, created_at, user_id, users:user_id(display_name, email)')
     .order('created_at', { ascending: false })
     .limit(200)
 
