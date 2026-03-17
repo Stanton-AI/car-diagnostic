@@ -37,42 +37,13 @@ type TabType = 'diagnosis' | 'quote' | 'inprogress' | 'done'
 type DiagSubTab = 'all' | 'my_car' | 'other'
 
 // ── 진단 내역 카드 ──────────────────────────────────────────────────────
-function ConvoCard({
-  convo,
-  onDeleteRequest,
-  isConfirming,
-  isDeleting,
-  onDeleteConfirm,
-  onDeleteCancel,
-}: {
-  convo: ConvoSummary
-  onDeleteRequest: () => void
-  isConfirming: boolean
-  isDeleting: boolean
-  onDeleteConfirm: () => void
-  onDeleteCancel: () => void
-}) {
+function ConvoCard({ convo }: { convo: ConvoSummary }) {
   const urgency = convo.urgency ? urgencyLabel(convo.urgency) : null
   const topCause = convo.final_result?.causes?.[0]
 
-  if (isConfirming) {
-    return (
-      <div className="bg-red-50 rounded-2xl p-4 border border-red-200 animate-fade-up">
-        <p className="text-sm font-semibold text-red-800 mb-1">이 진단 내역을 삭제할까요?</p>
-        <p className="text-xs text-red-500 mb-3 truncate">{topCause?.name ?? convo.initial_symptom}</p>
-        <div className="flex gap-2">
-          <button onClick={onDeleteCancel} disabled={isDeleting} className="flex-1 py-2.5 border border-gray-200 bg-white text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors">취소</button>
-          <button onClick={onDeleteConfirm} disabled={isDeleting} className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 disabled:opacity-60 transition-colors">
-            {isDeleting ? '삭제 중...' : '삭제'}
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="flex bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-      <Link href={`/results/${convo.id}`} className="flex-1 block p-4 min-w-0">
+    <Link href={`/results/${convo.id}`} className="flex bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden block">
+      <div className="flex-1 p-4 min-w-0">
         <div className="flex items-start gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${urgency?.bg ?? 'bg-gray-50'}`}>
             {convo.urgency === 'HIGH' ? '🚨' : convo.urgency === 'MID' ? '⚠️' : '✅'}
@@ -94,13 +65,8 @@ function ConvoCard({
             {convo.cost_max && <p className="text-sm font-black text-gray-900 mt-1">{formatKRW(convo.cost_max)}</p>}
           </div>
         </div>
-      </Link>
-      <button onClick={onDeleteRequest} className="flex items-center justify-center w-12 border-l border-gray-100 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0" aria-label="진단 내역 삭제">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-        </svg>
-      </button>
-    </div>
+      </div>
+    </Link>
   )
 }
 
@@ -182,8 +148,6 @@ export default function HistoryPage() {
   const [convos, setConvos] = useState<ConvoSummary[]>([])
   const [repairs, setRepairs] = useState<RepairSummary[]>([])
   const [loading, setLoading] = useState(true)
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('diagnosis')
   const [diagSubTab, setDiagSubTab] = useState<DiagSubTab>('all')
 
@@ -229,23 +193,6 @@ export default function HistoryPage() {
     load()
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id)
-    const guestId = getOrCreateGuestSessionId()
-    try {
-      const res = await fetch(`/api/conversations?id=${id}`, {
-        method: 'DELETE',
-        headers: { 'x-guest-session-id': guestId },
-      })
-      if (res.ok) setConvos(prev => prev.filter(c => c.id !== id))
-    } catch (err) {
-      console.error('Delete error:', err)
-    } finally {
-      setDeletingId(null)
-      setDeleteConfirmId(null)
-    }
-  }
 
   // 수리 상태별 분류
   const quoteRepairs     = repairs.filter(r => ['open', 'bidding'].includes(r.status))
@@ -324,15 +271,7 @@ export default function HistoryPage() {
           ) : (
             <div className="space-y-3">
               {filteredConvos.map(convo => (
-                <ConvoCard
-                  key={convo.id}
-                  convo={convo}
-                  isConfirming={deleteConfirmId === convo.id}
-                  isDeleting={deletingId === convo.id}
-                  onDeleteRequest={() => setDeleteConfirmId(convo.id)}
-                  onDeleteConfirm={() => handleDelete(convo.id)}
-                  onDeleteCancel={() => setDeleteConfirmId(null)}
-                />
+                <ConvoCard key={convo.id} convo={convo} />
               ))}
             </div>
           )

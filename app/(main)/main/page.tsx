@@ -247,6 +247,10 @@ export default function MainPage() {
   const [garageOpen, setGarageOpen] = useState(true)
   const touchStartY = useRef(0)
 
+  // 페이월 (일일 한도 초과)
+  const [paywallOpen, setPaywallOpen] = useState(false)
+  const [paymentInterestSent, setPaymentInterestSent] = useState(false)
+
   // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -428,7 +432,15 @@ export default function MainPage() {
         }),
       })
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
+      if (!response.ok) {
+        // 일일 한도 초과 → 페이월
+        if (response.status === 429 && data.error === 'DAILY_LIMIT_REACHED') {
+          setPaywallOpen(true)
+          setIsLoading(false)
+          return
+        }
+        throw new Error(data.error)
+      }
 
       if (data.data.needsMoreInfo && data.data.additionalQuestions?.length > 0) {
         const questions = data.data.additionalQuestions as DiagnosticQuestion[]
@@ -921,6 +933,83 @@ export default function MainPage() {
       )}
 
       <BottomNav />
+
+      {/* ── 페이월: 일일 진단 한도 초과 ── */}
+      {paywallOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setPaywallOpen(false)} />
+          <div className="relative bg-white rounded-t-3xl px-5 pt-6 pb-10 safe-area-pb">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+
+            {/* 아이콘 + 제목 */}
+            <div className="text-center mb-5">
+              <div className="text-5xl mb-3">🔒</div>
+              <h2 className="text-xl font-black text-gray-900 mb-1">오늘 진단 횟수를 모두 사용했어요</h2>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                무료 플랜은 하루 <span className="font-bold text-gray-700">3회</span>까지 진단할 수 있어요.<br/>
+                추가 진단이 필요하시면 프리미엄으로 업그레이드하세요.
+              </p>
+            </div>
+
+            {/* 플랜 비교 */}
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-200">
+                <p className="text-xs font-semibold text-gray-400 mb-1">무료 플랜</p>
+                <p className="text-lg font-black text-gray-400 mb-2">₩0</p>
+                <ul className="text-xs text-gray-400 space-y-1">
+                  <li>✓ 하루 3회 진단</li>
+                  <li>✓ 기본 리포트</li>
+                  <li className="text-gray-300">✗ 무제한 진단</li>
+                  <li className="text-gray-300">✗ 상세 분석</li>
+                </ul>
+              </div>
+              <div className="bg-primary-50 rounded-2xl p-4 border-2 border-primary-400 relative">
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">추천</span>
+                <p className="text-xs font-semibold text-primary-600 mb-1">프리미엄</p>
+                <p className="text-lg font-black text-primary-700 mb-2">₩9,900<span className="text-xs font-normal">/월</span></p>
+                <ul className="text-xs text-primary-700 space-y-1">
+                  <li>✓ <span className="font-bold">무제한</span> 진단</li>
+                  <li>✓ 심층 리포트</li>
+                  <li>✓ 정비소 연결</li>
+                  <li>✓ 내역 영구 보관</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* CTA 버튼 */}
+            {paymentInterestSent ? (
+              <div className="text-center py-4">
+                <p className="text-2xl mb-1">🙏</p>
+                <p className="text-sm font-bold text-gray-700">관심 등록 감사해요!</p>
+                <p className="text-xs text-gray-400 mt-1">서비스 준비가 완료되면 먼저 알려드릴게요</p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={async () => {
+                    // 스모크 테스트: 결제 의향 기록
+                    await fetch('/api/payment-interest', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ plan: 'premium_monthly', source: 'daily_limit_paywall' }),
+                    }).catch(() => {})
+                    setPaymentInterestSent(true)
+                  }}
+                  className="w-full py-4 bg-primary-600 text-white font-black text-base rounded-2xl shadow-lg hover:bg-primary-700 active:scale-[0.98] transition-all mb-3"
+                >
+                  프리미엄 시작하기 →
+                </button>
+                <button
+                  onClick={() => setPaywallOpen(false)}
+                  className="w-full py-3 text-gray-400 text-sm font-medium"
+                >
+                  내일 무료로 계속하기
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
