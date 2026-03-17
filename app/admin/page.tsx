@@ -376,8 +376,8 @@ export default function AdminPage() {
                   <h2 className="font-bold text-gray-900 mb-1 text-sm">🚗 등록 차량 통계</h2>
                   <p className="text-xs text-gray-400 mb-4">총 {stats.vehicles.total}대 등록</p>
 
-                  {/* 연식 분포 */}
-                  <p className="text-xs font-semibold text-gray-600 mb-2">📅 차량 연식</p>
+                  {/* 차령 분포 */}
+                  <p className="text-xs font-semibold text-gray-600 mb-2">📅 차령 (2026년 기준)</p>
                   <div className="space-y-2 mb-4">
                     {Object.entries(stats.vehicles.yearBands).filter(([, v]) => v > 0).map(([band, cnt]) => {
                       const max = Math.max(...Object.values(stats.vehicles.yearBands), 1)

@@ -73,21 +73,23 @@ export async function GET() {
   // ── 차량 통계 ───────────────────────────────────────────────
   const vehicles = vehicleRows ?? []
 
-  // 연식 구간
+  // 차령 구간 (2026 기준)
+  const CURRENT_YEAR = new Date().getFullYear()
   const yearBands = {
-    '2020년 이후': 0,
-    '2015~2019년': 0,
-    '2010~2014년': 0,
-    '2009년 이하': 0,
+    '1~3년차 (신차급)': 0,
+    '4~7년차': 0,
+    '8~12년차': 0,
+    '13년차 이상 (고연식)': 0,
     '미등록': 0,
   }
   for (const v of vehicles) {
     const y = v.year
-    if (!y) yearBands['미등록']++
-    else if (y >= 2020) yearBands['2020년 이후']++
-    else if (y >= 2015) yearBands['2015~2019년']++
-    else if (y >= 2010) yearBands['2010~2014년']++
-    else yearBands['2009년 이하']++
+    if (!y) { yearBands['미등록']++; continue }
+    const age = CURRENT_YEAR - y
+    if (age <= 3)       yearBands['1~3년차 (신차급)']++
+    else if (age <= 7)  yearBands['4~7년차']++
+    else if (age <= 12) yearBands['8~12년차']++
+    else                yearBands['13년차 이상 (고연식)']++
   }
 
   // 주행거리 구간
