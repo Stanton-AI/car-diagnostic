@@ -8,11 +8,23 @@ export async function GET() {
   const service = createServiceClient()
   const today = new Date(); today.setHours(0, 0, 0, 0)
 
-  const [{ count: total }, { count: todayCount }, { data: rows }] = await Promise.all([
+  const [
+    { count: total, error: e1 },
+    { count: todayCount, error: e2 },
+    { data: rows, error: e3 },
+  ] = await Promise.all([
     service.from('conversations').select('*', { count: 'exact', head: true }).not('final_result', 'is', null),
     service.from('conversations').select('*', { count: 'exact', head: true }).gte('created_at', today.toISOString()).not('final_result', 'is', null),
     service.from('conversations').select('urgency, category').not('final_result', 'is', null),
   ])
+
+  if (e1 || e2 || e3) {
+    console.error('[admin/stats] Supabase errors:', JSON.stringify({ e1, e2, e3 }))
+    return NextResponse.json(
+      { error: 'DB query failed', details: { e1, e2, e3 } },
+      { status: 500 }
+    )
+  }
 
   const urgencyBreakdown = { HIGH: 0, MID: 0, LOW: 0 }
   const categoryBreakdown: Record<string, number> = {}
