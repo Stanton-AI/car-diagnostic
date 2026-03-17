@@ -72,6 +72,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 로그인 사용자 일일 진단 한도 체크
+    if (user && config?.user_daily_limit && config.user_daily_limit > 0) {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const { count: todayCount } = await supabase
+        .from('conversations')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('created_at', todayStart.toISOString())
+        .not('final_result', 'is', null)
+
+      if ((todayCount ?? 0) >= config.user_daily_limit) {
+        return NextResponse.json(
+          { success: false, error: 'DAILY_LIMIT_REACHED' },
+          { status: 429 }
+        )
+      }
+    }
+
+    // 유료 모드: 로그인 필수
+    if (config?.diagnosis_mode === 'paid' && !user) {
+      return NextResponse.json(
+        { success: false, error: 'LOGIN_REQUIRED' },
+        { status: 401 }
+      )
+    }
+
     // 초기 증상 텍스트 추출
     const symptomMessage = messages.find(m =>
       m.role === 'user' &&
