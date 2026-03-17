@@ -29,9 +29,9 @@ function getErrorMessage(code: string, desc?: string): { title: string; body: st
       }
     case 'exchange_failed':
       return {
-        title: '인증 코드 처리에 실패했습니다',
-        body: desc || '브라우저 보안 정책으로 인증 정보가 손실되었습니다.',
-        hint: '브라우저 캐시를 지운 뒤 다시 시도하거나, 다른 브라우저를 사용해 보세요.',
+        title: '로그인에 실패했습니다',
+        body: '카카오톡 앱 안에서 로그인하면 브라우저 간 인증 정보가 공유되지 않아 이 오류가 발생해요.',
+        hint: 'Safari나 Chrome에서 직접 앱을 열고 다시 시도해 주세요. (카카오톡 내 브라우저 X)',
       }
     case 'no_code':
       return {
@@ -51,15 +51,24 @@ function getErrorMessage(code: string, desc?: string): { title: string; body: st
 // ── 에러 배너 ──────────────────────────────────────────────────────────────
 function ErrorBanner({ code, desc }: { code: string; desc?: string }) {
   const msg = getErrorMessage(code, desc)
+  const isExchangeFailed = code === 'exchange_failed'
   return (
     <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
       <div className="flex items-start gap-2.5">
         <span className="text-lg flex-shrink-0 mt-0.5">❌</span>
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-bold text-red-800 mb-1">{msg.title}</p>
           <p className="text-xs text-red-600 leading-relaxed">{msg.body}</p>
           {msg.hint && (
             <p className="text-xs text-red-500 mt-2 leading-relaxed">💡 {msg.hint}</p>
+          )}
+          {isExchangeFailed && (
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="mt-3 w-full py-2 bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold rounded-xl transition-colors"
+            >
+              🔄 처음부터 다시 로그인하기
+            </button>
           )}
         </div>
       </div>
@@ -187,7 +196,7 @@ function LoginContent() {
         {/* 로고 */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-200">
-            <span className="text-white text-2xl font-black">M</span>
+            <span className="text-white text-2xl font-black">정</span>
           </div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">로그인</h1>
           <p className="text-sm text-gray-500 leading-relaxed">
