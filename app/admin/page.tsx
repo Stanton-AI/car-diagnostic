@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatKRW } from '@/lib/utils'
 import { CATEGORY_TAXONOMY, MAJOR_CATEGORIES, type MajorCategory } from '@/lib/categoryTaxonomy'
 
-type Tab = 'overview' | 'marketplace' | 'feedback' | 'board' | 'settings'
+type Tab = 'overview' | 'diagnoses' | 'users' | 'payment' | 'marketplace' | 'feedback' | 'board' | 'settings'
 
 interface AdminConfig {
   id: number
@@ -69,6 +69,32 @@ interface FeedbackItem {
   users: { display_name: string | null; email: string | null } | null
 }
 
+interface DiagnosisItem {
+  id: string
+  created_at: string
+  urgency: string | null
+  category: string | null
+  user_id: string | null
+  users: { display_name: string | null; email: string | null } | null
+}
+
+interface UserItem {
+  id: string
+  display_name: string | null
+  email: string | null
+  provider: string | null
+  created_at: string
+}
+
+interface PaymentInterestItem {
+  id: string
+  plan: string | null
+  source: string | null
+  created_at: string
+  user_id: string | null
+  users: { display_name: string | null; email: string | null } | null
+}
+
 interface BoardPost {
   id: string; category: string; title: string; content: string
   like_count: number; view_count: number; created_at: string; user_id: string
@@ -83,6 +109,11 @@ export default function AdminPage() {
   const [marketStats, setMarketStats] = useState<MarketStats | null>(null)
   const [pendingShops, setPendingShops] = useState<PendingShop[]>([])
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([])
+  const [diagnosesList, setDiagnosesList] = useState<DiagnosisItem[]>([])
+  const [diagnosesCount, setDiagnosesCount] = useState(0)
+  const [usersList, setUsersList] = useState<UserItem[]>([])
+  const [usersCount, setUsersCount] = useState(0)
+  const [paymentList, setPaymentList] = useState<PaymentInterestItem[]>([])
   const [boardPosts, setBoardPosts] = useState<BoardPost[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -97,12 +128,10 @@ export default function AdminPage() {
       const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
       if (profile?.role !== 'admin') { router.replace('/main'); return }
 
-      // config (anon key OK — SELECT is public)
       const { data: cfg } = await supabase.from('admin_config').select('*').single()
       setConfig(cfg)
       setBanner(cfg?.maintenance_banner ?? '')
 
-      // stats via API (service role)
       const [statsRes, mktRes] = await Promise.all([
         fetch('/api/admin/stats'),
         fetch('/api/admin/marketplace'),
@@ -127,10 +156,36 @@ export default function AdminPage() {
     if (res.ok) setBoardPosts(await res.json())
   }, [])
 
+  const loadDiagnoses = useCallback(async () => {
+    const res = await fetch('/api/admin/diagnoses')
+    if (res.ok) {
+      const json = await res.json()
+      setDiagnosesList(json.data ?? [])
+      setDiagnosesCount(json.count ?? 0)
+    }
+  }, [])
+
+  const loadUsers = useCallback(async () => {
+    const res = await fetch('/api/admin/users')
+    if (res.ok) {
+      const json = await res.json()
+      setUsersList(json.data ?? [])
+      setUsersCount(json.count ?? 0)
+    }
+  }, [])
+
+  const loadPayment = useCallback(async () => {
+    const res = await fetch('/api/admin/payment-interest')
+    if (res.ok) setPaymentList(await res.json())
+  }, [])
+
   useEffect(() => {
     if (tab === 'feedback' && feedbackList.length === 0) loadFeedback()
     if (tab === 'board' && boardPosts.length === 0) loadBoard()
-  }, [tab, feedbackList.length, boardPosts.length, loadFeedback, loadBoard])
+    if (tab === 'diagnoses' && diagnosesList.length === 0) loadDiagnoses()
+    if (tab === 'users' && usersList.length === 0) loadUsers()
+    if (tab === 'payment' && paymentList.length === 0) loadPayment()
+  }, [tab])
 
   const save = async () => {
     if (!config) return
@@ -157,23 +212,39 @@ export default function AdminPage() {
 
   const deleteFeedback = async (id: string) => {
     setDeletingId(id)
-    await fetch('/api/admin/feedback', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    })
+    await fetch('/api/admin/feedback', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setFeedbackList(prev => prev.filter(f => f.id !== id))
+    setDeletingId(null)
+  }
+
+  const deleteDiagnosis = async (id: string) => {
+    setDeletingId(id)
+    await fetch('/api/admin/diagnoses', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setDiagnosesList(prev => prev.filter(d => d.id !== id))
+    setDiagnosesCount(prev => prev - 1)
+    setDeletingId(null)
+  }
+
+  const deleteUser = async (id: string) => {
+    if (!confirm('이 사용자를 삭제하시겠습니까?')) return
+    setDeletingId(id)
+    await fetch('/api/admin/users', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setUsersList(prev => prev.filter(u => u.id !== id))
+    setUsersCount(prev => prev - 1)
+    setDeletingId(null)
+  }
+
+  const deletePayment = async (id: string) => {
+    setDeletingId(id)
+    await fetch('/api/admin/payment-interest', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    setPaymentList(prev => prev.filter(p => p.id !== id))
     setDeletingId(null)
   }
 
   const deletePost = async (id: string) => {
     if (!confirm('이 게시물을 삭제하시겠습니까?')) return
     setDeletingId(id)
-    await fetch('/api/admin/board', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    })
+    await fetch('/api/admin/board', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     setBoardPosts(prev => prev.filter(p => p.id !== id))
     setDeletingId(null)
   }
@@ -185,12 +256,29 @@ export default function AdminPage() {
   )
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
-    { key: 'overview',     label: '📊 통계' },
-    { key: 'marketplace',  label: '🏪 마켓', badge: pendingShops.length || undefined },
-    { key: 'feedback',     label: '💬 피드백', badge: feedbackList.length || undefined },
-    { key: 'board',        label: '📝 게시판' },
-    { key: 'settings',     label: '⚙️ 설정' },
+    { key: 'overview',    label: '📊 통계' },
+    { key: 'diagnoses',   label: '🩺 진단', badge: stats ? stats.totalDiagnoses : undefined },
+    { key: 'users',       label: '👥 가입자', badge: stats ? stats.users?.total : undefined },
+    { key: 'payment',     label: '💳 결제전환', badge: stats ? stats.paymentInterest?.total : undefined },
+    { key: 'marketplace', label: '🏪 마켓', badge: pendingShops.length || undefined },
+    { key: 'feedback',    label: '💬 피드백', badge: feedbackList.length || undefined },
+    { key: 'board',       label: '📝 게시판' },
+    { key: 'settings',    label: '⚙️ 설정' },
   ]
+
+  const URGENCY_BADGE: Record<string, { label: string; cls: string }> = {
+    HIGH: { label: '즉시', cls: 'bg-red-100 text-red-600' },
+    MID:  { label: '조기', cls: 'bg-amber-100 text-amber-600' },
+    LOW:  { label: '여유', cls: 'bg-green-100 text-green-600' },
+  }
+
+  const PLAN_LABEL: Record<string, string> = {
+    premium_monthly: '프리미엄 월정액', premium_annual: '프리미엄 연간', basic: '베이직', unknown: '미정',
+  }
+
+  const PROVIDER_LABEL: Record<string, string> = {
+    google: '구글', kakao: '카카오', email: '이메일', github: 'GitHub',
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -210,9 +298,9 @@ export default function AdminPage() {
             }`}
           >
             {t.label}
-            {t.badge ? (
-              <span className="absolute -top-1 right-0 w-4 h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold">
-                {t.badge > 9 ? '9+' : t.badge}
+            {t.badge != null && t.badge > 0 ? (
+              <span className="absolute -top-1 right-0 min-w-[16px] h-4 bg-red-500 rounded-full text-[9px] text-white flex items-center justify-center font-bold px-0.5">
+                {t.badge > 99 ? '99+' : t.badge}
               </span>
             ) : null}
           </button>
@@ -221,30 +309,10 @@ export default function AdminPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
-        {/* ─── 탭: 진단 통계 ─── */}
+        {/* ─── 탭: 통계 (차트/분석) ─── */}
         {tab === 'overview' && (
           stats ? (
             <div className="space-y-4">
-
-              {/* KPI 카드 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                  <p className="text-3xl font-black text-primary-600">{stats.totalDiagnoses}</p>
-                  <p className="text-xs text-gray-500 mt-1">누적 진단 수</p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                  <p className="text-3xl font-black text-green-600">{stats.todayDiagnoses}</p>
-                  <p className="text-xs text-gray-500 mt-1">오늘 진단 수</p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
-                  <p className="text-3xl font-black text-gray-700">{stats.users?.total ?? 0}</p>
-                  <p className="text-xs text-gray-500 mt-1">총 가입자</p>
-                </div>
-                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 shadow-sm text-center">
-                  <p className="text-3xl font-black text-amber-600">{stats.paymentInterest?.total ?? 0}</p>
-                  <p className="text-xs text-amber-600 mt-1">💳 결제 전환 의향</p>
-                </div>
-              </div>
 
               {/* 긴급도 분포 */}
               <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
@@ -303,23 +371,19 @@ export default function AdminPage() {
                 })()}
               </section>
 
-              {/* 중분류 상세 (접히는 방식으로 대분류별) */}
+              {/* 중분류 상세 */}
               <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                 <h2 className="font-bold text-gray-900 mb-4 text-sm">🔍 중분류 상세 통계</h2>
                 {(() => {
-                  const subEntries = Object.entries(stats.subBreakdown ?? {})
-                    .sort((a, b) => b[1] - a[1])
+                  const subEntries = Object.entries(stats.subBreakdown ?? {}).sort((a, b) => b[1] - a[1])
                   if (subEntries.length === 0) return <p className="text-xs text-gray-400 text-center py-4">데이터 없음</p>
                   const maxSub = subEntries[0]?.[1] ?? 1
-
-                  // 대분류별로 그룹핑
                   const groups: Record<string, Array<[string, number]>> = {}
                   for (const [key, cnt] of subEntries) {
                     const [major] = key.split(' > ', 1)
                     if (!groups[major]) groups[major] = []
                     groups[major].push([key, cnt])
                   }
-
                   return (
                     <div className="space-y-4">
                       {Object.entries(groups).map(([major, subs]) => {
@@ -353,50 +417,11 @@ export default function AdminPage() {
                 })()}
               </section>
 
-              {/* ── 가입자 통계 ── */}
-              {stats.users && (
-                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h2 className="font-bold text-gray-900 mb-4 text-sm">👥 가입자 현황</h2>
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {[
-                      { label: '총 가입자', value: stats.users.total, color: 'text-primary-600' },
-                      { label: '오늘 신규',  value: stats.users.today, color: 'text-green-600' },
-                      { label: '7일 신규',   value: stats.users.week,  color: 'text-amber-600' },
-                    ].map(item => (
-                      <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">
-                        <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">{item.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                  {/* 최근 7일 일별 가입자 바차트 */}
-                  <p className="text-[11px] text-gray-400 mb-2">최근 7일 일별 신규 가입</p>
-                  <div className="flex items-end gap-1.5 h-16">
-                    {Object.entries(stats.users.daily).map(([date, cnt]) => {
-                      const maxD = Math.max(...Object.values(stats.users.daily), 1)
-                      const h = Math.round((cnt / maxD) * 100)
-                      const label = new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
-                      return (
-                        <div key={date} className="flex-1 flex flex-col items-center gap-0.5">
-                          <span className="text-[9px] text-gray-500">{cnt > 0 ? cnt : ''}</span>
-                          <div className="w-full rounded-t-sm bg-primary-200 relative" style={{ height: `${Math.max(h, cnt > 0 ? 8 : 2)}%` }}>
-                            {cnt > 0 && <div className="absolute inset-0 bg-primary-400 rounded-t-sm" />}
-                          </div>
-                          <span className="text-[9px] text-gray-400">{label}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </section>
-              )}
-
-              {/* ── 차량 통계 ── */}
+              {/* 차량 통계 */}
               {stats.vehicles && (
                 <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <h2 className="font-bold text-gray-900 mb-1 text-sm">🚗 등록 차량 통계</h2>
                   <p className="text-xs text-gray-400 mb-4">총 {stats.vehicles.total}대 등록</p>
-
-                  {/* 차령 분포 */}
                   <p className="text-xs font-semibold text-gray-600 mb-2">📅 차령 (2026년 기준)</p>
                   <div className="space-y-2 mb-4">
                     {Object.entries(stats.vehicles.yearBands).filter(([, v]) => v > 0).map(([band, cnt]) => {
@@ -415,8 +440,6 @@ export default function AdminPage() {
                       )
                     })}
                   </div>
-
-                  {/* 주행거리 분포 */}
                   <p className="text-xs font-semibold text-gray-600 mb-2">📏 주행거리 구간</p>
                   <div className="space-y-2 mb-4">
                     {Object.entries(stats.vehicles.mileageBands).filter(([, v]) => v > 0).map(([band, cnt]) => {
@@ -435,8 +458,6 @@ export default function AdminPage() {
                       )
                     })}
                   </div>
-
-                  {/* 연료 타입 */}
                   <p className="text-xs font-semibold text-gray-600 mb-2">⛽ 연료 타입</p>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(stats.vehicles.fuelBreakdown).map(([fuel, cnt]) => (
@@ -449,54 +470,7 @@ export default function AdminPage() {
                 </section>
               )}
 
-              {/* ── 결제 전환 의향 상세 ── */}
-              {stats.paymentInterest && (
-                <section className="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm">
-                  <h2 className="font-bold text-gray-900 mb-1 text-sm">💳 프리미엄 전환 의향</h2>
-                  <p className="text-xs text-gray-400 mb-4">페이월 CTA 클릭 수 (스모크 테스트)</p>
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                      <p className="text-2xl font-black text-amber-600">{stats.paymentInterest.total}</p>
-                      <p className="text-[11px] text-amber-500 mt-0.5">누적 의향 표시</p>
-                    </div>
-                    <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                      <p className="text-2xl font-black text-amber-600">{stats.paymentInterest.week}</p>
-                      <p className="text-[11px] text-amber-500 mt-0.5">최근 7일</p>
-                    </div>
-                  </div>
-                  {Object.keys(stats.paymentInterest.planBreakdown).length > 0 ? (
-                    <>
-                      <p className="text-xs font-semibold text-gray-600 mb-2">플랜별 선택</p>
-                      <div className="space-y-2">
-                        {Object.entries(stats.paymentInterest.planBreakdown)
-                          .sort((a, b) => b[1] - a[1])
-                          .map(([plan, cnt]) => {
-                            const max = Math.max(...Object.values(stats.paymentInterest.planBreakdown), 1)
-                            const pct = Math.round(cnt / max * 100)
-                            const PLAN_LABEL: Record<string, string> = {
-                              premium_monthly: '프리미엄 월정액', premium_annual: '프리미엄 연간', basic: '베이직', unknown: '알 수 없음'
-                            }
-                            return (
-                              <div key={plan}>
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <span className="text-xs text-gray-600">{PLAN_LABEL[plan] ?? plan}</span>
-                                  <span className="text-xs font-bold text-amber-600">{cnt}건</span>
-                                </div>
-                                <div className="w-full bg-amber-50 rounded-full h-2">
-                                  <div className="bg-amber-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                            )
-                          })}
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-xs text-gray-400 text-center py-2">플랜별 데이터 없음</p>
-                  )}
-                </section>
-              )}
-
-              {/* ── 시간대별 진단 현황 (KST) ── */}
+              {/* 시간대별 진단 */}
               {stats.traffic?.hourlyDiag && (
                 <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <h2 className="font-bold text-gray-900 mb-1 text-sm">⏰ 시간대별 진단 현황</h2>
@@ -521,11 +495,8 @@ export default function AdminPage() {
                             )
                           })}
                         </div>
-                        {/* X축 레이블: 0, 6, 12, 18, 23 */}
                         <div className="flex justify-between text-[9px] text-gray-400 px-0.5">
-                          {[0, 6, 12, 18, 23].map(h => (
-                            <span key={h}>{h}시</span>
-                          ))}
+                          {[0, 6, 12, 18, 23].map(h => <span key={h}>{h}시</span>)}
                         </div>
                         {Math.max(...hourly) > 0 && (
                           <p className="text-xs text-primary-600 font-semibold mt-3 text-center">
@@ -538,7 +509,7 @@ export default function AdminPage() {
                 </section>
               )}
 
-              {/* ── 유입 경로 ── */}
+              {/* 유입 경로 */}
               {stats.traffic && (
                 <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <h2 className="font-bold text-gray-900 mb-1 text-sm">🔗 앱 유입 경로</h2>
@@ -553,31 +524,27 @@ export default function AdminPage() {
                   ) : (
                     <>
                       <div className="space-y-2 mb-5">
-                        {Object.entries(stats.traffic.sourceBreakdown)
-                          .sort((a, b) => b[1] - a[1])
-                          .map(([source, cnt]) => {
-                            const total = Object.values(stats.traffic.sourceBreakdown).reduce((s, v) => s + v, 0)
-                            const pct = total ? Math.round(cnt / total * 100) : 0
-                            const SOURCE_COLOR: Record<string, string> = {
-                              '직접 방문': 'bg-gray-400', '카카오': 'bg-yellow-400',
-                              '인스타그램': 'bg-pink-400', '네이버': 'bg-green-500',
-                              '구글': 'bg-blue-400', '페이스북': 'bg-blue-600', '기타': 'bg-gray-300',
-                            }
-                            const color = SOURCE_COLOR[source] ?? 'bg-gray-300'
-                            return (
-                              <div key={source}>
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <span className="text-xs text-gray-700">{source}</span>
-                                  <span className="text-xs font-bold text-gray-600">{cnt}회 <span className="text-gray-400 font-normal">({pct}%)</span></span>
-                                </div>
-                                <div className="w-full bg-gray-100 rounded-full h-2">
-                                  <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                                </div>
+                        {Object.entries(stats.traffic.sourceBreakdown).sort((a, b) => b[1] - a[1]).map(([source, cnt]) => {
+                          const total = Object.values(stats.traffic.sourceBreakdown).reduce((s, v) => s + v, 0)
+                          const pct = total ? Math.round(cnt / total * 100) : 0
+                          const SOURCE_COLOR: Record<string, string> = {
+                            '직접 방문': 'bg-gray-400', '카카오': 'bg-yellow-400',
+                            '인스타그램': 'bg-pink-400', '네이버': 'bg-green-500',
+                            '구글': 'bg-blue-400', '페이스북': 'bg-blue-600', '기타': 'bg-gray-300',
+                          }
+                          return (
+                            <div key={source}>
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-xs text-gray-700">{source}</span>
+                                <span className="text-xs font-bold text-gray-600">{cnt}회 <span className="text-gray-400 font-normal">({pct}%)</span></span>
                               </div>
-                            )
-                          })}
+                              <div className="w-full bg-gray-100 rounded-full h-2">
+                                <div className={`${SOURCE_COLOR[source] ?? 'bg-gray-300'} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
-                      {/* 최근 7일 세션 추이 */}
                       <p className="text-[11px] text-gray-400 mb-2">최근 7일 일별 세션</p>
                       <div className="flex items-end gap-1.5 h-12">
                         {Object.entries(stats.traffic.dailySession).map(([date, cnt]) => {
@@ -600,33 +567,30 @@ export default function AdminPage() {
                 </section>
               )}
 
-              {/* ── 가입 경로 (provider) ── */}
+              {/* 가입 경로 */}
               {stats.users?.providerBreakdown && Object.keys(stats.users.providerBreakdown).length > 0 && (
                 <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
                   <h2 className="font-bold text-gray-900 mb-1 text-sm">🔐 가입 경로 (소셜 로그인)</h2>
                   <p className="text-xs text-gray-400 mb-4">전체 가입자 기준</p>
                   <div className="space-y-2">
-                    {Object.entries(stats.users.providerBreakdown)
-                      .sort((a, b) => b[1] - a[1])
-                      .map(([provider, cnt]) => {
-                        const total = Object.values(stats.users.providerBreakdown).reduce((s, v) => s + v, 0)
-                        const pct = total ? Math.round(cnt / total * 100) : 0
-                        const PROVIDER_COLOR: Record<string, string> = {
-                          '구글': 'bg-red-400', '카카오': 'bg-yellow-400', '이메일': 'bg-gray-400', 'GitHub': 'bg-gray-700',
-                        }
-                        const color = PROVIDER_COLOR[provider] ?? 'bg-gray-300'
-                        return (
-                          <div key={provider}>
-                            <div className="flex items-center justify-between mb-0.5">
-                              <span className="text-xs text-gray-700">{provider}</span>
-                              <span className="text-xs font-bold text-gray-600">{cnt}명 <span className="text-gray-400 font-normal">({pct}%)</span></span>
-                            </div>
-                            <div className="w-full bg-gray-100 rounded-full h-2">
-                              <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
-                            </div>
+                    {Object.entries(stats.users.providerBreakdown).sort((a, b) => b[1] - a[1]).map(([provider, cnt]) => {
+                      const total = Object.values(stats.users.providerBreakdown).reduce((s, v) => s + v, 0)
+                      const pct = total ? Math.round(cnt / total * 100) : 0
+                      const PROVIDER_COLOR: Record<string, string> = {
+                        '구글': 'bg-red-400', '카카오': 'bg-yellow-400', '이메일': 'bg-gray-400', 'GitHub': 'bg-gray-700',
+                      }
+                      return (
+                        <div key={provider}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs text-gray-700">{provider}</span>
+                            <span className="text-xs font-bold text-gray-600">{cnt}명 <span className="text-gray-400 font-normal">({pct}%)</span></span>
                           </div>
-                        )
-                      })}
+                          <div className="w-full bg-gray-100 rounded-full h-2">
+                            <div className={`${PROVIDER_COLOR[provider] ?? 'bg-gray-300'} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </section>
               )}
@@ -635,6 +599,211 @@ export default function AdminPage() {
           ) : (
             <div className="text-center py-12 text-gray-400 text-sm">통계 로딩 중...</div>
           )
+        )}
+
+        {/* ─── 탭: 진단 목록 ─── */}
+        {tab === 'diagnoses' && (
+          <div className="space-y-4">
+            {/* KPI */}
+            {stats && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-primary-600">{stats.totalDiagnoses}</p>
+                  <p className="text-xs text-gray-500 mt-1">누적 진단 수</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-green-600">{stats.todayDiagnoses}</p>
+                  <p className="text-xs text-gray-500 mt-1">오늘 진단 수</p>
+                </div>
+              </div>
+            )}
+            {/* 목록 */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-sm">🩺 진단 목록 <span className="text-gray-400 font-normal text-xs">({diagnosesCount}건)</span></h2>
+                <button onClick={loadDiagnoses} className="text-xs text-primary-600 font-semibold hover:underline">새로고침</button>
+              </div>
+              {diagnosesList.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">진단 기록이 없습니다</p>
+              ) : diagnosesList.map(d => {
+                const urgencyInfo = URGENCY_BADGE[d.urgency ?? ''] ?? { label: '-', cls: 'bg-gray-100 text-gray-400' }
+                const author = d.users?.display_name ?? d.users?.email ?? (d.user_id ? '회원' : '비로그인')
+                return (
+                  <div key={d.id} className="border-b border-gray-50 last:border-0 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${urgencyInfo.cls}`}>{urgencyInfo.label}</span>
+                        <span className="text-xs text-gray-700 font-medium truncate">{d.category ?? '미분류'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-gray-400">{author}</span>
+                        <span className="text-[11px] text-gray-300">{new Date(d.created_at).toLocaleDateString('ko-KR')} {new Date(d.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteDiagnosis(d.id)}
+                      disabled={deletingId === d.id}
+                      className="flex-shrink-0 text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-2 py-1 rounded-lg disabled:opacity-30 transition-colors"
+                    >
+                      {deletingId === d.id ? '삭제 중…' : '삭제'}
+                    </button>
+                  </div>
+                )
+              })}
+            </section>
+          </div>
+        )}
+
+        {/* ─── 탭: 가입자 목록 ─── */}
+        {tab === 'users' && (
+          <div className="space-y-4">
+            {/* KPI */}
+            {stats?.users && (
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: '총 가입자', value: stats.users.total, color: 'text-primary-600' },
+                  { label: '오늘 신규',  value: stats.users.today, color: 'text-green-600' },
+                  { label: '7일 신규',   value: stats.users.week,  color: 'text-amber-600' },
+                ].map(item => (
+                  <div key={item.label} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                    <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">{item.label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* 최근 7일 가입 추이 */}
+            {stats?.users?.daily && (
+              <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <p className="text-xs font-semibold text-gray-600 mb-3">최근 7일 일별 신규 가입</p>
+                <div className="flex items-end gap-1.5 h-16">
+                  {Object.entries(stats.users.daily).map(([date, cnt]) => {
+                    const maxD = Math.max(...Object.values(stats.users.daily), 1)
+                    const h = Math.round((cnt / maxD) * 100)
+                    const label = new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+                    return (
+                      <div key={date} className="flex-1 flex flex-col items-center gap-0.5">
+                        <span className="text-[9px] text-gray-500">{cnt > 0 ? cnt : ''}</span>
+                        <div className="w-full rounded-t-sm bg-primary-200 relative" style={{ height: `${Math.max(h, cnt > 0 ? 8 : 2)}%` }}>
+                          {cnt > 0 && <div className="absolute inset-0 bg-primary-400 rounded-t-sm" />}
+                        </div>
+                        <span className="text-[9px] text-gray-400">{label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+            {/* 목록 */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-sm">👥 가입자 목록 <span className="text-gray-400 font-normal text-xs">({usersCount}명)</span></h2>
+                <button onClick={loadUsers} className="text-xs text-primary-600 font-semibold hover:underline">새로고침</button>
+              </div>
+              {usersList.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">가입자가 없습니다</p>
+              ) : usersList.map(u => (
+                <div key={u.id} className="border-b border-gray-50 last:border-0 py-3 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs font-semibold text-gray-800">{u.display_name ?? '이름 없음'}</span>
+                      <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {PROVIDER_LABEL[u.provider ?? ''] ?? u.provider ?? '기타'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400">{u.email ?? '-'}</p>
+                    <p className="text-[11px] text-gray-300 mt-0.5">{new Date(u.created_at).toLocaleDateString('ko-KR')} 가입</p>
+                  </div>
+                  <button
+                    onClick={() => deleteUser(u.id)}
+                    disabled={deletingId === u.id}
+                    className="flex-shrink-0 text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-2 py-1 rounded-lg disabled:opacity-30 transition-colors"
+                  >
+                    {deletingId === u.id ? '삭제 중…' : '삭제'}
+                  </button>
+                </div>
+              ))}
+            </section>
+          </div>
+        )}
+
+        {/* ─── 탭: 결제 전환 의향 ─── */}
+        {tab === 'payment' && (
+          <div className="space-y-4">
+            {/* KPI */}
+            {stats?.paymentInterest && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-amber-600">{stats.paymentInterest.total}</p>
+                  <p className="text-xs text-amber-500 mt-1">누적 전환 의향</p>
+                </div>
+                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-amber-600">{stats.paymentInterest.week}</p>
+                  <p className="text-xs text-amber-500 mt-1">최근 7일</p>
+                </div>
+              </div>
+            )}
+            {/* 플랜별 분포 */}
+            {stats?.paymentInterest && Object.keys(stats.paymentInterest.planBreakdown).length > 0 && (
+              <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <p className="text-xs font-semibold text-gray-600 mb-3">플랜별 선택</p>
+                <div className="space-y-2">
+                  {Object.entries(stats.paymentInterest.planBreakdown).sort((a, b) => b[1] - a[1]).map(([plan, cnt]) => {
+                    const max = Math.max(...Object.values(stats.paymentInterest.planBreakdown), 1)
+                    const pct = Math.round(cnt / max * 100)
+                    return (
+                      <div key={plan}>
+                        <div className="flex items-center justify-between mb-0.5">
+                          <span className="text-xs text-gray-600">{PLAN_LABEL[plan] ?? plan}</span>
+                          <span className="text-xs font-bold text-amber-600">{cnt}건</span>
+                        </div>
+                        <div className="w-full bg-amber-50 rounded-full h-2">
+                          <div className="bg-amber-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+            {/* 목록 */}
+            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-gray-900 text-sm">💳 전환 의향 목록</h2>
+                <button onClick={loadPayment} className="text-xs text-primary-600 font-semibold hover:underline">새로고침</button>
+              </div>
+              {paymentList.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-8">결제 전환 의향 데이터가 없습니다</p>
+              ) : paymentList.map(p => {
+                const author = p.users?.display_name ?? p.users?.email ?? (p.user_id ? '회원' : '비로그인')
+                return (
+                  <div key={p.id} className="border-b border-gray-50 last:border-0 py-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                          {PLAN_LABEL[p.plan ?? ''] ?? p.plan ?? '미정'}
+                        </span>
+                        {p.source && p.source !== 'unknown' && (
+                          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{p.source}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] text-gray-400">{author}</span>
+                        <span className="text-[11px] text-gray-300">{new Date(p.created_at).toLocaleDateString('ko-KR')} {new Date(p.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deletePayment(p.id)}
+                      disabled={deletingId === p.id}
+                      className="flex-shrink-0 text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-2 py-1 rounded-lg disabled:opacity-30 transition-colors"
+                    >
+                      {deletingId === p.id ? '삭제 중…' : '삭제'}
+                    </button>
+                  </div>
+                )
+              })}
+            </section>
+          </div>
         )}
 
         {/* ─── 탭: 마켓플레이스 ─── */}
@@ -664,7 +833,6 @@ export default function AdminPage() {
                 </div>
               </section>
             )}
-
             <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
               <h2 className="font-bold text-gray-900 mb-4">
                 🔔 파트너 승인 대기
@@ -684,20 +852,10 @@ export default function AdminPage() {
                     <p className="text-xs text-gray-300 mt-1">{new Date(shop.created_at).toLocaleDateString('ko-KR')} 신청</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => approveShop(shop.id, true)}
-                      disabled={approvingShop === shop.id}
-                      className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50"
-                    >
-                      ✅ 승인
-                    </button>
-                    <button
-                      onClick={() => approveShop(shop.id, false)}
-                      disabled={approvingShop === shop.id}
-                      className="flex-1 py-2.5 bg-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-300 disabled:opacity-50"
-                    >
-                      ❌ 거절
-                    </button>
+                    <button onClick={() => approveShop(shop.id, true)} disabled={approvingShop === shop.id}
+                      className="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 disabled:opacity-50">✅ 승인</button>
+                    <button onClick={() => approveShop(shop.id, false)} disabled={approvingShop === shop.id}
+                      className="flex-1 py-2.5 bg-gray-200 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-300 disabled:opacity-50">❌ 거절</button>
                   </div>
                 </div>
               ))}
@@ -707,12 +865,7 @@ export default function AdminPage() {
 
         {/* ─── 탭: 피드백 ─── */}
         {tab === 'feedback' && (
-          <FeedbackTab
-            feedbackList={feedbackList}
-            deletingId={deletingId}
-            onDelete={deleteFeedback}
-            onRefresh={loadFeedback}
-          />
+          <FeedbackTab feedbackList={feedbackList} deletingId={deletingId} onDelete={deleteFeedback} onRefresh={loadFeedback} />
         )}
 
         {/* ─── 탭: 게시판 ─── */}
@@ -737,13 +890,8 @@ export default function AdminPage() {
                     <span className="text-[10px] text-gray-300">{new Date(post.created_at).toLocaleDateString('ko-KR')}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => deletePost(post.id)}
-                  disabled={deletingId === post.id}
-                  className="flex-shrink-0 text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-2 py-1 rounded-lg disabled:opacity-30"
-                >
-                  삭제
-                </button>
+                <button onClick={() => deletePost(post.id)} disabled={deletingId === post.id}
+                  className="flex-shrink-0 text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-2 py-1 rounded-lg disabled:opacity-30">삭제</button>
               </div>
             ))}
           </section>
@@ -762,8 +910,7 @@ export default function AdminPage() {
                   { value: 'ab_test', label: 'A/B 테스트', desc: '비율 설정으로 무료/유료 분리 실험' },
                 ].map(opt => (
                   <label key={opt.value} className={`flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer transition-colors ${config.diagnosis_mode === opt.value ? 'bg-primary-50 border-primary-300' : 'bg-gray-50 border-gray-200 hover:border-gray-300'}`}>
-                    <input
-                      type="radio" name="diagMode" value={opt.value}
+                    <input type="radio" name="diagMode" value={opt.value}
                       checked={config.diagnosis_mode === opt.value}
                       onChange={() => setConfig(c => c ? { ...c, diagnosis_mode: opt.value as AdminConfig['diagnosis_mode'] } : c)}
                       className="accent-primary-600"
@@ -824,16 +971,14 @@ export default function AdminPage() {
             <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
               <h2 className="font-bold text-gray-900 mb-1">📢 홈 공지 배너</h2>
               <p className="text-xs text-gray-400 mb-3">비워두면 배너 미표시</p>
-              <input
-                type="text" value={banner} onChange={e => setBanner(e.target.value)}
+              <input type="text" value={banner} onChange={e => setBanner(e.target.value)}
                 placeholder="예: 서비스 점검이 예정되어 있습니다..."
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-400"
               />
             </section>
 
             <button onClick={save} disabled={saving}
-              className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
+              className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
               {saving ? <span className="animate-spin">⟳</span> : null}
               {saved ? '✓ 저장됨' : '설정 저장'}
             </button>
@@ -847,10 +992,7 @@ export default function AdminPage() {
 
 /* ─── 피드백 탭 서브컴포넌트 ─── */
 function FeedbackTab({
-  feedbackList,
-  deletingId,
-  onDelete,
-  onRefresh,
+  feedbackList, deletingId, onDelete, onRefresh,
 }: {
   feedbackList: FeedbackItem[]
   deletingId: string | null
@@ -858,7 +1000,6 @@ function FeedbackTab({
   onRefresh: () => void
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
-
   return (
     <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
       <div className="flex items-center justify-between mb-4">
@@ -871,60 +1012,37 @@ function FeedbackTab({
         const isLong = fb.content.length > 80
         const isExpanded = expandedId === fb.id
         const author = fb.users?.display_name ?? fb.users?.email ?? null
-
         return (
           <div key={fb.id} className="border-b border-gray-100 last:border-0 py-4">
-            {/* 작성자 정보 행 */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-gray-700">
-                  {author ?? (fb.user_id ? '회원' : '비로그인')}
-                </span>
-                {fb.users?.email && (
-                  <span className="text-[11px] text-gray-400">{fb.users.email}</span>
-                )}
+                <span className="text-xs font-semibold text-gray-700">{author ?? (fb.user_id ? '회원' : '비로그인')}</span>
+                {fb.users?.email && <span className="text-[11px] text-gray-400">{fb.users.email}</span>}
                 {fb.phone && (
-                  <a
-                    href={`tel:${fb.phone}`}
-                    className="text-[11px] text-primary-600 font-semibold bg-primary-50 px-2 py-0.5 rounded-full hover:bg-primary-100 transition-colors"
-                  >
+                  <a href={`tel:${fb.phone}`} className="text-[11px] text-primary-600 font-semibold bg-primary-50 px-2 py-0.5 rounded-full hover:bg-primary-100 transition-colors">
                     📞 {fb.phone}
                   </a>
                 )}
-                {fb.page && (
-                  <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{fb.page}</span>
-                )}
+                {fb.page && <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{fb.page}</span>}
               </div>
               <span className="text-[10px] text-gray-300 shrink-0 ml-2">
                 {new Date(fb.created_at).toLocaleDateString('ko-KR')}{' '}
                 {new Date(fb.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
-
-            {/* 본문 */}
             <div className="bg-gray-50 rounded-xl px-4 py-3">
               <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
-                {isLong && !isExpanded
-                  ? fb.content.slice(0, 80) + '…'
-                  : fb.content}
+                {isLong && !isExpanded ? fb.content.slice(0, 80) + '…' : fb.content}
               </p>
               {isLong && (
-                <button
-                  onClick={() => setExpandedId(isExpanded ? null : fb.id)}
-                  className="text-xs text-primary-500 font-semibold mt-1 hover:underline"
-                >
+                <button onClick={() => setExpandedId(isExpanded ? null : fb.id)} className="text-xs text-primary-500 font-semibold mt-1 hover:underline">
                   {isExpanded ? '접기 ▲' : '전문 보기 ▼'}
                 </button>
               )}
             </div>
-
-            {/* 삭제 버튼 */}
             <div className="flex justify-end mt-2">
-              <button
-                onClick={() => onDelete(fb.id)}
-                disabled={deletingId === fb.id}
-                className="text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-3 py-1 rounded-lg disabled:opacity-30 transition-colors"
-              >
+              <button onClick={() => onDelete(fb.id)} disabled={deletingId === fb.id}
+                className="text-xs text-red-400 font-semibold hover:text-red-600 border border-red-100 px-3 py-1 rounded-lg disabled:opacity-30 transition-colors">
                 {deletingId === fb.id ? '삭제 중…' : '삭제'}
               </button>
             </div>
