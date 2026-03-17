@@ -50,7 +50,7 @@ export async function GET() {
     // 시간대별 진단 (최근 30일)
     service.from('conversations').select('created_at').not('final_result', 'is', null).gte('created_at', monthAgo.toISOString()),
     // 세션 (유입경로, 최근 30일) - 테이블 없으면 null
-    service.from('app_sessions').select('source, created_at').gte('created_at', monthAgo.toISOString()).limit(2000),
+    service.from('app_sessions').select('source, referrer, utm_source, created_at').gte('created_at', monthAgo.toISOString()).limit(2000),
   ])
 
   if (e1 || e2 || e3) {
@@ -127,6 +127,17 @@ export async function GET() {
     if (day in dailySession) dailySession[day]++
   }
 
+  // '직접방문' 중 실제 referrer URL이 있는 경우 → 도메인별 분류
+  const unknownReferrerBreakdown: Record<string, number> = {}
+  for (const s of sessionRows ?? []) {
+    if (s.source === 'direct' && s.referrer) {
+      try {
+        const domain = new URL(s.referrer).hostname.replace(/^www\./, '')
+        unknownReferrerBreakdown[domain] = (unknownReferrerBreakdown[domain] ?? 0) + 1
+      } catch { /* 잘못된 URL 무시 */ }
+    }
+  }
+
   // ── 결제 전환 의향 ──────────────────────────────────────────
   const planBreakdown: Record<string, number> = {}
   for (const p of paymentRows ?? []) {
@@ -191,6 +202,7 @@ export async function GET() {
       hourlyDiag,
       sourceBreakdown,
       dailySession,
+      unknownReferrerBreakdown,
       hasSessionData: (sessionRows ?? []).length > 0,
     },
   })

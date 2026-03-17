@@ -45,6 +45,7 @@ interface Stats {
     hourlyDiag: number[]
     sourceBreakdown: Record<string, number>
     dailySession: Record<string, number>
+    unknownReferrerBreakdown: Record<string, number>
     hasSessionData: boolean
   }
 }
@@ -562,6 +563,34 @@ export default function AdminPage() {
                           )
                         })}
                       </div>
+
+                      {/* 직접방문 중 미분류 외부 도메인 */}
+                      {stats.traffic.unknownReferrerBreakdown && Object.keys(stats.traffic.unknownReferrerBreakdown).length > 0 && (
+                        <div className="mt-5">
+                          <p className="text-[11px] text-gray-500 font-semibold mb-2">
+                            🔍 직접방문 내 외부 유입 도메인
+                            <span className="text-[10px] text-gray-400 font-normal ml-1">(카카오·인스타 외 미분류 referrer)</span>
+                          </p>
+                          <div className="space-y-1.5">
+                            {Object.entries(stats.traffic.unknownReferrerBreakdown).sort((a, b) => b[1] - a[1]).map(([domain, cnt]) => {
+                              const domainTotal = Object.values(stats.traffic.unknownReferrerBreakdown).reduce((s, v) => s + v, 0)
+                              const pct = domainTotal ? Math.round(cnt / domainTotal * 100) : 0
+                              return (
+                                <div key={domain} className="flex items-center gap-2">
+                                  <span className="text-[11px] text-gray-600 w-36 truncate">{domain}</span>
+                                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                                    <div className="h-full bg-teal-400 rounded-full" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="text-[11px] text-gray-500 w-10 text-right">{cnt}회</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <p className="text-[10px] text-gray-300 mt-2">
+                            * 순수 직접방문(주소창 입력·북마크)은 referrer가 없어 추적 불가
+                          </p>
+                        </div>
+                      )}
                     </>
                   )}
                 </section>
