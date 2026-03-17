@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { verifyAdmin } from '../../../../_lib'
+import { verifyAdmin } from '../../../_lib'
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   if (!await verifyAdmin()) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
