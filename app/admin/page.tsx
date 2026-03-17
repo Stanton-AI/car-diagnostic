@@ -28,12 +28,24 @@ interface Stats {
     today: number
     week: number
     daily: Record<string, number>
+    providerBreakdown: Record<string, number>
   }
   vehicles: {
     total: number
     yearBands: Record<string, number>
     mileageBands: Record<string, number>
     fuelBreakdown: Record<string, number>
+  }
+  paymentInterest: {
+    total: number
+    week: number
+    planBreakdown: Record<string, number>
+  }
+  traffic: {
+    hourlyDiag: number[]
+    sourceBreakdown: Record<string, number>
+    dailySession: Record<string, number>
+    hasSessionData: boolean
   }
 }
 
@@ -223,6 +235,14 @@ export default function AdminPage() {
                 <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
                   <p className="text-3xl font-black text-green-600">{stats.todayDiagnoses}</p>
                   <p className="text-xs text-gray-500 mt-1">오늘 진단 수</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-gray-700">{stats.users?.total ?? 0}</p>
+                  <p className="text-xs text-gray-500 mt-1">총 가입자</p>
+                </div>
+                <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 shadow-sm text-center">
+                  <p className="text-3xl font-black text-amber-600">{stats.paymentInterest?.total ?? 0}</p>
+                  <p className="text-xs text-amber-600 mt-1">💳 결제 전환 의향</p>
                 </div>
               </div>
 
@@ -425,6 +445,188 @@ export default function AdminPage() {
                         <p className="text-[10px] text-gray-400">{fuel}</p>
                       </div>
                     ))}
+                  </div>
+                </section>
+              )}
+
+              {/* ── 결제 전환 의향 상세 ── */}
+              {stats.paymentInterest && (
+                <section className="bg-white rounded-2xl p-5 border border-amber-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1 text-sm">💳 프리미엄 전환 의향</h2>
+                  <p className="text-xs text-gray-400 mb-4">페이월 CTA 클릭 수 (스모크 테스트)</p>
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                      <p className="text-2xl font-black text-amber-600">{stats.paymentInterest.total}</p>
+                      <p className="text-[11px] text-amber-500 mt-0.5">누적 의향 표시</p>
+                    </div>
+                    <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                      <p className="text-2xl font-black text-amber-600">{stats.paymentInterest.week}</p>
+                      <p className="text-[11px] text-amber-500 mt-0.5">최근 7일</p>
+                    </div>
+                  </div>
+                  {Object.keys(stats.paymentInterest.planBreakdown).length > 0 ? (
+                    <>
+                      <p className="text-xs font-semibold text-gray-600 mb-2">플랜별 선택</p>
+                      <div className="space-y-2">
+                        {Object.entries(stats.paymentInterest.planBreakdown)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([plan, cnt]) => {
+                            const max = Math.max(...Object.values(stats.paymentInterest.planBreakdown), 1)
+                            const pct = Math.round(cnt / max * 100)
+                            const PLAN_LABEL: Record<string, string> = {
+                              premium_monthly: '프리미엄 월정액', premium_annual: '프리미엄 연간', basic: '베이직', unknown: '알 수 없음'
+                            }
+                            return (
+                              <div key={plan}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-xs text-gray-600">{PLAN_LABEL[plan] ?? plan}</span>
+                                  <span className="text-xs font-bold text-amber-600">{cnt}건</span>
+                                </div>
+                                <div className="w-full bg-amber-50 rounded-full h-2">
+                                  <div className="bg-amber-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-400 text-center py-2">플랜별 데이터 없음</p>
+                  )}
+                </section>
+              )}
+
+              {/* ── 시간대별 진단 현황 (KST) ── */}
+              {stats.traffic?.hourlyDiag && (
+                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1 text-sm">⏰ 시간대별 진단 현황</h2>
+                  <p className="text-xs text-gray-400 mb-4">최근 30일 · KST 기준 0~23시</p>
+                  {(() => {
+                    const hourly = stats.traffic.hourlyDiag
+                    const maxH = Math.max(...hourly, 1)
+                    const peakHour = hourly.indexOf(Math.max(...hourly))
+                    return (
+                      <>
+                        <div className="flex items-end gap-0.5 h-20 mb-1">
+                          {hourly.map((cnt, h) => {
+                            const barH = Math.round((cnt / maxH) * 100)
+                            const isPeak = cnt === Math.max(...hourly) && cnt > 0
+                            return (
+                              <div key={h} className="flex-1 flex flex-col items-center">
+                                <div
+                                  className={`w-full rounded-t-sm transition-all ${isPeak ? 'bg-primary-500' : 'bg-primary-200'}`}
+                                  style={{ height: `${Math.max(barH, cnt > 0 ? 6 : 1)}%` }}
+                                />
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {/* X축 레이블: 0, 6, 12, 18, 23 */}
+                        <div className="flex justify-between text-[9px] text-gray-400 px-0.5">
+                          {[0, 6, 12, 18, 23].map(h => (
+                            <span key={h}>{h}시</span>
+                          ))}
+                        </div>
+                        {Math.max(...hourly) > 0 && (
+                          <p className="text-xs text-primary-600 font-semibold mt-3 text-center">
+                            🏆 피크 시간: {peakHour}시 ({hourly[peakHour]}건)
+                          </p>
+                        )}
+                      </>
+                    )
+                  })()}
+                </section>
+              )}
+
+              {/* ── 유입 경로 ── */}
+              {stats.traffic && (
+                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1 text-sm">🔗 앱 유입 경로</h2>
+                  <p className="text-xs text-gray-400 mb-4">최근 30일 세션 기반</p>
+                  {!stats.traffic.hasSessionData ? (
+                    <div className="bg-gray-50 rounded-xl p-4 text-center">
+                      <p className="text-sm text-gray-400">아직 세션 데이터가 없습니다</p>
+                      <p className="text-xs text-gray-300 mt-1">app_sessions 테이블에 데이터가 쌓이면 자동으로 표시됩니다</p>
+                    </div>
+                  ) : Object.keys(stats.traffic.sourceBreakdown).length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-4">데이터 없음</p>
+                  ) : (
+                    <>
+                      <div className="space-y-2 mb-5">
+                        {Object.entries(stats.traffic.sourceBreakdown)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([source, cnt]) => {
+                            const total = Object.values(stats.traffic.sourceBreakdown).reduce((s, v) => s + v, 0)
+                            const pct = total ? Math.round(cnt / total * 100) : 0
+                            const SOURCE_COLOR: Record<string, string> = {
+                              '직접 방문': 'bg-gray-400', '카카오': 'bg-yellow-400',
+                              '인스타그램': 'bg-pink-400', '네이버': 'bg-green-500',
+                              '구글': 'bg-blue-400', '페이스북': 'bg-blue-600', '기타': 'bg-gray-300',
+                            }
+                            const color = SOURCE_COLOR[source] ?? 'bg-gray-300'
+                            return (
+                              <div key={source}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-xs text-gray-700">{source}</span>
+                                  <span className="text-xs font-bold text-gray-600">{cnt}회 <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2">
+                                  <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                      </div>
+                      {/* 최근 7일 세션 추이 */}
+                      <p className="text-[11px] text-gray-400 mb-2">최근 7일 일별 세션</p>
+                      <div className="flex items-end gap-1.5 h-12">
+                        {Object.entries(stats.traffic.dailySession).map(([date, cnt]) => {
+                          const maxD = Math.max(...Object.values(stats.traffic.dailySession), 1)
+                          const h = Math.round((cnt / maxD) * 100)
+                          const label = new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+                          return (
+                            <div key={date} className="flex-1 flex flex-col items-center gap-0.5">
+                              <span className="text-[9px] text-gray-500">{cnt > 0 ? cnt : ''}</span>
+                              <div className="w-full rounded-t-sm bg-indigo-200 relative" style={{ height: `${Math.max(h, cnt > 0 ? 8 : 2)}%` }}>
+                                {cnt > 0 && <div className="absolute inset-0 bg-indigo-400 rounded-t-sm" />}
+                              </div>
+                              <span className="text-[9px] text-gray-400">{label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </section>
+              )}
+
+              {/* ── 가입 경로 (provider) ── */}
+              {stats.users?.providerBreakdown && Object.keys(stats.users.providerBreakdown).length > 0 && (
+                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1 text-sm">🔐 가입 경로 (소셜 로그인)</h2>
+                  <p className="text-xs text-gray-400 mb-4">전체 가입자 기준</p>
+                  <div className="space-y-2">
+                    {Object.entries(stats.users.providerBreakdown)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([provider, cnt]) => {
+                        const total = Object.values(stats.users.providerBreakdown).reduce((s, v) => s + v, 0)
+                        const pct = total ? Math.round(cnt / total * 100) : 0
+                        const PROVIDER_COLOR: Record<string, string> = {
+                          '구글': 'bg-red-400', '카카오': 'bg-yellow-400', '이메일': 'bg-gray-400', 'GitHub': 'bg-gray-700',
+                        }
+                        const color = PROVIDER_COLOR[provider] ?? 'bg-gray-300'
+                        return (
+                          <div key={provider}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs text-gray-700">{provider}</span>
+                              <span className="text-xs font-bold text-gray-600">{cnt}명 <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2">
+                              <div className={`${color} h-2 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
                   </div>
                 </section>
               )}

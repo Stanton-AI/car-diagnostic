@@ -50,8 +50,19 @@ INSERT INTO storage.buckets (id, name, public)
   VALUES ('repair-files', 'repair-files', true)
   ON CONFLICT DO NOTHING;
 
-CREATE POLICY IF NOT EXISTS "repair_files_upload" ON storage.objects
-  FOR INSERT WITH CHECK (bucket_id = 'repair-files' AND auth.uid() IS NOT NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'repair_files_upload' AND tablename = 'objects'
+  ) THEN
+    EXECUTE 'CREATE POLICY "repair_files_upload" ON storage.objects
+      FOR INSERT WITH CHECK (bucket_id = ''repair-files'' AND auth.uid() IS NOT NULL)';
+  END IF;
 
-CREATE POLICY IF NOT EXISTS "repair_files_read" ON storage.objects
-  FOR SELECT USING (bucket_id = 'repair-files');
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'repair_files_read' AND tablename = 'objects'
+  ) THEN
+    EXECUTE 'CREATE POLICY "repair_files_read" ON storage.objects
+      FOR SELECT USING (bucket_id = ''repair-files'')';
+  END IF;
+END $$;

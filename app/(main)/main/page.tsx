@@ -279,6 +279,25 @@ export default function MainPage() {
         content: '안녕하세요! 저는 미키예요. 🔧\n\n진단할 차량이 내 차인가요, 아니면 다른 분의 차인가요?',
         timestamp: new Date().toISOString(),
       }])
+
+      // 유입 경로 세션 기록 (최초 1회 / 탭별)
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const sessionKey = 'miky_session_recorded'
+        if (!sessionStorage.getItem(sessionKey)) {
+          sessionStorage.setItem(sessionKey, '1')
+          fetch('/api/sessions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              utm_source: params.get('utm_source'),
+              utm_medium: params.get('utm_medium'),
+              utm_campaign: params.get('utm_campaign'),
+              referrer: document.referrer || null,
+            }),
+          }).catch(() => {})
+        }
+      } catch { /* 세션 기록 실패해도 무시 */ }
     }
     load()
   }, [])
