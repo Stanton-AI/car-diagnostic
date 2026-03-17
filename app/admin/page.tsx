@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatKRW } from '@/lib/utils'
+import { CATEGORY_TAXONOMY, MAJOR_CATEGORIES, type MajorCategory } from '@/lib/categoryTaxonomy'
 
 type Tab = 'overview' | 'marketplace' | 'feedback' | 'board' | 'settings'
 
@@ -20,7 +21,8 @@ interface Stats {
   totalDiagnoses: number
   todayDiagnoses: number
   urgencyBreakdown: { HIGH: number; MID: number; LOW: number }
-  categoryBreakdown: Record<string, number>
+  majorBreakdown: Record<MajorCategory, number>
+  subBreakdown: Record<string, number>
 }
 
 interface MarketStats {
@@ -192,46 +194,128 @@ export default function AdminPage() {
         {/* ─── 탭: 진단 통계 ─── */}
         {tab === 'overview' && (
           stats ? (
-            <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-              <h2 className="font-bold text-gray-900 mb-4">📊 진단 통계</h2>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-primary-50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-primary-600">{stats.totalDiagnoses}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">누적 진단 수</p>
+            <div className="space-y-4">
+
+              {/* KPI 카드 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-primary-600">{stats.totalDiagnoses}</p>
+                  <p className="text-xs text-gray-500 mt-1">누적 진단 수</p>
                 </div>
-                <div className="bg-green-50 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-black text-green-600">{stats.todayDiagnoses}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">오늘 진단 수</p>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-center">
+                  <p className="text-3xl font-black text-green-600">{stats.todayDiagnoses}</p>
+                  <p className="text-xs text-gray-500 mt-1">오늘 진단 수</p>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                {[
-                  { label: '즉시 점검 필요', value: stats.urgencyBreakdown.HIGH, color: 'bg-red-400' },
-                  { label: '조기 점검 권장', value: stats.urgencyBreakdown.MID,  color: 'bg-amber-400' },
-                  { label: '여유 있게 점검', value: stats.urgencyBreakdown.LOW,  color: 'bg-green-400' },
-                ].map(item => (
-                  <div key={item.label} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-24 flex-shrink-0">{item.label}</span>
-                    <div className="flex-1 bg-gray-100 rounded-full h-2">
-                      <div className={`${item.color} h-2 rounded-full`} style={{ width: `${stats.totalDiagnoses ? (item.value / stats.totalDiagnoses * 100) : 0}%` }} />
+
+              {/* 긴급도 분포 */}
+              <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4 text-sm">🚨 긴급도 분포</h2>
+                <div className="space-y-3">
+                  {[
+                    { label: '즉시 점검 필요', value: stats.urgencyBreakdown.HIGH, color: 'bg-red-400', badge: 'HIGH' },
+                    { label: '조기 점검 권장', value: stats.urgencyBreakdown.MID,  color: 'bg-amber-400', badge: 'MID' },
+                    { label: '여유 있게 점검', value: stats.urgencyBreakdown.LOW,  color: 'bg-green-400', badge: 'LOW' },
+                  ].map(item => {
+                    const pct = stats.totalDiagnoses ? Math.round(item.value / stats.totalDiagnoses * 100) : 0
+                    return (
+                      <div key={item.badge}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-600">{item.label}</span>
+                          <span className="text-xs font-bold text-gray-700">{item.value}건 <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2.5">
+                          <div className={`${item.color} h-2.5 rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+
+              {/* 대분류 카테고리 차트 */}
+              <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4 text-sm">📂 대분류 카테고리 통계</h2>
+                {(() => {
+                  const sorted = MAJOR_CATEGORIES
+                    .map(m => ({ major: m, count: stats.majorBreakdown?.[m] ?? 0, ...CATEGORY_TAXONOMY[m] }))
+                    .filter(d => d.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                  const maxVal = sorted[0]?.count ?? 1
+                  if (sorted.length === 0) return <p className="text-xs text-gray-400 text-center py-4">데이터 없음</p>
+                  return (
+                    <div className="space-y-3">
+                      {sorted.map(({ major, count, icon, color, textColor }) => {
+                        const pct = Math.round(count / stats.totalDiagnoses * 100)
+                        const barPct = Math.round(count / maxVal * 100)
+                        return (
+                          <div key={major}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-gray-700 font-medium">{icon} {major}</span>
+                              <span className={`text-xs font-bold ${textColor}`}>{count}건 <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                              <div className={`${color} h-2.5 rounded-full transition-all`} style={{ width: `${barPct}%` }} />
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
-                    <span className="text-xs text-gray-600 font-semibold w-6 text-right">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-              {Object.keys(stats.categoryBreakdown).length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <p className="text-xs font-semibold text-gray-500 mb-2">카테고리별</p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(stats.categoryBreakdown).sort((a,b) => b[1]-a[1]).map(([cat, cnt]) => (
-                      <span key={cat} className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">
-                        {cat} {cnt}건
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+                  )
+                })()}
+              </section>
+
+              {/* 중분류 상세 (접히는 방식으로 대분류별) */}
+              <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                <h2 className="font-bold text-gray-900 mb-4 text-sm">🔍 중분류 상세 통계</h2>
+                {(() => {
+                  const subEntries = Object.entries(stats.subBreakdown ?? {})
+                    .sort((a, b) => b[1] - a[1])
+                  if (subEntries.length === 0) return <p className="text-xs text-gray-400 text-center py-4">데이터 없음</p>
+                  const maxSub = subEntries[0]?.[1] ?? 1
+
+                  // 대분류별로 그룹핑
+                  const groups: Record<string, Array<[string, number]>> = {}
+                  for (const [key, cnt] of subEntries) {
+                    const [major] = key.split(' > ', 1)
+                    if (!groups[major]) groups[major] = []
+                    groups[major].push([key, cnt])
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {Object.entries(groups).map(([major, subs]) => {
+                        const info = CATEGORY_TAXONOMY[major as MajorCategory]
+                        if (!info) return null
+                        return (
+                          <div key={major}>
+                            <p className="text-xs font-bold text-gray-500 mb-2">{info.icon} {major}</p>
+                            <div className="space-y-2 pl-2">
+                              {subs.map(([key, cnt]) => {
+                                const subLabel = key.split(' > ')[1] ?? key
+                                const barPct = Math.round(cnt / maxSub * 100)
+                                return (
+                                  <div key={key}>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <span className="text-xs text-gray-600">{subLabel}</span>
+                                      <span className={`text-xs font-semibold ${info.textColor}`}>{cnt}건</span>
+                                    </div>
+                                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                      <div className={`${info.color} h-1.5 rounded-full`} style={{ width: `${barPct}%` }} />
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
+                })()}
+              </section>
+
+            </div>
           ) : (
             <div className="text-center py-12 text-gray-400 text-sm">통계 로딩 중...</div>
           )

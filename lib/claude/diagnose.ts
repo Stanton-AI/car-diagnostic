@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import type { ChatMessage, DiagnosisResult, Vehicle, DiagnosticQuestion } from '@/types'
+import { CATEGORY_PROMPT_SECTION } from '@/lib/categoryTaxonomy'
 
 const getClient = () => new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
@@ -168,10 +169,11 @@ export async function requestDiagnosis(
 **대화 내역**:
 ${conversationCtx}${reDiagCtx}
 
+${CATEGORY_PROMPT_SECTION}
 위 정보를 바탕으로 차량 진단 결과를 다음 JSON 형식으로만 반환하세요 (마크다운 없이):
 
 {
-  "category": "카테고리명(한국어)",
+  "category": "대분류 > 중분류 (위 목록 중 하나)",
   "summary": "주요 증상 1줄 요약",
   "causes": [
     {
