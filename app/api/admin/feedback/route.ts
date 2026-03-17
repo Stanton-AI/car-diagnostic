@@ -12,7 +12,11 @@ export async function GET() {
     .order('created_at', { ascending: false })
     .limit(200)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  // feedback 테이블이 아직 생성되지 않은 경우 빈 배열 반환
+  if (error) {
+    console.error('[admin/feedback] error:', error.message)
+    return NextResponse.json([])
+  }
   return NextResponse.json(data ?? [])
 }
 

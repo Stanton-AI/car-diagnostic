@@ -14,6 +14,12 @@ export default function ProfilePage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [hasShop, setHasShop] = useState(false)
 
+  // 피드백 모달
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackSending, setFeedbackSending] = useState(false)
+  const [feedbackDone, setFeedbackDone] = useState(false)
+
   useEffect(() => {
     const load = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()
@@ -37,6 +43,20 @@ export default function ProfilePage() {
     setLoggingOut(true)
     await supabase.auth.signOut()
     router.replace('/')
+  }
+
+  const sendFeedback = async () => {
+    if (feedbackText.trim().length < 5 || feedbackSending) return
+    setFeedbackSending(true)
+    await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: feedbackText.trim(), page: 'profile' }),
+    })
+    setFeedbackSending(false)
+    setFeedbackDone(true)
+    setFeedbackText('')
+    setTimeout(() => { setFeedbackOpen(false); setFeedbackDone(false) }, 1800)
   }
 
   if (loading) return (
@@ -88,11 +108,24 @@ export default function ProfilePage() {
           </button>
           <button
             onClick={() => router.push('/vehicles/new')}
-            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors border-b border-gray-50"
           >
             <div className="flex items-center gap-3">
               <span className="text-lg">🚗</span>
               <span className="font-semibold text-gray-800 text-sm">차량 정보 관리</span>
+            </div>
+            <span className="text-gray-300">→</span>
+          </button>
+          <button
+            onClick={() => setFeedbackOpen(true)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-lg">💬</span>
+              <div className="text-left">
+                <span className="font-semibold text-gray-800 text-sm">의견 보내기</span>
+                <p className="text-xs text-gray-400">서비스 개선을 위한 피드백</p>
+              </div>
             </div>
             <span className="text-gray-300">→</span>
           </button>
@@ -145,6 +178,48 @@ export default function ProfilePage() {
         </button>
       </div>
       <BottomNav />
+
+      {/* 피드백 바텀시트 */}
+      {feedbackOpen && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          {/* 배경 dimmer */}
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => { if (!feedbackSending) { setFeedbackOpen(false); setFeedbackText('') } }}
+          />
+          <div className="relative bg-white rounded-t-3xl px-5 pt-5 pb-8 safe-area-pb animate-slide-up">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+
+            {feedbackDone ? (
+              <div className="text-center py-8">
+                <p className="text-4xl mb-3">🙏</p>
+                <p className="font-bold text-gray-900 text-lg">소중한 의견 감사해요!</p>
+                <p className="text-sm text-gray-500 mt-1">더 좋은 서비스로 보답할게요</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-black text-gray-900 text-base mb-1">의견 보내기</h3>
+                <p className="text-xs text-gray-400 mb-4">불편한 점, 개선 제안, 칭찬 모두 환영해요 😊</p>
+                <textarea
+                  value={feedbackText}
+                  onChange={e => setFeedbackText(e.target.value)}
+                  placeholder="예) 진단 결과가 너무 어려워요 / 이런 기능이 있으면 좋겠어요 / ..."
+                  rows={5}
+                  className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-800 placeholder-gray-300 resize-none focus:outline-none focus:border-primary-400 focus:ring-1 focus:ring-primary-200"
+                />
+                <p className="text-xs text-gray-400 mt-1 mb-4 text-right">{feedbackText.length}자</p>
+                <button
+                  onClick={sendFeedback}
+                  disabled={feedbackText.trim().length < 5 || feedbackSending}
+                  className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm disabled:opacity-40 transition-opacity"
+                >
+                  {feedbackSending ? '전송 중...' : '의견 보내기'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
