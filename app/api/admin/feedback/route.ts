@@ -20,7 +20,7 @@ export async function GET() {
   }
 
   // 2단계: 로그인 사용자의 user_id로 public.users에서 이름·이메일 조회
-  const userIds = [...new Set((feedbackRows ?? []).map(f => f.user_id).filter(Boolean))]
+  const userIds = Array.from(new Set((feedbackRows ?? []).map(f => f.user_id).filter(Boolean)))
   let userMap: Record<string, { display_name: string | null; email: string | null }> = {}
 
   if (userIds.length > 0) {
