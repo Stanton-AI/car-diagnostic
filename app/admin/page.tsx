@@ -23,6 +23,18 @@ interface Stats {
   urgencyBreakdown: { HIGH: number; MID: number; LOW: number }
   majorBreakdown: Record<MajorCategory, number>
   subBreakdown: Record<string, number>
+  users: {
+    total: number
+    today: number
+    week: number
+    daily: Record<string, number>
+  }
+  vehicles: {
+    total: number
+    yearBands: Record<string, number>
+    mileageBands: Record<string, number>
+    fuelBreakdown: Record<string, number>
+  }
 }
 
 interface MarketStats {
@@ -320,6 +332,102 @@ export default function AdminPage() {
                   )
                 })()}
               </section>
+
+              {/* ── 가입자 통계 ── */}
+              {stats.users && (
+                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-4 text-sm">👥 가입자 현황</h2>
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[
+                      { label: '총 가입자', value: stats.users.total, color: 'text-primary-600' },
+                      { label: '오늘 신규',  value: stats.users.today, color: 'text-green-600' },
+                      { label: '7일 신규',   value: stats.users.week,  color: 'text-amber-600' },
+                    ].map(item => (
+                      <div key={item.label} className="bg-gray-50 rounded-xl p-3 text-center">
+                        <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {/* 최근 7일 일별 가입자 바차트 */}
+                  <p className="text-[11px] text-gray-400 mb-2">최근 7일 일별 신규 가입</p>
+                  <div className="flex items-end gap-1.5 h-16">
+                    {Object.entries(stats.users.daily).map(([date, cnt]) => {
+                      const maxD = Math.max(...Object.values(stats.users.daily), 1)
+                      const h = Math.round((cnt / maxD) * 100)
+                      const label = new Date(date).toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' })
+                      return (
+                        <div key={date} className="flex-1 flex flex-col items-center gap-0.5">
+                          <span className="text-[9px] text-gray-500">{cnt > 0 ? cnt : ''}</span>
+                          <div className="w-full rounded-t-sm bg-primary-200 relative" style={{ height: `${Math.max(h, cnt > 0 ? 8 : 2)}%` }}>
+                            {cnt > 0 && <div className="absolute inset-0 bg-primary-400 rounded-t-sm" />}
+                          </div>
+                          <span className="text-[9px] text-gray-400">{label}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* ── 차량 통계 ── */}
+              {stats.vehicles && (
+                <section className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                  <h2 className="font-bold text-gray-900 mb-1 text-sm">🚗 등록 차량 통계</h2>
+                  <p className="text-xs text-gray-400 mb-4">총 {stats.vehicles.total}대 등록</p>
+
+                  {/* 연식 분포 */}
+                  <p className="text-xs font-semibold text-gray-600 mb-2">📅 차량 연식</p>
+                  <div className="space-y-2 mb-4">
+                    {Object.entries(stats.vehicles.yearBands).filter(([, v]) => v > 0).map(([band, cnt]) => {
+                      const max = Math.max(...Object.values(stats.vehicles.yearBands), 1)
+                      const pct = Math.round(cnt / max * 100)
+                      return (
+                        <div key={band}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs text-gray-600">{band}</span>
+                            <span className="text-xs font-bold text-blue-600">{cnt}대</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2">
+                            <div className="bg-blue-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* 주행거리 분포 */}
+                  <p className="text-xs font-semibold text-gray-600 mb-2">📏 주행거리 구간</p>
+                  <div className="space-y-2 mb-4">
+                    {Object.entries(stats.vehicles.mileageBands).filter(([, v]) => v > 0).map(([band, cnt]) => {
+                      const max = Math.max(...Object.values(stats.vehicles.mileageBands), 1)
+                      const pct = Math.round(cnt / max * 100)
+                      return (
+                        <div key={band}>
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-xs text-gray-600">{band}</span>
+                            <span className="text-xs font-bold text-orange-500">{cnt}대</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2">
+                            <div className="bg-orange-400 h-2 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* 연료 타입 */}
+                  <p className="text-xs font-semibold text-gray-600 mb-2">⛽ 연료 타입</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(stats.vehicles.fuelBreakdown).map(([fuel, cnt]) => (
+                      <div key={fuel} className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-center min-w-[60px]">
+                        <p className="text-base font-black text-gray-700">{cnt}</p>
+                        <p className="text-[10px] text-gray-400">{fuel}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
             </div>
           ) : (
