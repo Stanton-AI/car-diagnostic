@@ -137,7 +137,7 @@ function Slide3() {
         이미 많은 분들이 쓰고 있어요
       </p>
       <h2 className="text-[20px] font-black text-white leading-tight mb-4 flex-shrink-0">
-        정비소 가기 전 <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로 달라져요
+        정비소 가기 전 <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로<br />달라져요
       </h2>
       {/* 통계 그리드 */}
       <div className="grid grid-cols-2 gap-3 mb-3 w-full flex-shrink-0">
