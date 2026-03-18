@@ -10,7 +10,7 @@ const GAP = 12
 // ─── 슬라이드 1: 공감 ────────────────────────────────────────────────────────
 function Slide1() {
   return (
-    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
+    <div className="flex flex-col h-full pl-4 pr-12 pt-4 pb-4 select-none">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
         style={{ background: 'rgba(239,68,68,0.15)' }}>
         <span className="text-3xl">🛡️</span>
@@ -81,18 +81,18 @@ function DiagCard({ symptom, cause, gauge, cost, warning }: {
   )
 }
 
-// ─── 슬라이드 2: 가치 (중앙 정렬) ──────────────────────────────────────────
+// ─── 슬라이드 2: 가치 (중앙 — 균등 패딩) ───────────────────────────────────
 function Slide2() {
   return (
-    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none items-center">
+    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 flex-shrink-0"
         style={{ background: 'rgba(96,165,250,0.15)' }}>
         <span className="text-2xl">🔍</span>
       </div>
-      <p className="text-[12px] font-medium mb-1.5 flex-shrink-0 text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
+      <p className="text-[12px] font-medium mb-1.5 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
         정비톡이 해드리는 것
       </p>
-      <h2 className="text-[19px] font-black text-white leading-tight mb-3 flex-shrink-0 text-center">
+      <h2 className="text-[19px] font-black text-white leading-tight mb-3 flex-shrink-0">
         증상만 말씀해 주시면{' '}
         <span style={{ color: '#FBBF24' }}>3분이면</span><br />
         원인을 알 수 있어요
@@ -125,18 +125,18 @@ function Slide2() {
   )
 }
 
-// ─── 슬라이드 3: 신뢰 (우측 정렬) ──────────────────────────────────────────
+// ─── 슬라이드 3: 신뢰 (우측 — 왼쪽 패딩 크게) ──────────────────────────────
 function Slide3() {
   return (
-    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none items-end">
+    <div className="flex flex-col h-full pl-12 pr-4 pt-4 pb-4 select-none">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
         style={{ background: 'rgba(52,211,153,0.15)' }}>
         <span className="text-3xl">✅</span>
       </div>
-      <p className="text-[13px] font-medium mb-2 flex-shrink-0 text-right" style={{ color: 'rgba(255,255,255,0.45)' }}>
+      <p className="text-[13px] font-medium mb-2 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
         이미 많은 분들이 쓰고 있어요
       </p>
-      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0 text-right">
+      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0">
         정비소 가기 전{' '}
         <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로<br />
         달라져요
@@ -161,7 +161,7 @@ function Slide3() {
           { review: '엔진 소리가 이상해서 걱정했는데, 원인 알고 가니까 훨씬 덜 불안했어요', car: '소나타 DN8 오너 · 박**님' },
           { review: '예상 수리비가 정확해서 정비소에서 바가지 안 쓸 수 있었어요. 강추해요!', car: '아반떼 CN7 오너 · 이**님' },
         ].map((item, i) => (
-          <div key={i} className="rounded-xl p-3.5 text-right"
+          <div key={i} className="rounded-xl p-3.5"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <p className="text-xs mb-1.5" style={{ color: '#FBBF24' }}>★★★★★</p>
             <p className="text-xs leading-relaxed mb-1.5" style={{ color: 'rgba(255,255,255,0.8)' }}>
