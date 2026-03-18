@@ -329,7 +329,7 @@ export default function HomePage() {
   const slides = [<Slide1 key={0} />, <Slide2 key={1} />, <Slide3 key={2} />]
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#0D0B1A', overflowX: 'hidden' }}>
+    <div className="flex flex-col overflow-x-hidden" style={{ background: '#0D0B1A', height: '100dvh' }}>
 
       {/* 보라빛 배경 오버레이 */}
       <div className="absolute inset-0 pointer-events-none" style={{
