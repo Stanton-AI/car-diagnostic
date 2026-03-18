@@ -329,7 +329,7 @@ export default function HomePage() {
   const slides = [<Slide1 key={0} />, <Slide2 key={1} />, <Slide3 key={2} />]
 
   return (
-    <div className="flex flex-col overflow-x-hidden" style={{ background: '#0D0B1A', height: '100dvh' }}>
+    <div className="flex flex-col overflow-hidden" style={{ background: '#0D0B1A', height: '100dvh' }}>
 
       {/* 보라빛 배경 오버레이 */}
       <div className="absolute inset-0 pointer-events-none" style={{
@@ -378,7 +378,7 @@ export default function HomePage() {
       </div>
 
       {/* ─── 슬라이더 영역 (glow 래퍼 포함) ─── */}
-      <div className="flex-1 relative z-10">
+      <div className="flex-1 min-h-0 relative z-10">
 
         {/* ── Glow 오버레이: overflow-hidden 밖에 위치 → 슬라이드에 가리지 않음 ── */}
         {current > 0 && (
@@ -464,7 +464,7 @@ export default function HomePage() {
           background: 'rgba(13,11,26,0.96)',
           backdropFilter: 'blur(12px)',
           borderTop: '1px solid rgba(139,92,246,0.15)',
-          padding: '16px 20px 40px',
+          padding: '12px 20px calc(12px + env(safe-area-inset-bottom, 0px))',
         }}
       >
         {/* 에러 메시지 */}
