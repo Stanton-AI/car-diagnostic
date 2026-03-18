@@ -137,7 +137,7 @@ function Slide3() {
         이미 많은 분들이 쓰고 있어요
       </p>
       <h2 className="text-[20px] font-black text-white leading-tight mb-4 flex-shrink-0">
-        정비소 가기 전 <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로<br />달라져요
+        정비소 가기 전 <span style={{ color: '#FBBF24' }}>미리 아는 것</span><br />만으로 달라져요
       </h2>
       {/* 통계 그리드 */}
       <div className="grid grid-cols-2 gap-3 mb-3 w-full flex-shrink-0">
@@ -329,7 +329,7 @@ export default function HomePage() {
   const slides = [<Slide1 key={0} />, <Slide2 key={1} />, <Slide3 key={2} />]
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#0D0B1A' }}>
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: '#0D0B1A', overflowX: 'hidden' }}>
 
       {/* 보라빛 배경 오버레이 */}
       <div className="absolute inset-0 pointer-events-none" style={{
@@ -377,44 +377,46 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ─── 슬라이더 영역 ─── */}
-      <div
-        ref={containerRef}
-        className="flex-1 overflow-hidden relative z-10"
-      >
-        {/* 왼쪽 peek — 클릭으로 이전 슬라이드 이동 (PC 지원) */}
+      {/* ─── 슬라이더 영역 (glow 래퍼 포함) ─── */}
+      <div className="flex-1 relative z-10">
+
+        {/* ── Glow 오버레이: overflow-hidden 밖에 위치 → 슬라이드에 가리지 않음 ── */}
         {current > 0 && (
           <div
             onClick={goPrev}
-            className="absolute left-0 top-0 bottom-0 z-10 cursor-pointer group"
+            className="absolute left-0 top-0 bottom-0 z-20 cursor-pointer group"
             style={{
               width: PEEK + 8,
-              background: 'linear-gradient(to left, transparent 0%, rgba(251,191,36,0.18) 50%, rgba(251,191,36,0.48) 100%)',
+              background: 'linear-gradient(to left, transparent 0%, rgba(251,191,36,0.22) 50%, rgba(251,191,36,0.55) 100%)',
             }}
           >
-            <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+            <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
               <div className="w-0.5 h-3 rounded-full" style={{ background: '#FBBF24' }} />
               <div style={{ color: '#FBBF24', fontSize: 10 }}>‹</div>
             </div>
           </div>
         )}
-
-        {/* 오른쪽 peek — 클릭으로 다음 슬라이드 이동 (PC 지원) */}
         {current < SLIDES - 1 && (
           <div
             onClick={goNext}
-            className="absolute right-0 top-0 bottom-0 z-10 cursor-pointer group"
+            className="absolute right-0 top-0 bottom-0 z-20 cursor-pointer group"
             style={{
               width: PEEK + 8,
-              background: 'linear-gradient(to right, transparent 0%, rgba(251,191,36,0.18) 50%, rgba(251,191,36,0.48) 100%)',
+              background: 'linear-gradient(to right, transparent 0%, rgba(251,191,36,0.22) 50%, rgba(251,191,36,0.55) 100%)',
             }}
           >
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
               <div className="w-0.5 h-3 rounded-full" style={{ background: '#FBBF24' }} />
               <div style={{ color: '#FBBF24', fontSize: 10 }}>›</div>
             </div>
           </div>
         )}
+
+        {/* ── 실제 슬라이드 컨테이너 (overflow-hidden은 이 안에만) ── */}
+        <div
+          ref={containerRef}
+          className="h-full overflow-hidden"
+        >
         <div
           className="flex h-full"
           style={{
@@ -452,7 +454,8 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-      </div>
+        </div>{/* overflow-hidden 컨테이너 닫기 */}
+      </div>{/* glow 래퍼 닫기 */}
 
       {/* ─── 하단 플로팅 CTA (슬라이드와 완전히 분리) ─── */}
       <div
