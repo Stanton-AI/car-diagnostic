@@ -56,42 +56,63 @@ function Slide2() {
         <span style={{ color: '#FBBF24' }}>3분이면</span><br />
         원인을 알 수 있어요
       </h2>
-      {/* 진단 예시 카드 */}
-      <div className="rounded-2xl p-4 space-y-3"
-        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        {/* 사용자 메시지 */}
-        <div className="flex justify-end">
-          <div className="rounded-2xl rounded-tr-sm px-3 py-2 max-w-[80%]"
-            style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
-            <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              "출발할 때마다 끼익 소리가 나요"
+      {/* 진단 예시 카드 — 스크롤 가능 */}
+      <div className="space-y-3 overflow-y-auto flex-1">
+
+        {/* 예시 1: 브레이크 */}
+        <div className="rounded-2xl p-3.5"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="flex justify-end mb-2">
+            <div className="rounded-2xl rounded-tr-sm px-3 py-1.5 max-w-[85%]"
+              style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>"출발할 때마다 끼익 소리가 나요"</p>
+            </div>
+          </div>
+          <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-white text-xs font-bold">브레이크 패드 마모</p>
+              <span className="text-[10px] font-bold rounded-full px-2 py-0.5"
+                style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>유력</span>
+            </div>
+            <div className="h-1.5 rounded-full mb-1.5" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              <div className="h-full rounded-full" style={{ width: '75%', background: '#FBBF24' }} />
+            </div>
+            <p className="text-xs mb-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              예상 수리비 <span className="text-white font-semibold">8 ~ 15만원</span>
             </p>
+            <div className="pl-3 py-0.5" style={{ borderLeft: '2px solid #EF4444' }}>
+              <p className="text-xs" style={{ color: '#F87171' }}>방치하면 디스크 손상으로 30~60만원이 될 수 있어요</p>
+            </div>
           </div>
         </div>
-        {/* 진단 결과 */}
-        <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-white text-sm font-bold">브레이크 패드 마모</p>
-            <span className="text-[10px] font-bold rounded-full px-2 py-0.5"
-              style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>
-              유력
-            </span>
+
+        {/* 예시 2: 엔진부조 */}
+        <div className="rounded-2xl p-3.5"
+          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          <div className="flex justify-end mb-2">
+            <div className="rounded-2xl rounded-tr-sm px-3 py-1.5 max-w-[85%]"
+              style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>"신호 대기 중에 차가 덜덜 떨려요"</p>
+            </div>
           </div>
-          {/* 게이지 */}
-          <div className="h-1.5 rounded-full mb-2" style={{ background: 'rgba(255,255,255,0.1)' }}>
-            <div className="h-full rounded-full" style={{ width: '75%', background: '#FBBF24' }} />
-          </div>
-          <p className="text-xs mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            예상 수리비{' '}
-            <span className="text-white font-semibold">8 ~ 15만원</span>
-          </p>
-          {/* 방치 경고 */}
-          <div className="pl-3 py-1" style={{ borderLeft: '2px solid #EF4444' }}>
-            <p className="text-xs leading-relaxed" style={{ color: '#F87171' }}>
-              방치하면 디스크 손상으로 30~60만원이 될 수 있어요
+          <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-white text-xs font-bold">점화플러그 불량 (엔진부조)</p>
+              <span className="text-[10px] font-bold rounded-full px-2 py-0.5"
+                style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>유력</span>
+            </div>
+            <div className="h-1.5 rounded-full mb-1.5" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              <div className="h-full rounded-full" style={{ width: '68%', background: '#FBBF24' }} />
+            </div>
+            <p className="text-xs mb-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
+              예상 수리비 <span className="text-white font-semibold">15 ~ 25만원</span>
             </p>
+            <div className="pl-3 py-0.5" style={{ borderLeft: '2px solid #EF4444' }}>
+              <p className="text-xs" style={{ color: '#F87171' }}>방치하면 촉매변환기 손상으로 80~150만원이 될 수 있어요</p>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   )
@@ -215,7 +236,7 @@ export default function HomePage() {
     return () => { sub.unsubscribe() }
   }, [])
 
-  // 터치 핸들러
+  // 터치 핸들러 (모바일)
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
     setIsDragging(true)
@@ -230,6 +251,28 @@ export default function HomePage() {
     else if (dragOffset > 50 && current > 0) setCurrent(c => c - 1)
     setDragOffset(0)
   }
+
+  // 마우스 드래그 핸들러 (PC)
+  const handleMouseDown = (e: React.MouseEvent) => {
+    touchStartX.current = e.clientX
+    setIsDragging(true)
+  }
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return
+    const diff = e.clientX - touchStartX.current
+    setDragOffset(diff)
+  }
+  const handleMouseUp = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    if (dragOffset < -50 && current < SLIDES - 1) setCurrent(c => c + 1)
+    else if (dragOffset > 50 && current > 0) setCurrent(c => c - 1)
+    setDragOffset(0)
+  }
+
+  // 슬라이드 이동 함수
+  const goPrev = () => { if (current > 0) setCurrent(c => c - 1) }
+  const goNext = () => { if (current < SLIDES - 1) setCurrent(c => c + 1) }
 
   // OAuth
   const handleOAuth = async (provider: 'kakao' | 'google') => {
@@ -327,32 +370,34 @@ export default function HomePage() {
         ref={containerRef}
         className="flex-1 overflow-hidden relative z-10"
       >
-        {/* 왼쪽 peek 기대감 효과 — 2, 3장에서 이전 슬라이드 빛 */}
+        {/* 왼쪽 peek — 클릭으로 이전 슬라이드 이동 (PC 지원) */}
         {current > 0 && (
           <div
-            className="absolute left-0 top-0 bottom-0 pointer-events-none z-10"
+            onClick={goPrev}
+            className="absolute left-0 top-0 bottom-0 z-10 cursor-pointer group"
             style={{
               width: PEEK + 8,
               background: 'linear-gradient(to left, transparent 0%, rgba(251,191,36,0.06) 50%, rgba(251,191,36,0.18) 100%)',
             }}
           >
-            <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60">
+            <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
               <div className="w-0.5 h-3 rounded-full" style={{ background: '#FBBF24' }} />
               <div style={{ color: '#FBBF24', fontSize: 10 }}>‹</div>
             </div>
           </div>
         )}
 
-        {/* 오른쪽 peek 기대감 효과 — 1, 2장에서 다음 슬라이드 빛 */}
+        {/* 오른쪽 peek — 클릭으로 다음 슬라이드 이동 (PC 지원) */}
         {current < SLIDES - 1 && (
           <div
-            className="absolute right-0 top-0 bottom-0 pointer-events-none z-10"
+            onClick={goNext}
+            className="absolute right-0 top-0 bottom-0 z-10 cursor-pointer group"
             style={{
               width: PEEK + 8,
               background: 'linear-gradient(to right, transparent 0%, rgba(251,191,36,0.06) 50%, rgba(251,191,36,0.18) 100%)',
             }}
           >
-            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60">
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
               <div className="w-0.5 h-3 rounded-full" style={{ background: '#FBBF24' }} />
               <div style={{ color: '#FBBF24', fontSize: 10 }}>›</div>
             </div>
@@ -364,10 +409,16 @@ export default function HomePage() {
             transform: `translateX(${translateX}px)`,
             transition: isDragging ? 'none' : 'transform 0.4s cubic-bezier(.4,0,.2,1)',
             willChange: 'transform',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            userSelect: 'none',
           }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
           {slides.map((slide, i) => (
             <div
@@ -427,11 +478,21 @@ export default function HomePage() {
           </>
         ) : (
           <>
-            {/* 베타 배지 */}
+            {/* 베타 배지 — 깜빡이는 효과 */}
             {badge && (
-              <p className="text-center text-xs font-semibold mb-3" style={{ color: badge.color }}>
-                {badge.text}
-              </p>
+              <div className="flex items-center justify-center gap-1.5 mb-3">
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+                  style={{ background: badge.color }}
+                />
+                <p className="text-xs font-semibold" style={{ color: badge.color }}>
+                  {badge.text}
+                </p>
+                <span
+                  className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+                  style={{ background: badge.color, animationDelay: '0.5s' }}
+                />
+              </div>
             )}
 
             <div className="space-y-3">
