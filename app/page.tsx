@@ -219,16 +219,23 @@ export default function HomePage() {
     check()
   }, [router])
 
-  // 베타 자리 실시간
+  // 베타 자리 — 서버 API 경유 (서비스 롤 사용, RLS 우회)
   useEffect(() => {
-    const supabase = createClient()
     const fetchSeats = async () => {
-      const { count } = await supabase.from('users').select('*', { count: 'exact', head: true })
-      const left = BETA_LIMIT - (count ?? 0)
-      setSeatsLeft(Math.max(left, 0))
-      setIsFull(left <= 0)
+      try {
+        const res = await fetch('/api/seats', { cache: 'no-store' })
+        const { count } = await res.json()
+        const left = BETA_LIMIT - (count ?? 0)
+        setSeatsLeft(Math.max(left, 0))
+        setIsFull(left <= 0)
+      } catch {
+        // 실패 시 기본값 유지
+      }
     }
     fetchSeats()
+
+    // Supabase Realtime으로 새 가입자 감지 → 즉시 API 재호출
+    const supabase = createClient()
     const sub = supabase
       .channel('users-count')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, fetchSeats)
@@ -377,7 +384,7 @@ export default function HomePage() {
             className="absolute left-0 top-0 bottom-0 z-10 cursor-pointer group"
             style={{
               width: PEEK + 8,
-              background: 'linear-gradient(to left, transparent 0%, rgba(251,191,36,0.06) 50%, rgba(251,191,36,0.18) 100%)',
+              background: 'linear-gradient(to left, transparent 0%, rgba(251,191,36,0.18) 50%, rgba(251,191,36,0.48) 100%)',
             }}
           >
             <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -394,7 +401,7 @@ export default function HomePage() {
             className="absolute right-0 top-0 bottom-0 z-10 cursor-pointer group"
             style={{
               width: PEEK + 8,
-              background: 'linear-gradient(to right, transparent 0%, rgba(251,191,36,0.06) 50%, rgba(251,191,36,0.18) 100%)',
+              background: 'linear-gradient(to right, transparent 0%, rgba(251,191,36,0.18) 50%, rgba(251,191,36,0.48) 100%)',
             }}
           >
             <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
@@ -478,20 +485,15 @@ export default function HomePage() {
           </>
         ) : (
           <>
-            {/* 베타 배지 — 깜빡이는 효과 */}
+            {/* 베타 배지 — 텍스트 자체 교차 깜빡임 */}
             {badge && (
-              <div className="flex items-center justify-center gap-1.5 mb-3">
-                <span
-                  className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
-                  style={{ background: badge.color }}
-                />
-                <p className="text-xs font-semibold" style={{ color: badge.color }}>
+              <div className="flex items-center justify-center mb-3">
+                <p
+                  className="text-xs font-semibold animate-pulse"
+                  style={{ color: badge.color, animationDuration: '1s' }}
+                >
                   {badge.text}
                 </p>
-                <span
-                  className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
-                  style={{ background: badge.color, animationDelay: '0.5s' }}
-                />
               </div>
             )}
 
