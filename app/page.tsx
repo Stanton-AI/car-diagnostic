@@ -40,102 +40,109 @@ function Slide1() {
   )
 }
 
-// ─── 슬라이드 2: 가치 ────────────────────────────────────────────────────────
-function Slide2() {
+// ─── 진단 예시 카드 (공통 컴포넌트) ──────────────────────────────────────────
+function DiagCard({ symptom, cause, gauge, cost, warning }: {
+  symptom: string
+  cause: string
+  gauge: number
+  cost: string
+  warning: string
+}) {
   return (
-    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
-      <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
-        style={{ background: 'rgba(96,165,250,0.15)' }}>
-        <span className="text-3xl">🔍</span>
+    <div className="rounded-xl p-2.5"
+      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+      {/* 사용자 말풍선 */}
+      <div className="flex justify-end mb-1.5">
+        <div className="rounded-2xl rounded-tr-sm px-2.5 py-1 max-w-[90%]"
+          style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
+          <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.85)' }}>"{symptom}"</p>
+        </div>
       </div>
-      <p className="text-[13px] font-medium mb-2 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
-        정비톡이 해드리는 것
-      </p>
-      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0">
-        증상만 말씀해 주시면{' '}
-        <span style={{ color: '#FBBF24' }}>3분이면</span><br />
-        원인을 알 수 있어요
-      </h2>
-      {/* 진단 예시 카드 — 스크롤 가능 */}
-      <div className="space-y-3 overflow-y-auto flex-1">
-
-        {/* 예시 1: 브레이크 */}
-        <div className="rounded-2xl p-3.5"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div className="flex justify-end mb-2">
-            <div className="rounded-2xl rounded-tr-sm px-3 py-1.5 max-w-[85%]"
-              style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>"출발할 때마다 끼익 소리가 나요"</p>
-            </div>
-          </div>
-          <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-white text-xs font-bold">브레이크 패드 마모</p>
-              <span className="text-[10px] font-bold rounded-full px-2 py-0.5"
-                style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>유력</span>
-            </div>
-            <div className="h-1.5 rounded-full mb-1.5" style={{ background: 'rgba(255,255,255,0.1)' }}>
-              <div className="h-full rounded-full" style={{ width: '75%', background: '#FBBF24' }} />
-            </div>
-            <p className="text-xs mb-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              예상 수리비 <span className="text-white font-semibold">8 ~ 15만원</span>
-            </p>
-            <div className="pl-3 py-0.5" style={{ borderLeft: '2px solid #EF4444' }}>
-              <p className="text-xs" style={{ color: '#F87171' }}>방치하면 디스크 손상으로 30~60만원이 될 수 있어요</p>
-            </div>
+      {/* 진단 결과 */}
+      <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-white text-[11px] font-bold">{cause}</p>
+          <span className="text-[9px] font-bold rounded-full px-1.5 py-0.5"
+            style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>유력</span>
+        </div>
+        <div className="h-1 rounded-full mb-1" style={{ background: 'rgba(255,255,255,0.1)' }}>
+          <div className="h-full rounded-full" style={{ width: `${gauge}%`, background: '#FBBF24' }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            예상 수리비 <span className="text-white font-semibold">{cost}</span>
+          </p>
+          <div className="pl-2" style={{ borderLeft: '2px solid #EF4444' }}>
+            <p className="text-[9px] leading-tight" style={{ color: '#F87171' }}>{warning}</p>
           </div>
         </div>
-
-        {/* 예시 2: 엔진부조 */}
-        <div className="rounded-2xl p-3.5"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div className="flex justify-end mb-2">
-            <div className="rounded-2xl rounded-tr-sm px-3 py-1.5 max-w-[85%]"
-              style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.25)' }}>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.85)' }}>"신호 대기 중에 차가 덜덜 떨려요"</p>
-            </div>
-          </div>
-          <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.05)' }}>
-            <div className="flex items-center justify-between mb-1.5">
-              <p className="text-white text-xs font-bold">점화플러그 불량 (엔진부조)</p>
-              <span className="text-[10px] font-bold rounded-full px-2 py-0.5"
-                style={{ background: 'rgba(251,191,36,0.2)', color: '#FBBF24', border: '1px solid rgba(251,191,36,0.3)' }}>유력</span>
-            </div>
-            <div className="h-1.5 rounded-full mb-1.5" style={{ background: 'rgba(255,255,255,0.1)' }}>
-              <div className="h-full rounded-full" style={{ width: '68%', background: '#FBBF24' }} />
-            </div>
-            <p className="text-xs mb-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
-              예상 수리비 <span className="text-white font-semibold">15 ~ 25만원</span>
-            </p>
-            <div className="pl-3 py-0.5" style={{ borderLeft: '2px solid #EF4444' }}>
-              <p className="text-xs" style={{ color: '#F87171' }}>방치하면 촉매변환기 손상으로 80~150만원이 될 수 있어요</p>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
   )
 }
 
-// ─── 슬라이드 3: 신뢰 ────────────────────────────────────────────────────────
+// ─── 슬라이드 2: 가치 (중앙 정렬) ──────────────────────────────────────────
+function Slide2() {
+  return (
+    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none items-center">
+      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 flex-shrink-0"
+        style={{ background: 'rgba(96,165,250,0.15)' }}>
+        <span className="text-2xl">🔍</span>
+      </div>
+      <p className="text-[12px] font-medium mb-1.5 flex-shrink-0 text-center" style={{ color: 'rgba(255,255,255,0.45)' }}>
+        정비톡이 해드리는 것
+      </p>
+      <h2 className="text-[19px] font-black text-white leading-tight mb-3 flex-shrink-0 text-center">
+        증상만 말씀해 주시면{' '}
+        <span style={{ color: '#FBBF24' }}>3분이면</span><br />
+        원인을 알 수 있어요
+      </h2>
+      {/* 진단 예시 카드 3개 — 스크롤 없이 한 화면 */}
+      <div className="space-y-2 w-full flex-1 flex flex-col justify-between">
+        <DiagCard
+          symptom="출발할 때마다 끼익 소리가 나요"
+          cause="브레이크 패드 마모"
+          gauge={75}
+          cost="8 ~ 15만원"
+          warning="방치 시 디스크 손상 30~60만원"
+        />
+        <DiagCard
+          symptom="신호 대기 중에 차가 덜덜 떨려요"
+          cause="점화플러그 불량 (엔진부조)"
+          gauge={68}
+          cost="15 ~ 25만원"
+          warning="방치 시 촉매변환기 손상 80~150만원"
+        />
+        <DiagCard
+          symptom="코너 돌 때마다 찌걱 소리가 나요"
+          cause="스태빌라이저 부싱 마모"
+          gauge={72}
+          cost="5 ~ 10만원"
+          warning="방치 시 서스펜션 링크 손상 40~80만원"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─── 슬라이드 3: 신뢰 (우측 정렬) ──────────────────────────────────────────
 function Slide3() {
   return (
-    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
+    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none items-end">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
         style={{ background: 'rgba(52,211,153,0.15)' }}>
         <span className="text-3xl">✅</span>
       </div>
-      <p className="text-[13px] font-medium mb-2 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
+      <p className="text-[13px] font-medium mb-2 flex-shrink-0 text-right" style={{ color: 'rgba(255,255,255,0.45)' }}>
         이미 많은 분들이 쓰고 있어요
       </p>
-      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0">
+      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0 text-right">
         정비소 가기 전{' '}
         <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로<br />
         달라져요
       </h2>
       {/* 통계 그리드 */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-4 w-full">
         {[
           { value: '1,247건', label: '누적 진단 완료' },
           { value: '3분', label: '평균 진단 시간' },
@@ -148,13 +155,13 @@ function Slide3() {
         ))}
       </div>
       {/* 후기 카드 3개 */}
-      <div className="space-y-2 overflow-y-auto">
+      <div className="space-y-2 w-full overflow-y-auto">
         {[
           { review: '정비소 가기 전에 미리 알고 갔더니 설명도 잘 되고 견적도 맞았어요', car: '그랜저 IG 오너 · 김**님' },
           { review: '엔진 소리가 이상해서 걱정했는데, 원인 알고 가니까 훨씬 덜 불안했어요', car: '소나타 DN8 오너 · 박**님' },
           { review: '예상 수리비가 정확해서 정비소에서 바가지 안 쓸 수 있었어요. 강추해요!', car: '아반떼 CN7 오너 · 이**님' },
         ].map((item, i) => (
-          <div key={i} className="rounded-xl p-3.5"
+          <div key={i} className="rounded-xl p-3.5 text-right"
             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
             <p className="text-xs mb-1.5" style={{ color: '#FBBF24' }}>★★★★★</p>
             <p className="text-xs leading-relaxed mb-1.5" style={{ color: 'rgba(255,255,255,0.8)' }}>
