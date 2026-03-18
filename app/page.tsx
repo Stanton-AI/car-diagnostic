@@ -10,7 +10,7 @@ const GAP = 12
 // ─── 슬라이드 1: 공감 ────────────────────────────────────────────────────────
 function Slide1() {
   return (
-    <div className="flex flex-col h-full pl-4 pr-12 pt-4 pb-4 select-none">
+    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
         style={{ background: 'rgba(239,68,68,0.15)' }}>
         <span className="text-3xl">🛡️</span>
@@ -128,7 +128,7 @@ function Slide2() {
 // ─── 슬라이드 3: 신뢰 (우측 — 왼쪽 패딩 크게) ──────────────────────────────
 function Slide3() {
   return (
-    <div className="flex flex-col h-full pl-12 pr-4 pt-4 pb-4 select-none">
+    <div className="flex flex-col h-full px-5 pt-4 pb-4 select-none">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 flex-shrink-0"
         style={{ background: 'rgba(52,211,153,0.15)' }}>
         <span className="text-3xl">✅</span>
@@ -136,13 +136,11 @@ function Slide3() {
       <p className="text-[13px] font-medium mb-2 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.45)' }}>
         이미 많은 분들이 쓰고 있어요
       </p>
-      <h2 className="text-[22px] font-black text-white leading-tight mb-5 flex-shrink-0">
-        정비소 가기 전{' '}
-        <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로<br />
-        달라져요
+      <h2 className="text-[20px] font-black text-white leading-tight mb-4 flex-shrink-0">
+        정비소 가기 전 <span style={{ color: '#FBBF24' }}>미리 아는 것</span>만으로 달라져요
       </h2>
       {/* 통계 그리드 */}
-      <div className="grid grid-cols-2 gap-3 mb-4 w-full">
+      <div className="grid grid-cols-2 gap-3 mb-3 w-full flex-shrink-0">
         {[
           { value: '1,247건', label: '누적 진단 완료' },
           { value: '3분', label: '평균 진단 시간' },
@@ -154,8 +152,8 @@ function Slide3() {
           </div>
         ))}
       </div>
-      {/* 후기 카드 3개 */}
-      <div className="space-y-2 w-full overflow-y-auto">
+      {/* 후기 카드 3개 — 스크롤 가능 */}
+      <div className="space-y-2 w-full flex-1 overflow-y-auto">
         {[
           { review: '정비소 가기 전에 미리 알고 갔더니 설명도 잘 되고 견적도 맞았어요', car: '그랜저 IG 오너 · 김**님' },
           { review: '엔진 소리가 이상해서 걱정했는데, 원인 알고 가니까 훨씬 덜 불안했어요', car: '소나타 DN8 오너 · 박**님' },
