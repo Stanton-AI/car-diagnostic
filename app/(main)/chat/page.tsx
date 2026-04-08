@@ -294,15 +294,29 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* 입력창 — 진단 전: 증상 입력 / 진단 후: 결과 질문 */}
-      {!isLoading && currentQuestions.length === 0 && (
+      {/* 입력창 — 항상 표시. 선택지 있을 때도 자유 입력 가능 */}
+      {!isLoading && (
         <ChatInput
-          onSend={(text) => sendMessage(text)}
+          onSend={(text) => {
+            if (currentQuestions.length > 0) {
+              // 선택지 있는 상태에서 직접 입력 → 현재 질문의 자유 답변으로 처리
+              setCurrentQuestions([])
+              sendMessage(text, 'answer', currentQuestions[0].id)
+            } else {
+              sendMessage(text)
+            }
+          }}
           onImageUpload={handleImageUpload}
           uploadedImages={uploadedImages}
           onRemoveImage={(url) => setUploadedImages(prev => prev.filter(u => u !== url))}
           disabled={isLoading}
-          placeholder={diagnosisResult ? '새로운 증상이나 추가 정보를 입력하면 리포트가 갱신됩니다...' : undefined}
+          placeholder={
+            currentQuestions.length > 0
+              ? '선택하거나 직접 입력하세요...'
+              : diagnosisResult
+                ? '추가 정보나 궁금한 점을 입력하세요...'
+                : '증상을 자유롭게 설명해주세요...'
+          }
         />
       )}
     </div>
