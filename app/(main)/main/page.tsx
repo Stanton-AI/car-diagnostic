@@ -798,72 +798,21 @@ export default function MainPage() {
               </div>
             )}
 
-            {!showCustomInput ? (
-              <>
-                {/* 질문 설명 버튼 — 선택지 위에 배치 */}
+            {/* 빠른 선택 칩 버튼 */}
+            <div className="flex flex-wrap gap-2">
+              {currentQuestion.choices.filter((c, i, arr) => arr.indexOf(c) === i).concat(['잘 모르겠어요']).map((choice, i) => (
                 <button
-                  onClick={async () => {
-                    if (loadingExplain) return
-                    if (explanation) { setExplanation(null); return }
-                    setLoadingExplain(true)
-                    try {
-                      const res = await fetch('/api/assist', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: 'question_explain', question: currentQuestion.question }),
-                      })
-                      const data = await res.json()
-                      setExplanation(data.answer ?? '설명을 불러오지 못했어요.')
-                    } catch {
-                      setExplanation('설명을 불러오지 못했어요.')
-                    } finally {
-                      setLoadingExplain(false)
-                    }
-                  }}
-                  disabled={loadingExplain}
-                  className="w-full px-3 py-2 rounded-xl border border-blue-100 text-xs text-blue-500 hover:bg-blue-50 transition-colors text-center disabled:opacity-50">
-                  {loadingExplain ? '설명 불러오는 중...' : explanation ? '❓ 설명 닫기' : '❓ 이 질문이 뭔 뜻이에요?'}
+                  key={`${currentQuestion.id}-${i}`}
+                  onClick={() => sendMessage(choice, 'answer', currentQuestion.id)}
+                  className="px-3 py-1.5 rounded-full text-sm border border-primary-200 bg-white text-primary-700 font-medium hover:bg-primary-50 hover:border-primary-400 transition-all active:scale-95"
+                >
+                  {choice === '잘 모르겠어요'
+                    ? <span className="text-gray-400">{choice}</span>
+                    : choice}
                 </button>
-
-                {questionChoices.map((choice, i) => (
-                  <button key={`${currentQuestion.id}-${i}`}
-                    onClick={() => {
-                      if (choice === '기타 (직접 입력)') {
-                        setShowCustomInput(true)
-                        return
-                      }
-                      sendMessage(choice, 'answer', currentQuestion.id)
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 bg-white border border-gray-200 rounded-xl text-left hover:border-primary-300 hover:bg-primary-50 transition-all active:scale-[0.98] text-sm shadow-sm">
-                    <span className="w-5 h-5 rounded-full border border-primary-300 bg-white flex-shrink-0 flex items-center justify-center text-xs text-primary-600 font-bold">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                    <span className="flex-1">{choice}</span>
-                  </button>
-                ))}
-              </>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customInputValue}
-                  onChange={e => setCustomInputValue(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && customInputValue.trim()) {
-                      sendMessage(customInputValue.trim(), 'answer', currentQuestion.id)
-                    }
-                  }}
-                  placeholder="직접 입력해 주세요..."
-                  autoFocus
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 bg-white"
-                />
-                <button
-                  onClick={() => { if (customInputValue.trim()) sendMessage(customInputValue.trim(), 'answer', currentQuestion.id) }}
-                  className="px-4 py-3 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors">
-                  확인
-                </button>
-              </div>
-            )}
+              ))}
+            </div>
+            <p className="text-xs text-gray-400">선택하거나 아래 입력창에 직접 입력하세요</p>
           </div>
         )}
 
@@ -871,10 +820,17 @@ export default function MainPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── 채팅 입력창 (증상 입력 단계만) ── */}
-      {phase === 'symptom' && !isLoading && (
+      {/* ── 채팅 입력창 (항상 표시 — 질문 중에도 자유 입력 가능) ── */}
+      {(phase === 'symptom' || phase === 'questioning') && !isLoading && (
         <ChatInput
-          onSend={(text) => sendMessage(text)}
+          onSend={(text) => {
+            if (phase === 'questioning' && currentQuestion) {
+              // 질문 단계에서 자유 입력 → 현재 질문 답변으로 처리
+              sendMessage(text, 'answer', currentQuestion.id)
+            } else {
+              sendMessage(text)
+            }
+          }}
           onImageUpload={handleImageUpload}
           uploadedImages={uploadedImages}
           onRemoveImage={(url) => {
@@ -887,6 +843,11 @@ export default function MainPage() {
             }
           }}
           disabled={isLoading}
+          placeholder={
+            phase === 'questioning'
+              ? '선택하거나 직접 입력하세요...'
+              : '증상을 자유롭게 설명해주세요...'
+          }
         />
       )}
 
