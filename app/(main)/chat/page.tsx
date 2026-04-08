@@ -181,7 +181,7 @@ export default function ChatPage() {
       if (data.data.needsMoreInfo && data.data.additionalQuestions?.length > 0) {
         // 추가 질문
         const questions: DiagnosticQuestion[] = data.data.additionalQuestions
-        const aiMsg = createMessage('assistant', '정확한 진단을 위해 몇 가지 더 확인해 드릴게요.', 'question', {}) as ChatMessage
+        const aiMsg = createMessage('assistant', '조금 더 여쭤볼게요. 아래에서 선택하거나 직접 입력해 주세요 😊', 'text', {}) as ChatMessage
         setMessages(prev => [...prev, aiMsg])
         setCurrentQuestions(questions)
         setDiagStep(prev => Math.min(3, prev + 1))
