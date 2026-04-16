@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Script from 'next/script'
 import './globals.css'
 import FeedbackButton from '@/components/shared/FeedbackButton'
 import AmplitudeInit from '@/components/shared/AmplitudeInit'
@@ -19,12 +18,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        {/* Google AdSense — 승인 후 ca-pub-2199747031677342를 실제 퍼블리셔 ID로 교체 */}
-        <Script
+        {/* Google AdSense — 소유권 인증 + 광고 로드 (SSR HTML에 포함되어야 크롤러가 감지) */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2199747031677342"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
       </head>
       <body>
