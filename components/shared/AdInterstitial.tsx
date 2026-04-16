@@ -8,7 +8,7 @@ interface Props {
   isOpen: boolean
   /** 광고 시청 완료 후 호출 */
   onComplete: () => void
-  /** 카운트다운 초 (기본 5초) */
+  /** 카운트다운 초 (기본 15초) */
   countdownSeconds?: number
 }
 
@@ -23,7 +23,6 @@ let adsenseLoading = false
 function loadAdSenseScript(): Promise<void> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined') { resolve(); return }
-    // 이미 로드된 경우
     if (document.querySelector('script[src*="adsbygoogle"]')) { resolve(); return }
     if (adsenseLoading) { resolve(); return }
     adsenseLoading = true
@@ -32,14 +31,24 @@ function loadAdSenseScript(): Promise<void> {
     script.async = true
     script.crossOrigin = 'anonymous'
     script.onload = () => resolve()
-    script.onerror = () => resolve() // 실패해도 계속 진행
+    script.onerror = () => resolve()
     document.head.appendChild(script)
   })
 }
 
-export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 5 }: Props) {
+/** 자체 프로모션 팁 (AdSense 미승인 동안 표시) */
+const PROMO_TIPS = [
+  { icon: '🔧', title: '정기 점검의 중요성', desc: '6개월마다 엔진오일을 교환하면 엔진 수명이 최대 2배 연장됩니다.' },
+  { icon: '🚗', title: '타이어 공기압 체크', desc: '적정 공기압을 유지하면 연비가 3~5% 개선되고 안전성이 높아집니다.' },
+  { icon: '💡', title: '경고등이 켜졌다면?', desc: '경고등 무시는 소액 수리를 대형 사고로 키울 수 있습니다. 바로 점검하세요.' },
+  { icon: '🛡️', title: '겨울철 냉각수 관리', desc: '부동액 비율이 낮으면 엔진 동파 위험! 겨울 전 꼭 점검하세요.' },
+  { icon: '⚡', title: '배터리 수명 관리', desc: '배터리는 보통 3~5년. 시동이 약해지면 교체 시기입니다.' },
+]
+
+export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 15 }: Props) {
   const [countdown, setCountdown] = useState(countdownSeconds)
   const [adLoaded, setAdLoaded] = useState(false)
+  const [promoIndex, setPromoIndex] = useState(0)
   const adPushed = useRef(false)
 
   // 카운트다운 타이머
@@ -47,6 +56,7 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
     if (!isOpen) {
       setCountdown(countdownSeconds)
       adPushed.current = false
+      setPromoIndex(0)
       return
     }
 
@@ -65,6 +75,17 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
     return () => clearInterval(timer)
   }, [isOpen, countdownSeconds])
 
+  // 프로모션 팁 순환 (5초마다)
+  useEffect(() => {
+    if (!isOpen || adLoaded) return
+
+    const tipTimer = setInterval(() => {
+      setPromoIndex(prev => (prev + 1) % PROMO_TIPS.length)
+    }, 5000)
+
+    return () => clearInterval(tipTimer)
+  }, [isOpen, adLoaded])
+
   // AdSense 스크립트 동적 로드 + 광고 슬롯 활성화
   useEffect(() => {
     if (!isOpen || adPushed.current) return
@@ -72,7 +93,6 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
     const activateAd = async () => {
       try {
         await loadAdSenseScript()
-        // 스크립트 로드 후 잠시 대기
         await new Promise(r => setTimeout(r, 300))
         if (window.adsbygoogle) {
           window.adsbygoogle.push({})
@@ -80,7 +100,6 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
           setAdLoaded(true)
         }
       } catch {
-        // AdSense 미승인 상태에서는 에러 발생 — 무시
         setAdLoaded(false)
       }
     }
@@ -94,6 +113,9 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
 
   if (!isOpen) return null
 
+  const progress = ((countdownSeconds - countdown) / countdownSeconds) * 100
+  const currentTip = PROMO_TIPS[promoIndex]
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-up">
       <div className="bg-white rounded-2xl shadow-2xl mx-4 max-w-[420px] w-full overflow-hidden">
@@ -103,34 +125,68 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
             🔍 진단 리포트가 준비되었습니다!
           </p>
           <p className="text-xs opacity-90 mt-1">
-            광고를 잠시 확인해 주시면 진단 결과를 바로 보실 수 있어요
+            잠시만 기다려 주시면 진단 결과를 바로 보실 수 있어요
           </p>
         </div>
 
-        {/* 광고 영역 */}
+        {/* 프로그레스 바 */}
+        <div className="h-1 bg-gray-200 relative">
+          <div
+            className="h-full bg-gradient-to-r from-primary-500 to-primary-400 transition-all duration-1000 ease-linear"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        {/* 광고 / 프로모션 영역 */}
         <div className="px-5 py-4">
-          <div className="bg-gray-50 border border-gray-200 rounded-xl min-h-[250px] flex items-center justify-center relative overflow-hidden">
-            {/* AdSense 광고 슬롯 */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl min-h-[280px] flex items-center justify-center relative overflow-hidden">
+            {/* AdSense 광고 슬롯 (승인 후 활성화) */}
             <ins
               className="adsbygoogle"
-              style={{ display: 'block', width: '100%', height: '250px' }}
+              style={{ display: adLoaded ? 'block' : 'none', width: '100%', height: '280px' }}
               data-ad-client="ca-pub-2199747031677342"
               data-ad-slot="XXXXXXXXXX"
               data-ad-format="auto"
               data-full-width-responsive="true"
             />
 
-            {/* AdSense 미로드 시 플레이스홀더 */}
+            {/* AdSense 미승인 시: 자체 프로모션 (자동차 관리 팁) */}
             {!adLoaded && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-                <div className="w-16 h-16 bg-gray-200 rounded-xl flex items-center justify-center mb-3">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 2v4M8 2v4M3 10h18" />
-                  </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                {/* 팁 아이콘 */}
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 shadow-sm transition-all duration-500"
+                  style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)' }}
+                >
+                  <span className="text-4xl">{currentTip.icon}</span>
                 </div>
-                <p className="text-sm font-medium">광고 영역</p>
-                <p className="text-xs mt-1">파트너 광고가 곧 표시됩니다</p>
+
+                {/* 팁 카드 */}
+                <div className="transition-all duration-500">
+                  <p className="text-[11px] text-primary-500 font-bold tracking-wider uppercase mb-1.5">
+                    정비톡 TIP
+                  </p>
+                  <h3 className="text-[15px] font-extrabold text-gray-900 mb-2">
+                    {currentTip.title}
+                  </h3>
+                  <p className="text-[13px] text-gray-500 leading-relaxed">
+                    {currentTip.desc}
+                  </p>
+                </div>
+
+                {/* 팁 인디케이터 */}
+                <div className="flex gap-1.5 mt-5">
+                  {PROMO_TIPS.map((_, i) => (
+                    <div
+                      key={i}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        i === promoIndex
+                          ? 'w-6 bg-primary-500'
+                          : 'w-1.5 bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -141,14 +197,14 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
           {countdown > 0 ? (
             <button
               disabled
-              className="w-full py-3.5 bg-gray-200 text-gray-500 rounded-xl text-sm font-semibold cursor-not-allowed transition-all"
+              className="w-full py-3.5 bg-gray-100 text-gray-400 rounded-xl text-sm font-semibold cursor-not-allowed transition-all relative overflow-hidden"
             >
-              {countdown}초 후 진단 결과 확인 가능
+              <span className="relative z-10">{countdown}초 후 진단 결과 확인 가능</span>
             </button>
           ) : (
             <button
               onClick={handleUnlock}
-              className="w-full py-3.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 active:scale-[0.98] transition-all shadow-lg shadow-primary-600/25"
+              className="w-full py-3.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 active:scale-[0.98] transition-all shadow-lg shadow-primary-600/25 animate-pulse-gentle"
             >
               ✅ 진단 리포트 보기
             </button>

@@ -572,7 +572,7 @@ export default function MainPage() {
       <AdInterstitial
         isOpen={showAdInterstitial}
         onComplete={handleAdComplete}
-        countdownSeconds={5}
+        countdownSeconds={15}
       />
 
       {/* ── 헤더 ── */}

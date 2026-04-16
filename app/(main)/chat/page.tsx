@@ -295,7 +295,7 @@ export default function ChatPage() {
       <AdInterstitial
         isOpen={showAdInterstitial}
         onComplete={handleAdComplete}
-        countdownSeconds={5}
+        countdownSeconds={15}
       />
 
       {/* 메시지 영역 */}
