@@ -11,6 +11,8 @@ import QuestionChoices from '@/components/chat/QuestionChoices'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
+import AdInterstitial from '@/components/shared/AdInterstitial'
+import { track } from '@/lib/amplitude'
 
 // 비증상 입력 패턴 (인사말/짧은 입력 감지)
 const GREETING_PATTERNS = ['안녕', '안녕하세요', '안녕히', 'hi', 'hello', '헬로', '반가워', '반갑습니다', '테스트', 'test']
@@ -38,6 +40,11 @@ export default function ChatPage() {
   const [postChatHistory, setPostChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([])
   // 진행 단계 추적 (1=증상입력, 2=1차질문, 3=추가질문, 4=진단완료)
   const [diagStep, setDiagStep] = useState(1)
+  // 광고 인터스티셜 상태
+  const [showAdInterstitial, setShowAdInterstitial] = useState(false)
+  const [adWatched, setAdWatched] = useState(false)
+  // 광고 대기 중인 진단 결과 (광고 완료 후 메시지에 추가)
+  const [pendingResult, setPendingResult] = useState<{ result: DiagnosisResult; resultMsg: ChatMessage } | null>(null)
 
 
   // 초기화
@@ -160,7 +167,10 @@ export default function ChatPage() {
     setMessages(newMessages)
     setCurrentQuestions([])
     setIsLoading(true)
-    if (diagStep === 1) setDiagStep(2)
+    if (diagStep === 1) {
+      setDiagStep(2)
+      track('symptom_submitted', { symptom_length: content.length, has_images: uploadedImages.length > 0 })
+    }
 
     try {
       const response = await fetch('/api/diagnose', {
@@ -194,13 +204,36 @@ export default function ChatPage() {
         ) as ChatMessage
         setMessages(prev => [...prev, msg])
         setShowWorkshopCTA(true)
+        track('low_confidence_result', { question_count: diagStep })
       } else {
         // 정상 진단 결과
         const result: DiagnosisResult = data.data.result!
-        setDiagnosisResult(result)
-        setDiagStep(4)
         const resultMsg = createMessage('assistant', result.summary, 'result', { result }) as ChatMessage
-        setMessages(prev => [...prev, resultMsg])
+        const topProb = result.causes[0]?.probability ?? 50
+        const healthScore = result.urgency === 'HIGH' ? Math.max(15, 50 - Math.round(topProb / 3))
+          : result.urgency === 'MID' ? Math.max(45, 75 - Math.round(topProb / 3))
+          : Math.max(70, 95 - Math.round(topProb / 5))
+        track('diagnosis_completed', {
+          urgency: result.urgency,
+          health_score: healthScore,
+          cause_count: result.causes.length,
+          top_cause: result.causes[0]?.name,
+          estimated_cost: result.cost.total,
+        })
+
+        // 첫 진단 시 광고 인터스티셜 표시 → 광고 완료 후 리포트 노출
+        if (!adWatched) {
+          setPendingResult({ result, resultMsg })
+          setShowAdInterstitial(true)
+          // 진단 분석 완료 메시지 먼저 표시
+          const analysisMsg = createMessage('assistant', '✅ 진단 분석이 완료되었습니다! 리포트를 준비 중이에요...', 'text') as ChatMessage
+          setMessages(prev => [...prev, analysisMsg])
+        } else {
+          // 이미 광고를 본 경우 바로 리포트 표시
+          setDiagnosisResult(result)
+          setDiagStep(4)
+          setMessages(prev => [...prev, resultMsg])
+        }
       }
     } catch (error) {
       const errMsg = createMessage('assistant', '죄송합니다, 진단 처리 중 오류가 발생했습니다. 다시 시도해 주세요.', 'text') as ChatMessage
@@ -210,6 +243,18 @@ export default function ChatPage() {
       setUploadedImages([])
     }
   }, [messages, user, vehicle, uploadedImages, conversationId])
+
+  // 광고 시청 완료 → 진단 리포트 표시
+  const handleAdComplete = useCallback(() => {
+    setShowAdInterstitial(false)
+    setAdWatched(true)
+    if (pendingResult) {
+      setDiagnosisResult(pendingResult.result)
+      setDiagStep(4)
+      setMessages(prev => [...prev, pendingResult.resultMsg])
+      setPendingResult(null)
+    }
+  }, [pendingResult])
 
   // 자가점검 결과 재진단
   const handleSelfCheckSubmit = async (selfCheckResults: string) => {
@@ -246,6 +291,13 @@ export default function ChatPage() {
     <div className="flex flex-col h-screen bg-white">
       <ChatHeader vehicle={vehicle} onBack={() => router.push('/main')} step={diagStep} totalSteps={4} />
 
+      {/* 광고 인터스티셜 */}
+      <AdInterstitial
+        isOpen={showAdInterstitial}
+        onComplete={handleAdComplete}
+        countdownSeconds={5}
+      />
+
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-surface-50">
         {messages.map((msg) => (
@@ -278,7 +330,7 @@ export default function ChatPage() {
             </div>
             <div className="flex flex-col gap-2 flex-1 max-w-[90%]">
               <button
-                onClick={() => router.push('/workshops')}
+                onClick={() => { track('workshop_cta_clicked', { source: 'low_confidence' }); router.push('/workshops') }}
                 className="w-full py-3 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors shadow-sm"
               >
                 🔧 가까운 파트너 정비소 찾기

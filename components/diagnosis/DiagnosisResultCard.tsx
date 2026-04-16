@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import type { DiagnosisResult, SelfCheckItem } from '@/types'
 import { formatKRW, getShareUrl, urgencyLabel } from '@/lib/utils'
 import { CauseNameWithExplain } from './TermTooltip'
+import { track } from '@/lib/amplitude'
 
 interface Props {
   result: DiagnosisResult
@@ -74,10 +75,12 @@ export default function DiagnosisResultCard({
     try {
       if (navigator.share) {
         await navigator.share({ title: '정비톡 자동차 진단 결과', text: result.summary, url: shareUrl })
+        track('result_shared', { method: 'native_share', urgency: result.urgency })
       } else {
         await navigator.clipboard.writeText(shareUrl)
         setShared(true)
         setTimeout(() => setShared(false), 2000)
+        track('result_shared', { method: 'clipboard', urgency: result.urgency })
       }
     } catch { /* user cancelled share */ }
   }
@@ -97,6 +100,11 @@ export default function DiagnosisResultCard({
       })
       setFeedbackDone(true)
       setShowFeedback(false)
+      track('feedback_submitted', {
+        ai_correct: feedbackAiCorrect,
+        repair_name: feedbackRepairName.trim(),
+        has_actual_cost: !!feedbackCost,
+      })
     } catch {
       // 저장 실패해도 UX 방해 않음
     } finally {
@@ -254,7 +262,7 @@ export default function DiagnosisResultCard({
       {/* CTA — 방치 비용 문구 직후, 감정 피크에서 바로 행동 유도 */}
       {result.urgency !== 'LOW' && (
         <button
-          onClick={() => router.push(`/repair/request/${conversationId}`)}
+          onClick={() => { track('workshop_cta_clicked', { source: 'result_card', urgency: result.urgency }); router.push(`/repair/request/${conversationId}`) }}
           className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex flex-col items-center justify-center gap-0.5"
         >
           <div className="flex items-center gap-2">
@@ -316,7 +324,7 @@ export default function DiagnosisResultCard({
       {/* LOW urgency CTA (덜 긴박하게) */}
       {result.urgency === 'LOW' && (
         <button
-          onClick={() => router.push(`/repair/request/${conversationId}`)}
+          onClick={() => { track('workshop_cta_clicked', { source: 'result_card', urgency: result.urgency }); router.push(`/repair/request/${conversationId}`) }}
           className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-0.5"
         >
           <div className="flex items-center gap-2">
