@@ -528,6 +528,12 @@ export default function MainPage() {
     else if (!garageOpen && deltaY < -50) setGarageOpen(true)
   }, [garageOpen])
 
+  // 광고 시청 완료 → 결과 페이지로 이동 (훅은 조건부 return 전에 선언)
+  const handleAdComplete = useCallback(() => {
+    setShowAdInterstitial(false)
+    router.push(`/diagnosis/${conversationId}`)
+  }, [conversationId, router])
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <div className="w-10 h-10 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
@@ -559,12 +565,6 @@ export default function MainPage() {
       ...(!currentQuestion.choices.includes('모름') ? ['모름'] : []),
       '기타 (직접 입력)']
     : []
-
-  // 광고 시청 완료 → 결과 페이지로 이동
-  const handleAdComplete = useCallback(() => {
-    setShowAdInterstitial(false)
-    router.push(`/diagnosis/${conversationId}`)
-  }, [conversationId, router])
 
   return (
     <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
