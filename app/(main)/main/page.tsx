@@ -32,6 +32,7 @@ import { createClient } from '@/lib/supabase/client'
 import MessageBubble from '@/components/chat/MessageBubble'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
+import AdInterstitial from '@/components/shared/AdInterstitial'
 
 // ── 상수 ──────────────────────────────────────────────────────────────────
 const FUEL_LABELS: Record<string, string> = {
@@ -250,6 +251,9 @@ export default function MainPage() {
   // 페이월 (일일 한도 초과)
   const [paywallOpen, setPaywallOpen] = useState(false)
   const [paymentInterestSent, setPaymentInterestSent] = useState(false)
+
+  // 광고 인터스티셜
+  const [showAdInterstitial, setShowAdInterstitial] = useState(false)
 
   // ── 초기 로드 ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -478,16 +482,17 @@ export default function MainPage() {
         setPhase('questioning')
         // Q&A 단계: 이미지 ref 유지 (최종 진단 시에도 이미지 전달되도록)
       } else {
-        // 진단 완료 → 이미지 클리어 후 결과 페이지로 이동
+        // 진단 완료 → 이미지 클리어 후 광고 표시 → 결과 페이지로 이동
         uploadedImagesRef.current = []
         uploadedImagesB64Ref.current = []
         setUploadedImages([])
         setUploadedImagesB64([])
-        const doneMsg = createMessage('assistant', '✅ 진단 분석이 완료되었습니다!\n잠시 후 결과 리포트를 확인하실 수 있어요.', 'text') as ChatMessage
+        const doneMsg = createMessage('assistant', '✅ 진단 분석이 완료되었습니다!\n광고를 잠시 확인해 주시면 결과 리포트를 보실 수 있어요.', 'text') as ChatMessage
         setMessages(prev => [...prev, doneMsg])
         setPhase('done')
         setCheckpoints([])
-        setTimeout(() => router.push(`/diagnosis/${conversationId}`), 1500)
+        // 광고 인터스티셜 표시
+        setShowAdInterstitial(true)
       }
     } catch {
       const errMsg = createMessage('assistant', '죄송합니다, 진단 처리 중 오류가 발생했습니다. 다시 시도해 주세요.', 'text') as ChatMessage
@@ -555,8 +560,21 @@ export default function MainPage() {
       '기타 (직접 입력)']
     : []
 
+  // 광고 시청 완료 → 결과 페이지로 이동
+  const handleAdComplete = useCallback(() => {
+    setShowAdInterstitial(false)
+    router.push(`/diagnosis/${conversationId}`)
+  }, [conversationId, router])
+
   return (
     <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
+      {/* 광고 인터스티셜 */}
+      <AdInterstitial
+        isOpen={showAdInterstitial}
+        onComplete={handleAdComplete}
+        countdownSeconds={5}
+      />
+
       {/* ── 헤더 ── */}
       <header className="bg-white px-5 pt-12 pb-4 flex items-start justify-between flex-shrink-0 border-b border-gray-100">
         <div>

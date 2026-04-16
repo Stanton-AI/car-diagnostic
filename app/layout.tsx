@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import FeedbackButton from '@/components/shared/FeedbackButton'
 import AmplitudeInit from '@/components/shared/AmplitudeInit'
@@ -18,12 +19,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        {/* Google AdSense — 소유권 인증 + 광고 로드 (SSR HTML에 포함되어야 크롤러가 감지) */}
+        {/* Google AdSense — 소유권 인증용 (SSR HTML에 포함) */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2199747031677342"
           crossOrigin="anonymous"
-        />
+        ></script>
       </head>
       <body>
         <div className="min-h-screen max-w-[480px] mx-auto bg-white shadow-xl relative">
