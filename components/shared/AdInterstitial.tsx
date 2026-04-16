@@ -129,7 +129,11 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
   const handleChoosePay = useCallback(() => {
     track('ad_interstitial_choice', { method: 'pay' })
     setShowPayToast(true)
-    setTimeout(() => setShowPayToast(false), 3000)
+    // 토스트 1.5초 표시 후 자동으로 광고 모드 전환
+    setTimeout(() => {
+      setShowPayToast(false)
+      setMode('ad')
+    }, 1500)
   }, [])
 
   if (!isOpen) return null
@@ -146,10 +150,10 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
           <div className="bg-gradient-to-r from-primary-600 to-primary-500 px-5 py-5 text-white text-center">
             <p className="text-2xl mb-2">🔍</p>
             <p className="text-[15px] font-extrabold">
-              진단 리포트가 준비되었습니다!
+              진단 리포트를 준비 중이에요!
             </p>
             <p className="text-xs opacity-80 mt-1">
-              리포트 확인 방법을 선택해 주세요
+              기다리는 동안 리포트 확인 방법을 선택해 주세요
             </p>
           </div>
 
@@ -217,7 +221,7 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
         {/* 헤더 */}
         <div className="bg-gradient-to-r from-primary-600 to-primary-500 px-5 py-4 text-white">
           <p className="text-sm font-bold flex items-center gap-2">
-            🎬 광고를 시청 중입니다
+            🎬 리포트를 준비하고 있어요
           </p>
           <p className="text-xs opacity-90 mt-1">
             잠시만 기다려 주시면 진단 결과를 무료로 보실 수 있어요
