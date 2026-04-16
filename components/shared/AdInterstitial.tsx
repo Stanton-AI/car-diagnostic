@@ -47,13 +47,19 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
   // AdSense 광고 슬롯 활성화
   useEffect(() => {
     if (!isOpen) return
-    try {
-      ;(window.adsbygoogle = window.adsbygoogle || []).push({})
-      setAdLoaded(true)
-    } catch {
-      // AdSense 미승인 상태에서는 에러 발생 — 무시
-      setAdLoaded(false)
-    }
+    // AdSense 스크립트 로드 대기 후 push
+    const timer = setTimeout(() => {
+      try {
+        if (typeof window !== 'undefined' && window.adsbygoogle) {
+          window.adsbygoogle.push({})
+          setAdLoaded(true)
+        }
+      } catch {
+        // AdSense 미승인 상태에서는 에러 발생 — 무시
+        setAdLoaded(false)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
   }, [isOpen])
 
   const handleUnlock = useCallback(() => {

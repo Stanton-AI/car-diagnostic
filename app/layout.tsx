@@ -20,13 +20,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <head>
         {/* Google AdSense — 소유권 인증용 (SSR HTML에 포함) */}
-        <script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2199747031677342"
-          crossOrigin="anonymous"
-        ></script>
+        <meta name="google-adsense-account" content="ca-pub-2199747031677342" />
       </head>
       <body>
+        {/* Google AdSense — beforeInteractive로 SSR HTML <head>에 삽입 */}
+        <Script
+          strategy="beforeInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2199747031677342"
+          crossOrigin="anonymous"
+        />
         <div className="min-h-screen max-w-[480px] mx-auto bg-white shadow-xl relative">
           <AmplitudeInit />
           {children}
