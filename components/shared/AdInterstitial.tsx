@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { track } from '@/lib/amplitude'
 
 interface Props {
@@ -18,14 +18,35 @@ declare global {
   }
 }
 
+/** AdSense 스크립트를 한 번만 동적으로 로드 */
+let adsenseLoading = false
+function loadAdSenseScript(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') { resolve(); return }
+    // 이미 로드된 경우
+    if (document.querySelector('script[src*="adsbygoogle"]')) { resolve(); return }
+    if (adsenseLoading) { resolve(); return }
+    adsenseLoading = true
+    const script = document.createElement('script')
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2199747031677342'
+    script.async = true
+    script.crossOrigin = 'anonymous'
+    script.onload = () => resolve()
+    script.onerror = () => resolve() // 실패해도 계속 진행
+    document.head.appendChild(script)
+  })
+}
+
 export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 5 }: Props) {
   const [countdown, setCountdown] = useState(countdownSeconds)
   const [adLoaded, setAdLoaded] = useState(false)
+  const adPushed = useRef(false)
 
   // 카운트다운 타이머
   useEffect(() => {
     if (!isOpen) {
       setCountdown(countdownSeconds)
+      adPushed.current = false
       return
     }
 
@@ -44,22 +65,26 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
     return () => clearInterval(timer)
   }, [isOpen, countdownSeconds])
 
-  // AdSense 광고 슬롯 활성화
+  // AdSense 스크립트 동적 로드 + 광고 슬롯 활성화
   useEffect(() => {
-    if (!isOpen) return
-    // AdSense 스크립트 로드 대기 후 push
-    const timer = setTimeout(() => {
+    if (!isOpen || adPushed.current) return
+
+    const activateAd = async () => {
       try {
-        if (typeof window !== 'undefined' && window.adsbygoogle) {
+        await loadAdSenseScript()
+        // 스크립트 로드 후 잠시 대기
+        await new Promise(r => setTimeout(r, 300))
+        if (window.adsbygoogle) {
           window.adsbygoogle.push({})
+          adPushed.current = true
           setAdLoaded(true)
         }
       } catch {
         // AdSense 미승인 상태에서는 에러 발생 — 무시
         setAdLoaded(false)
       }
-    }, 500)
-    return () => clearTimeout(timer)
+    }
+    activateAd()
   }, [isOpen])
 
   const handleUnlock = useCallback(() => {
