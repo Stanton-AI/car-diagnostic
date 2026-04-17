@@ -184,18 +184,33 @@ function LoginContent() {
   const isInApp = !!inAppBrowserType
 
   return (
-    <div className="flex flex-col min-h-screen bg-white px-6">
+    <div className="flex flex-col min-h-screen px-6 relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, #f8f7ff 0%, #ffffff 40%, #ffffff 100%)',
+      }}
+    >
+      {/* 배경 장식 원 */}
+      <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full" style={{ background: 'radial-gradient(circle, rgba(91,79,207,0.06) 0%, transparent 70%)' }} />
+      <div className="absolute top-40 -left-16 w-40 h-40 rounded-full" style={{ background: 'radial-gradient(circle, rgba(124,111,224,0.05) 0%, transparent 70%)' }} />
+
       {/* 뒤로가기 */}
-      <div className="pt-14 pb-2">
-        <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-600 transition-colors">
-          ← 뒤로
+      <div className="pt-14 pb-2 relative z-10">
+        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100/60 transition-all">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center pb-16">
+      <div className="flex-1 flex flex-col justify-center pb-16 relative z-10">
         {/* 로고 */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary-200">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 relative"
+            style={{
+              background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+              boxShadow: '0 8px 24px rgba(91, 79, 207, 0.25)',
+            }}
+          >
             <span className="text-white text-2xl font-black">정</span>
           </div>
           <h1 className="text-2xl font-black text-gray-900 mb-2">로그인</h1>
@@ -212,15 +227,22 @@ function LoginContent() {
 
         {/* 혜택 (정상 상태일 때만 표시) */}
         {!errorCode && !isInApp && (
-          <div className="bg-surface-50 rounded-2xl p-4 mb-8 space-y-2">
+          <div className="rounded-2xl p-4 mb-8 space-y-2.5"
+            style={{
+              background: 'linear-gradient(135deg, rgba(91,79,207,0.04) 0%, rgba(124,111,224,0.06) 100%)',
+              border: '1px solid rgba(91,79,207,0.08)',
+            }}
+          >
             {[
               '진단 결과 저장 · 불러오기',
               '자가점검 후 재진단',
               '결과 링크 공유',
               '차량 정보 등록',
             ].map((text, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-4 h-4 bg-primary-100 rounded-full flex items-center justify-center text-primary-600 text-xs font-bold">✓</span>
+              <div key={i} className="flex items-center gap-2.5">
+                <span className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold"
+                  style={{ background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)' }}
+                >✓</span>
                 <span className="text-sm text-gray-600">{text}</span>
               </div>
             ))}
@@ -232,7 +254,8 @@ function LoginContent() {
           <button
             onClick={handleKakaoLogin}
             disabled={isInApp && !errorCode}
-            className="w-full py-4 bg-[#FEE500] text-[#3C1E1E] font-bold rounded-2xl text-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-md"
+            className="w-full py-4 bg-[#FEE500] text-[#3C1E1E] font-bold rounded-2xl text-sm hover:opacity-90 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+            style={{ boxShadow: '0 4px 16px rgba(254, 229, 0, 0.3)' }}
           >
             <span className="text-xl">💬</span>
             카카오로 로그인
@@ -241,7 +264,11 @@ function LoginContent() {
           <button
             onClick={handleGoogleLogin}
             disabled={isInApp && !errorCode}
-            className="w-full py-4 bg-white border border-gray-200 text-gray-700 font-semibold rounded-2xl text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 shadow-sm"
+            className="w-full py-4 bg-white text-gray-700 font-semibold rounded-2xl text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+            style={{
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

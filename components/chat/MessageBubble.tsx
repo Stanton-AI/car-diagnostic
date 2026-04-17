@@ -7,10 +7,15 @@ export default function MessageBubble({ message }: Props) {
   const isQuestion = message.type === 'question'
 
   return (
-    <div className={`flex items-end gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
-      {/* AI 아바타 */}
+    <div className={`flex items-end gap-2.5 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {/* AI 아바타 — 글로우 링 + 그래디언트 배경 */}
       {!isUser && (
-        <div className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden shadow-sm mb-1">
+        <div
+          className="w-8 h-8 rounded-xl flex-shrink-0 overflow-hidden mb-1 ring-2 ring-primary-100"
+          style={{
+            boxShadow: '0 2px 8px rgba(91, 79, 207, 0.12)',
+          }}
+        >
           <img src="/miky.png" alt="정비톡 AI" className="w-full h-full object-cover" />
         </div>
       )}
@@ -24,7 +29,7 @@ export default function MessageBubble({ message }: Props) {
                 key={i}
                 src={url}
                 alt="첨부 이미지"
-                className="w-20 h-20 object-cover rounded-lg border border-white/20"
+                className="w-20 h-20 object-cover rounded-xl border border-white/20"
               />
             ))}
           </div>
@@ -34,7 +39,7 @@ export default function MessageBubble({ message }: Props) {
         <p className="text-sm leading-relaxed whitespace-pre-line">{message.content}</p>
 
         {/* 타임스탬프 */}
-        <p className={`text-xs mt-1 ${isUser ? 'text-white/60 text-right' : 'text-gray-400'}`}>
+        <p className={`text-[11px] mt-1.5 ${isUser ? 'text-white/50 text-right' : 'text-gray-400'}`}>
           {new Date(message.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>

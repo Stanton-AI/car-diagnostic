@@ -31,45 +31,111 @@ body {
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 
-/* 채팅 말풍선 */
+/* ── 글래스모피즘 유틸리티 ── */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.glass-strong {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+.glass-dark {
+  background: rgba(26, 20, 51, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── 채팅 말풍선 (업그레이드) ── */
 .bubble-user {
-  @apply bg-primary-600 text-white rounded-2xl rounded-br-sm px-4 py-3 max-w-[80%] ml-auto;
+  @apply text-white rounded-2xl rounded-br-sm px-4 py-3 max-w-[80%] ml-auto;
+  background: linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%);
+  box-shadow: 0 2px 12px rgba(91, 79, 207, 0.2);
 }
 .bubble-ai {
-  @apply bg-white text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%] shadow-sm border border-gray-100;
+  @apply text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%];
+  background: linear-gradient(135deg, #ffffff 0%, #f8f7ff 100%);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 .bubble-question {
-  @apply bg-primary-50 border border-primary-200 text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[90%];
+  @apply text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 max-w-[90%];
+  background: linear-gradient(135deg, #f0eeff 0%, #e4e0ff 100%);
+  border: 1px solid rgba(91, 79, 207, 0.12);
+  box-shadow: 0 2px 8px rgba(91, 79, 207, 0.06);
 }
 
-/* 선택지 버튼 */
+/* ── 선택지 버튼 (업그레이드) ── */
 .choice-btn {
-  @apply flex items-center gap-2 w-full text-left px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm text-gray-700 hover:border-primary-400 hover:bg-primary-50 hover:text-primary-700 transition-all duration-150 active:scale-[0.98];
+  @apply flex items-center gap-2 w-full text-left px-4 py-3 rounded-xl bg-white text-sm text-gray-700 transition-all duration-200 active:scale-[0.97];
+  border: 1.5px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+.choice-btn:hover {
+  border-color: rgba(91, 79, 207, 0.3);
+  background: linear-gradient(135deg, #f8f7ff 0%, #f0eeff 100%);
+  box-shadow: 0 2px 12px rgba(91, 79, 207, 0.08);
+  color: #5b4fcf;
 }
 .choice-btn.selected {
-  @apply border-primary-500 bg-primary-50 text-primary-700 font-medium;
+  @apply font-medium;
+  border-color: rgba(91, 79, 207, 0.4);
+  background: linear-gradient(135deg, #f0eeff 0%, #e4e0ff 100%);
+  color: #5b4fcf;
 }
 
-/* 진단 결과 원인 카드 */
+/* ── 진단 결과 원인 카드 (업그레이드) ── */
 .cause-card {
-  @apply relative bg-white rounded-2xl p-4 border border-gray-100 shadow-sm overflow-hidden;
+  @apply relative rounded-2xl p-4 overflow-hidden;
+  background: linear-gradient(135deg, #ffffff 0%, #faf9ff 100%);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.cause-card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 .cause-bar {
-  @apply absolute bottom-0 left-0 h-1 bg-primary-500 rounded-b-2xl transition-all duration-700;
+  @apply absolute bottom-0 left-0 h-1 rounded-b-2xl transition-all duration-700;
+  background: linear-gradient(90deg, #5b4fcf, #7c6fe0, #a89bff);
 }
 
-/* 긴급도 배지 */
+/* ── 긴급도 배지 (업그레이드) ── */
 .urgency-high {
-  @apply bg-red-50 border border-red-200 text-red-700;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  color: #dc2626;
 }
 .urgency-mid {
-  @apply bg-amber-50 border border-amber-200 text-amber-700;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+  color: #d97706;
 }
 .urgency-low {
-  @apply bg-green-50 border border-green-200 text-green-700;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+  color: #16a34a;
 }
 
-/* 타이핑 인디케이터 */
+/* ── shimmer 효과 (카드, 차량카드 등) ── */
+.shimmer-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── 타이핑 인디케이터 ── */
 .typing-dot {
   @apply w-2 h-2 bg-primary-400 rounded-full;
   animation: pulseDot 1.4s ease-in-out infinite;
@@ -82,7 +148,44 @@ body {
   40% { transform: scale(1); opacity: 1; }
 }
 
-/* 모바일 최적화 */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── 스태거 애니메이션 (자식 요소 순차 등장) ── */
+.stagger-children > * {
+  opacity: 0;
+  transform: translateY(8px);
+  animation: fadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+
+/* ── 프리미엄 버튼 스타일 ── */
+.btn-primary {
+  @apply text-white font-bold rounded-2xl text-sm transition-all duration-200 active:scale-[0.97];
+  background: linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%);
+  box-shadow: 0 4px 16px rgba(91, 79, 207, 0.25);
+}
+.btn-primary:hover {
+  box-shadow: 0 6px 24px rgba(91, 79, 207, 0.35);
+  transform: translateY(-1px);
+}
+
+/* ── 포커스 글로우 (입력창) ── */
+.focus-glow:focus-within {
+  box-shadow: 0 0 0 3px rgba(91, 79, 207, 0.1), 0 2px 8px rgba(91, 79, 207, 0.06);
+  border-color: rgba(91, 79, 207, 0.3);
+}
+
+/* ── 모바일 최적화 ── */
 @media (max-width: 640px) {
   .bubble-ai, .bubble-question { max-width: 92%; }
   .bubble-user { max-width: 85%; }

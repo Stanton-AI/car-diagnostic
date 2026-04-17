@@ -332,17 +332,31 @@ function BoardPageInner() {
   const isMyPost = selectedPost?.user_id === userId
 
   return (
-    <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
+    <div className="flex flex-col h-screen max-w-[480px] mx-auto" style={{ background: 'linear-gradient(180deg, #f8f7ff 0%, #f3f2fa 40%, #f5f5f5 100%)' }}>
       {/* 헤더 */}
-      <header className="bg-white px-5 pt-12 pb-3 border-b border-gray-100 flex-shrink-0">
-        <h1 className="text-xl font-black text-gray-900">게시판</h1>
-        <p className="text-sm text-gray-400 mt-0.5">정비 정보와 후기를 공유해요</p>
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
+      <header className="px-5 pt-12 pb-3 flex-shrink-0 sticky top-0 z-20 relative overflow-hidden"
+        style={{
+          background: 'rgba(255, 255, 255, 0.88)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
+        }}
+      >
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(91,79,207,0.06) 0%, transparent 70%)' }} />
+        <h1 className="text-xl font-black text-gray-900 relative z-10">게시판</h1>
+        <p className="text-sm text-gray-400 mt-0.5 relative z-10">정비 정보와 후기를 공유해요</p>
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar relative z-10">
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setActiveTab(cat)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                activeTab === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-[0.96] ${
+                activeTab === cat ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'
               }`}
+              style={activeTab === cat ? {
+                background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                boxShadow: '0 2px 8px rgba(91, 79, 207, 0.3)',
+              } : {
+                background: 'rgba(0, 0, 0, 0.03)',
+              }}
             >{cat}</button>
           ))}
         </div>
@@ -361,26 +375,33 @@ function BoardPageInner() {
             <p className="text-sm text-gray-400">첫 번째 글을 작성해보세요!</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="px-4 py-3 space-y-2.5">
             {posts.map(post => (
               <button key={post.id} onClick={() => setSelectedPost(post)}
-                className="w-full text-left bg-white px-5 py-4 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                className="w-full text-left rounded-2xl px-4 py-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
+                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+                }}
               >
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${CATEGORY_COLORS[post.category] ?? 'bg-gray-100 text-gray-600'}`}>
                     {post.category}
                   </span>
                   <span className="text-xs text-gray-400">{fmtTimeAgo(post.created_at)}</span>
-                  {post.user_id === userId && <span className="text-[10px] text-primary-500 font-bold ml-auto">내 글</span>}
+                  {post.user_id === userId && (
+                    <span className="text-[10px] font-bold ml-auto px-1.5 py-0.5 rounded-full text-white"
+                      style={{ background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)' }}>내 글</span>
+                  )}
                 </div>
                 <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-1">{post.title}</p>
                 <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{post.content}</p>
                 {post.images && post.images.length > 0 && (
                   <div className="mt-2 flex gap-1.5">
                     {post.images.slice(0, 3).map((url, i) => (
-                      <img key={i} src={url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-100" />
+                      <img key={i} src={url} alt="" className="w-14 h-14 object-cover rounded-xl border border-gray-100 shadow-sm" />
                     ))}
-                    {post.images.length > 3 && <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center text-xs text-gray-500 font-bold">+{post.images.length - 3}</div>}
+                    {post.images.length > 3 && <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xs text-gray-500 font-bold" style={{ background: 'rgba(0,0,0,0.03)' }}>+{post.images.length - 3}</div>}
                   </div>
                 )}
                 <div className="flex items-center gap-2 mt-2">
@@ -397,8 +418,13 @@ function BoardPageInner() {
       {/* 글쓰기 FAB */}
       {!showWrite && !selectedPost && (
         <button onClick={() => openWrite()}
-          className="fixed z-10 w-12 h-12 bg-primary-600 text-white rounded-full shadow-lg shadow-primary-200 flex items-center justify-center text-xl hover:bg-primary-700 active:scale-95 transition-all"
-          style={{ bottom: '80px', right: 'max(16px, calc(50% - 224px))' }}
+          className="fixed z-10 w-14 h-14 text-white rounded-2xl flex items-center justify-center text-xl active:scale-90 transition-all"
+          style={{
+            bottom: '88px',
+            right: 'max(16px, calc(50% - 224px))',
+            background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+            boxShadow: '0 4px 20px rgba(91, 79, 207, 0.4)',
+          }}
         >✏️</button>
       )}
 
@@ -408,11 +434,17 @@ function BoardPageInner() {
       {selectedPost && (
         <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setSelectedPost(null)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col"
+          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto rounded-t-3xl max-h-[92vh] flex flex-col"
+            style={{
+              background: 'rgba(255, 255, 255, 0.96)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              boxShadow: '0 -4px 32px rgba(0, 0, 0, 0.08)',
+            }}
             onClick={e => e.stopPropagation()}>
 
             {/* 상세 헤더 */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.04)' }}>
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${CATEGORY_COLORS[selectedPost.category] ?? 'bg-gray-100 text-gray-600'}`}>
                 {selectedPost.category}
               </span>
@@ -420,13 +452,13 @@ function BoardPageInner() {
                 {isMyPost && (
                   <>
                     <button onClick={() => { setSelectedPost(null); openWrite(selectedPost) }}
-                      className="text-xs text-primary-500 font-bold px-2 py-1 rounded-lg hover:bg-primary-50">수정</button>
+                      className="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors" style={{ color: '#5b4fcf', background: 'rgba(91,79,207,0.06)' }}>수정</button>
                     <button onClick={() => handleDeletePost(selectedPost)}
-                      className="text-xs text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50">삭제</button>
+                      className="text-xs text-red-400 font-bold px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">삭제</button>
                   </>
                 )}
                 <button onClick={() => setSelectedPost(null)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 text-sm transition-colors" style={{ background: 'rgba(0, 0, 0, 0.04)' }}>✕</button>
               </div>
             </div>
 
@@ -452,9 +484,15 @@ function BoardPageInner() {
               {/* 좋아요 */}
               <div className="mt-5">
                 <button onClick={() => handleLike(selectedPost)}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                    likedPosts.has(selectedPost.id) ? 'bg-primary-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}>
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
+                  style={likedPosts.has(selectedPost.id) ? {
+                    background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                    color: '#fff',
+                    boxShadow: '0 2px 12px rgba(91, 79, 207, 0.3)',
+                  } : {
+                    background: 'rgba(0, 0, 0, 0.03)',
+                    color: '#6b7280',
+                  }}>
                   👍 {likeCounts[selectedPost.id] ?? selectedPost.like_count}
                 </button>
               </div>
@@ -473,7 +511,7 @@ function BoardPageInner() {
                     {rootComments.map(comment => (
                       <div key={comment.id}>
                         {/* 댓글 */}
-                        <div className="bg-gray-50 rounded-xl px-3 py-2.5">
+                        <div className="rounded-xl px-3 py-2.5" style={{ background: 'rgba(0, 0, 0, 0.02)' }}>
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-semibold text-gray-700">
                               🚗 {authorLabel(comment.vehicle_nickname, comment.vehicle_model)}
@@ -511,7 +549,7 @@ function BoardPageInner() {
 
                         {/* 대댓글 */}
                         {(repliesMap[comment.id] ?? []).map(reply => (
-                          <div key={reply.id} className="ml-4 mt-1.5 bg-blue-50 rounded-xl px-3 py-2.5 border-l-2 border-primary-200">
+                          <div key={reply.id} className="ml-4 mt-1.5 rounded-xl px-3 py-2.5 border-l-2" style={{ background: 'rgba(91, 79, 207, 0.03)', borderColor: 'rgba(91, 79, 207, 0.15)' }}>
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-semibold text-gray-700">
                                 ↩ 🚗 {authorLabel(reply.vehicle_nickname, reply.vehicle_model)}
@@ -563,12 +601,24 @@ function BoardPageInner() {
             </div>
 
             {/* 댓글 입력 */}
-            <div className="px-4 pb-8 pt-3 border-t border-gray-100 flex-shrink-0 flex gap-2 items-end">
+            <div className="px-4 pb-8 pt-3 flex-shrink-0 flex gap-2 items-end"
+              style={{
+                borderTop: '1px solid rgba(0, 0, 0, 0.04)',
+                background: 'rgba(255, 255, 255, 0.88)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+              }}
+            >
               <textarea value={commentText} onChange={e => setCommentText(e.target.value)}
                 placeholder="댓글을 입력하세요..." rows={2}
-                className="flex-1 px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary-400 resize-none" />
+                className="flex-1 px-3 py-2.5 rounded-xl text-sm focus:outline-none resize-none transition-all"
+                style={{ border: '1px solid rgba(0, 0, 0, 0.06)', background: 'rgba(0, 0, 0, 0.02)' }} />
               <button onClick={handleCommentSubmit} disabled={!commentText.trim() || submittingComment}
-                className="px-4 py-2.5 bg-primary-600 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex-shrink-0">
+                className="px-4 py-2.5 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all"
+                style={{
+                  background: (!commentText.trim() || submittingComment) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                  boxShadow: (!commentText.trim() || submittingComment) ? 'none' : '0 2px 8px rgba(91, 79, 207, 0.3)',
+                }}>
                 {submittingComment ? '...' : '등록'}
               </button>
             </div>
@@ -580,15 +630,21 @@ function BoardPageInner() {
       {showWrite && (
         <div className="fixed inset-0 z-50 flex flex-col" onClick={closeWrite}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto bg-white rounded-t-3xl max-h-[90vh] flex flex-col"
+          <div className="absolute bottom-0 left-0 right-0 max-w-[480px] mx-auto rounded-t-3xl max-h-[90vh] flex flex-col"
+            style={{
+              background: 'rgba(255, 255, 255, 0.96)',
+              backdropFilter: 'blur(24px)',
+              WebkitBackdropFilter: 'blur(24px)',
+              boxShadow: '0 -4px 32px rgba(0, 0, 0, 0.08)',
+            }}
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.04)' }}>
               <h2 className="text-lg font-black text-gray-900">{editingPost ? '글 수정' : '글쓰기'}</h2>
-              <button onClick={closeWrite} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 text-sm">✕</button>
+              <button onClick={closeWrite} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 text-sm transition-colors" style={{ background: 'rgba(0, 0, 0, 0.04)' }}>✕</button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* 작성자 */}
-              <div className="bg-gray-50 rounded-xl px-4 py-2.5 flex items-center gap-2">
+              <div className="rounded-xl px-4 py-2.5 flex items-center gap-2" style={{ background: 'rgba(91, 79, 207, 0.04)', border: '1px solid rgba(91, 79, 207, 0.08)' }}>
                 <span className="text-xs text-gray-400">작성자</span>
                 <span className="text-xs font-semibold text-gray-700">🚗 {authorLabel(vehicleNickname, vehicleModel)}</span>
               </div>
@@ -598,9 +654,15 @@ function BoardPageInner() {
                 <div className="flex gap-2 flex-wrap">
                   {WRITE_CATEGORIES.map(cat => (
                     <button key={cat} onClick={() => setWriteCategory(cat)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                        writeCategory === cat ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}>{cat}</button>
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-[0.96] ${
+                        writeCategory === cat ? 'text-white' : 'text-gray-500'
+                      }`}
+                      style={writeCategory === cat ? {
+                        background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                        boxShadow: '0 2px 8px rgba(91, 79, 207, 0.3)',
+                      } : {
+                        background: 'rgba(0, 0, 0, 0.03)',
+                      }}>{cat}</button>
                   ))}
                 </div>
               </div>
@@ -646,9 +708,13 @@ function BoardPageInner() {
                 )}
               </div>
             </div>
-            <div className="px-5 pb-8 pt-3 border-t border-gray-100 flex-shrink-0">
+            <div className="px-5 pb-8 pt-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(0, 0, 0, 0.04)' }}>
               <button onClick={handleSubmit} disabled={!writeTitle.trim() || !writeContent.trim() || submitting}
-                className="w-full py-4 bg-primary-600 text-white font-bold rounded-2xl text-sm hover:bg-primary-700 transition-colors disabled:opacity-40 flex items-center justify-center gap-2">
+                className="w-full py-4 text-white font-bold rounded-2xl text-sm disabled:opacity-40 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
+                style={{
+                  background: (!writeTitle.trim() || !writeContent.trim() || submitting) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                  boxShadow: (!writeTitle.trim() || !writeContent.trim() || submitting) ? 'none' : '0 4px 16px rgba(91, 79, 207, 0.3)',
+                }}>
                 {submitting ? <span className="animate-spin">⟳</span> : null}
                 {editingPost ? '수정 완료' : '등록하기'}
               </button>

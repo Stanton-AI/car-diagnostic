@@ -26,11 +26,21 @@ function calcHealthScore(result: DiagnosisResult): number {
 }
 
 function HealthScoreBadge({ score }: { score: number }) {
-  const color = score >= 70 ? 'text-green-600 bg-green-50 border-green-200'
-    : score >= 45 ? 'text-amber-600 bg-amber-50 border-amber-200'
-    : 'text-red-600 bg-red-50 border-red-200'
+  const gradient = score >= 70
+    ? 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(34,197,94,0.15))'
+    : score >= 45
+    ? 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.15))'
+    : 'linear-gradient(135deg, rgba(239,68,68,0.08), rgba(239,68,68,0.15))'
+  const textColor = score >= 70 ? '#16a34a' : score >= 45 ? '#d97706' : '#dc2626'
   return (
-    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${color}`}>
+    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+      style={{
+        background: gradient,
+        color: textColor,
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}
+    >
       <span>❤️</span>
       <span>건강점수 {score}/100</span>
     </div>
@@ -125,10 +135,20 @@ export default function DiagnosisResultCard({
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full text-left bg-white rounded-2xl border border-gray-200 p-3.5 hover:border-primary-300 hover:shadow-sm transition-all animate-fade-up"
+        className="w-full text-left rounded-2xl p-3.5 transition-all animate-fade-up hover:scale-[1.01] active:scale-[0.99]"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f7ff 100%)',
+          border: '1px solid rgba(91,79,207,0.08)',
+          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+        }}
       >
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
+          <div className="w-7 h-7 rounded-xl flex-shrink-0 flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)',
+              boxShadow: '0 2px 8px rgba(91,79,207,0.2)',
+            }}
+          >
             <span className="text-white text-xs font-black">정</span>
           </div>
           <div className="flex-1 min-w-0">
@@ -153,7 +173,12 @@ export default function DiagnosisResultCard({
     <div className="space-y-3 animate-fade-up">
       {/* AI 아바타 + 헤더 */}
       <div className="flex items-center gap-2 px-1">
-        <div className="w-8 h-8 bg-primary-600 rounded-xl flex-shrink-0 flex items-center justify-center shadow-sm">
+        <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center ring-2 ring-primary-100"
+          style={{
+            background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)',
+            boxShadow: '0 2px 8px rgba(91,79,207,0.2)',
+          }}
+        >
           <span className="text-white text-xs font-black">정</span>
         </div>
         <span className="text-sm font-semibold text-gray-700">정비톡 AI 진단 리포트</span>
@@ -205,7 +230,13 @@ export default function DiagnosisResultCard({
       </div>
 
       {/* 원인 분석 */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
+          border: '1px solid rgba(0,0,0,0.04)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)',
+        }}
+      >
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <h4 className="font-bold text-gray-900 text-sm">예상 원인 분석</h4>
@@ -263,7 +294,11 @@ export default function DiagnosisResultCard({
       {result.urgency !== 'LOW' && (
         <button
           onClick={() => { track('workshop_cta_clicked', { source: 'result_card', urgency: result.urgency }); router.push(`/repair/request/${conversationId}`) }}
-          className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200 flex flex-col items-center justify-center gap-0.5"
+          className="w-full py-4 text-white rounded-2xl font-bold text-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-0.5"
+          style={{
+            background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+            boxShadow: '0 4px 20px rgba(91, 79, 207, 0.3)',
+          }}
         >
           <div className="flex items-center gap-2">
             <span>🔧</span>
@@ -276,7 +311,13 @@ export default function DiagnosisResultCard({
       )}
 
       {/* 예상 수리 비용 */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
+          border: '1px solid rgba(0,0,0,0.04)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)',
+        }}
+      >
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-bold text-gray-900 text-sm">공식 서비스 센터 예상견적</h4>
         </div>
@@ -325,7 +366,11 @@ export default function DiagnosisResultCard({
       {result.urgency === 'LOW' && (
         <button
           onClick={() => { track('workshop_cta_clicked', { source: 'result_card', urgency: result.urgency }); router.push(`/repair/request/${conversationId}`) }}
-          className="w-full py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-0.5"
+          className="w-full py-3.5 text-white rounded-2xl font-bold text-sm transition-all active:scale-[0.98] flex flex-col items-center justify-center gap-0.5"
+          style={{
+            background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+            boxShadow: '0 2px 12px rgba(91, 79, 207, 0.2)',
+          }}
         >
           <div className="flex items-center gap-2">
             <span>🔧</span>
@@ -338,7 +383,12 @@ export default function DiagnosisResultCard({
       )}
 
       {/* 권장 조치 사항 */}
-      <div className="bg-primary-50 rounded-2xl border border-primary-100 p-4">
+      <div className="rounded-2xl p-4"
+        style={{
+          background: 'linear-gradient(135deg, rgba(91,79,207,0.05) 0%, rgba(124,111,224,0.08) 100%)',
+          border: '1px solid rgba(91,79,207,0.1)',
+        }}
+      >
         <h4 className="font-bold text-primary-800 text-sm mb-2">💡 권장 조치 사항</h4>
         <p className="text-sm text-primary-700 leading-relaxed">{result.shopTip}</p>
       </div>
@@ -360,7 +410,13 @@ export default function DiagnosisResultCard({
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="rounded-2xl p-4"
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
+              border: '1px solid rgba(0,0,0,0.04)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.04), 0 0 0 1px rgba(0,0,0,0.02)',
+            }}
+          >
             <h4 className="font-bold text-gray-900 text-sm mb-3">🏠 집에서 먼저 확인해보세요</h4>
             <div className="space-y-3">
               {selfCheckItems.map((item) => (
@@ -383,7 +439,11 @@ export default function DiagnosisResultCard({
             {selfCheckItems.some(i => i.checked) && (
               <button
                 onClick={() => setShowSelfCheckInput(true)}
-                className="mt-4 w-full py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
+                className="mt-4 w-full py-2.5 text-white rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                  boxShadow: '0 2px 10px rgba(91, 79, 207, 0.2)',
+                }}
               >
                 자가점검 결과 알려주기 → 재진단 받기
               </button>
@@ -394,7 +454,13 @@ export default function DiagnosisResultCard({
 
       {/* 자가점검 결과 입력 */}
       {showSelfCheckInput && (
-        <div className="bg-white rounded-2xl border border-primary-200 shadow-sm p-4 animate-fade-up">
+        <div className="rounded-2xl p-4 animate-fade-up"
+          style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8f7ff 100%)',
+            border: '1px solid rgba(91,79,207,0.12)',
+            boxShadow: '0 4px 16px rgba(91,79,207,0.08)',
+          }}
+        >
           <h4 className="font-bold text-gray-900 text-sm mb-3">자가점검 결과를 알려주세요</h4>
           <textarea
             value={selfCheckNote}
@@ -412,7 +478,11 @@ export default function DiagnosisResultCard({
             </button>
             <button
               onClick={handleSelfCheckSubmit}
-              className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors"
+              className="flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-all active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                boxShadow: '0 2px 10px rgba(91, 79, 207, 0.2)',
+              }}
             >
               재진단 요청
             </button>
@@ -478,7 +548,10 @@ export default function DiagnosisResultCard({
                 <button
                   onClick={handleFeedbackSubmit}
                   disabled={!feedbackRepairName.trim() || feedbackSubmitting}
-                  className="flex-1 py-2.5 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 py-2.5 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
+                  style={{
+                    background: (!feedbackRepairName.trim() || feedbackSubmitting) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                  }}
                 >
                   {feedbackSubmitting ? '저장 중...' : '결과 제출'}
                 </button>

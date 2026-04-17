@@ -575,31 +575,48 @@ export default function MainPage() {
         countdownSeconds={30}
       />
 
-      {/* ── 헤더 ── */}
-      <header className="bg-white px-5 pt-12 pb-4 flex items-start justify-between flex-shrink-0 border-b border-gray-100">
+      {/* ── 헤더 (글래스모피즘) ── */}
+      <header
+        className="px-5 pt-12 pb-4 flex items-start justify-between flex-shrink-0"
+        style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
+          boxShadow: '0 1px 12px rgba(0, 0, 0, 0.03)',
+        }}
+      >
         <div>
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="정비톡" className="w-7 h-7 rounded-lg object-contain" />
-            <h1 className="text-xl font-black text-gray-900">정비톡</h1>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl overflow-hidden shadow-sm ring-1 ring-primary-100">
+              <img src="/logo.png" alt="정비톡" className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-xl font-black text-gray-900 tracking-tight">정비톡</h1>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">"내 차 증상, 3분이면 알 수 있어요"</p>
+          <p className="text-[13px] text-gray-400 mt-1 ml-0.5">내 차 증상, 3분이면 알 수 있어요</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* 알림 벨 */}
           <button
             onClick={handleOpenNotif}
-            className="relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+            className="relative w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100/80 text-gray-500 transition-all active:scale-95"
           >
-            <span className="text-xl">🔔</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
           {/* 프로필 */}
           <Link href="/profile">
-            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center overflow-hidden">
+            <div
+              className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center overflow-hidden ring-1 ring-primary-200/50 transition-all active:scale-95"
+              style={{ boxShadow: '0 2px 8px rgba(91, 79, 207, 0.1)' }}
+            >
               {(user as any)?.avatar_url || (user as any)?.avatarUrl ? (
                 <img src={(user as any)?.avatar_url ?? (user as any)?.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -622,24 +639,49 @@ export default function MainPage() {
             {vehicle ? (
               <button
                 onClick={() => setShowEditModal(true)}
-                className="w-full text-left relative bg-gradient-to-br from-primary-600 to-primary-800 rounded-3xl p-5 text-white overflow-hidden shadow-lg shadow-primary-200 active:scale-[0.98] transition-transform"
+                className="w-full text-left relative rounded-3xl p-5 text-white overflow-hidden active:scale-[0.98] transition-all duration-200"
+                style={{
+                  background: 'linear-gradient(135deg, #4a3fb8 0%, #5b4fcf 40%, #7c6fe0 100%)',
+                  boxShadow: '0 8px 30px rgba(91, 79, 207, 0.25), 0 2px 8px rgba(91, 79, 207, 0.15)',
+                }}
               >
+                {/* shimmer 오버레이 */}
+                <div className="shimmer-overlay" />
+                {/* 배경 패턴 */}
+                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full" style={{ background: 'rgba(255,255,255,0.04)' }} />
+
                 {fuelLabel && (
-                  <div className="absolute top-4 right-4 bg-white/20 text-white text-xs font-bold px-2.5 py-1 rounded-full">{fuelLabel}</div>
+                  <div className="absolute top-4 right-4 text-white text-xs font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
+                  >{fuelLabel}</div>
                 )}
-                <div className="absolute bottom-4 right-4 bg-white/20 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1">
-                  <span className="text-[10px]">✏️</span><span className="text-[11px] font-semibold">수정</span>
+                <div className="absolute bottom-4 right-4 text-white text-xs px-2.5 py-1 rounded-full flex items-center gap-1"
+                  style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)' }}
+                >
+                  <span className="text-[11px] font-semibold">수정</span>
                 </div>
-                <p className="text-white/70 text-xs mb-1 font-medium">
-                  {vehicle.nickname ? `🚗 ${vehicle.nickname}의 차고` : vehicle.maker}
+                <p className="text-white/60 text-xs mb-1.5 font-medium relative z-10">
+                  {vehicle.nickname ? `${vehicle.nickname}의 차고` : vehicle.maker}
                 </p>
-                <h2 className="text-2xl font-black mb-1">{vehicle.model}</h2>
-                <p className="text-white/70 text-sm">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</p>
+                <h2 className="text-2xl font-black mb-1 relative z-10 tracking-tight">{vehicle.model}</h2>
+                <p className="text-white/60 text-sm relative z-10">{vehicle.year}년식 · {vehicle.mileage?.toLocaleString()}km</p>
               </button>
             ) : (
-              <Link href="/vehicles/new" className="block bg-white rounded-3xl p-5 border-2 border-dashed border-primary-200 text-center hover:border-primary-400 transition-colors">
-                <span className="text-3xl mb-2 block">🚗</span>
-                <p className="font-semibold text-gray-700 text-sm">차량 정보 등록하기</p>
+              <Link href="/vehicles/new"
+                className="block rounded-3xl p-5 text-center transition-all hover:shadow-md active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f8f7ff 100%)',
+                  border: '2px dashed rgba(91, 79, 207, 0.2)',
+                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
+                }}
+              >
+                <div className="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #f0eeff 0%, #e4e0ff 100%)' }}
+                >
+                  <span className="text-2xl">🚗</span>
+                </div>
+                <p className="font-bold text-gray-700 text-sm">차량 정보 등록하기</p>
                 <p className="text-xs text-gray-400 mt-1">등록 시 진단 정확도가 올라가요</p>
               </Link>
             )}
@@ -671,9 +713,13 @@ export default function MainPage() {
 
       {/* ── 채팅 영역 ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 mt-3">
-        <div className="flex items-center gap-2 mb-2 px-1">
-          <span className="text-primary-600">✦</span>
-          <h3 className="font-bold text-gray-900 text-sm">정비톡 AI와 상담하기</h3>
+        <div className="flex items-center gap-2.5 mb-3 px-1">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)' }}
+          >
+            <span className="text-white text-xs font-black">AI</span>
+          </div>
+          <h3 className="font-bold text-gray-900 text-sm tracking-tight">정비톡 AI와 상담하기</h3>
         </div>
 
         {/* 메시지 목록 */}
@@ -688,12 +734,24 @@ export default function MainPage() {
         {phase === 'car_type' && !isLoading && messages.length > 0 && (
           <div className="flex gap-3 ml-10 animate-fade-up">
             <button onClick={() => handleCarType('mine')}
-              className="flex-1 py-3 px-4 bg-white border-2 border-primary-200 rounded-2xl text-sm font-semibold text-primary-700 hover:bg-primary-50 transition-all active:scale-[0.97] shadow-sm">
+              className="flex-1 py-3.5 px-4 rounded-2xl text-sm font-bold text-primary-700 transition-all active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #f8f7ff 0%, #f0eeff 100%)',
+                border: '1.5px solid rgba(91, 79, 207, 0.2)',
+                boxShadow: '0 2px 12px rgba(91, 79, 207, 0.08)',
+              }}
+            >
               🚗 내 차
             </button>
             <button onClick={() => handleCarType('other')}
-              className="flex-1 py-3 px-4 bg-white border-2 border-gray-200 rounded-2xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-all active:scale-[0.97] shadow-sm">
-              🔍 앱에 등록되지 않은 차
+              className="flex-1 py-3.5 px-4 rounded-2xl text-sm font-semibold text-gray-600 transition-all active:scale-[0.97]"
+              style={{
+                background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+                border: '1.5px solid rgba(0, 0, 0, 0.06)',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.03)',
+              }}
+            >
+              🔍 등록되지 않은 차
             </button>
           </div>
         )}
@@ -816,21 +874,27 @@ export default function MainPage() {
               </div>
             )}
 
-            {/* 빠른 선택 칩 버튼 */}
-            <div className="flex flex-wrap gap-2">
+            {/* 빠른 선택 칩 버튼 (스태거 애니메이션) */}
+            <div className="flex flex-wrap gap-2 stagger-children">
               {currentQuestion.choices.filter((c, i, arr) => arr.indexOf(c) === i).concat(['잘 모르겠어요']).map((choice, i) => (
                 <button
                   key={`${currentQuestion.id}-${i}`}
                   onClick={() => sendMessage(choice, 'answer', currentQuestion.id)}
-                  className="px-3 py-1.5 rounded-full text-sm border border-primary-200 bg-white text-primary-700 font-medium hover:bg-primary-50 hover:border-primary-400 transition-all active:scale-95"
+                  className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 active:scale-95 ${
+                    choice === '잘 모르겠어요'
+                      ? 'text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-500'
+                      : 'text-primary-700 bg-white hover:text-primary-800'
+                  }`}
+                  style={choice !== '잘 모르겠어요' ? {
+                    border: '1.5px solid rgba(91, 79, 207, 0.15)',
+                    boxShadow: '0 1px 4px rgba(91, 79, 207, 0.06)',
+                  } : undefined}
                 >
-                  {choice === '잘 모르겠어요'
-                    ? <span className="text-gray-400">{choice}</span>
-                    : choice}
+                  {choice}
                 </button>
               ))}
             </div>
-            <p className="text-xs text-gray-400">선택하거나 아래 입력창에 직접 입력하세요</p>
+            <p className="text-[11px] text-gray-400 ml-0.5">선택하거나 아래 입력창에 직접 입력하세요</p>
           </div>
         )}
 

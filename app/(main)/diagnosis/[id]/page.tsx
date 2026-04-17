@@ -277,20 +277,33 @@ export default function DiagnosisPage() {
 
   return (
     <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
-      {/* ── 헤더 ── */}
-      <header className="bg-white px-5 pt-12 pb-4 flex items-center gap-3 border-b border-gray-100 flex-shrink-0">
+      {/* ── 헤더 (글래스모피즘) ── */}
+      <header
+        className="px-5 pt-12 pb-4 flex items-center gap-3 flex-shrink-0"
+        style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
+          boxShadow: '0 1px 12px rgba(0, 0, 0, 0.03)',
+        }}
+      >
         <button onClick={() => router.push('/main')}
-          className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors text-gray-600 font-bold">
-          ←
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-100/80 hover:bg-gray-200/80 transition-all text-gray-600 font-bold active:scale-95">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xs font-black">M</span>
+            <div className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)' }}
+            >
+              <span className="text-white text-[10px] font-black">AI</span>
             </div>
-            <h1 className="text-base font-black text-gray-900 truncate">정비톡 AI 진단 리포트</h1>
+            <h1 className="text-base font-black text-gray-900 truncate tracking-tight">진단 리포트</h1>
           </div>
-          {createdAt && <p className="text-xs text-gray-400 mt-0.5 ml-8">{createdAt}</p>}
+          {createdAt && <p className="text-[11px] text-gray-400 mt-0.5 ml-8">{createdAt}</p>}
         </div>
       </header>
 
@@ -341,13 +354,24 @@ export default function DiagnosisPage() {
         )}
 
         {/* 하단 액션 */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-2.5 pt-2">
           <button onClick={() => router.push('/main')}
-            className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-all active:scale-[0.98] shadow-lg shadow-primary-200">
-            🔧 새로운 증상 진단하기
+            className="w-full py-4 text-white rounded-2xl font-bold text-sm transition-all active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+              boxShadow: '0 4px 16px rgba(91, 79, 207, 0.25)',
+            }}
+          >
+            새로운 증상 진단하기
           </button>
           <button onClick={() => router.push('/main')}
-            className="w-full py-3.5 bg-white border border-gray-200 text-gray-600 rounded-2xl font-medium text-sm hover:bg-gray-50 transition-colors">
+            className="w-full py-3.5 text-gray-600 rounded-2xl font-medium text-sm transition-all active:scale-[0.97]"
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+              border: '1px solid rgba(0, 0, 0, 0.06)',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.03)',
+            }}
+          >
             홈으로 돌아가기
           </button>
         </div>
@@ -398,24 +422,44 @@ export default function DiagnosisPage() {
 
       {/* ── 하단 채팅 입력창 (진단 결과 있을 때만) ── */}
       {primaryResult && (
-        <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3">
+        <div
+          className="flex-shrink-0 px-4 py-3"
+          style={{
+            background: 'rgba(255, 255, 255, 0.88)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(0, 0, 0, 0.04)',
+          }}
+        >
           <div className="flex gap-2 items-end">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={e => setChatInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostChat() } }}
-              placeholder="새로운 증상이나 추가 정보를 입력하면 리포트가 갱신됩니다..."
-              disabled={chatLoading}
-              className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-2xl focus:outline-none focus:border-primary-400 bg-gray-50 disabled:opacity-50 transition-colors"
-            />
+            <div className="flex-1 rounded-2xl border border-transparent transition-all duration-200 focus-glow"
+              style={{ background: 'rgba(0, 0, 0, 0.03)' }}
+            >
+              <input
+                type="text"
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handlePostChat() } }}
+                placeholder="추가 정보 입력 시 리포트가 갱신됩니다..."
+                disabled={chatLoading}
+                className="w-full px-4 py-3 text-sm bg-transparent rounded-2xl focus:outline-none disabled:opacity-50 transition-colors"
+              />
+            </div>
             <button
               onClick={handlePostChat}
               disabled={!chatInput.trim() || chatLoading}
-              className="w-11 h-11 bg-primary-600 text-white rounded-2xl flex items-center justify-center hover:bg-primary-700 transition-colors disabled:opacity-40 flex-shrink-0"
+              className="w-11 h-11 text-white rounded-xl flex items-center justify-center transition-all disabled:opacity-30 flex-shrink-0 active:scale-90"
+              style={{
+                background: !chatInput.trim() || chatLoading
+                  ? '#d1d5db'
+                  : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                boxShadow: !chatInput.trim() || chatLoading
+                  ? 'none'
+                  : '0 2px 12px rgba(91, 79, 207, 0.3)',
+              }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M2 21l21-9L2 3v7l15 2-15 2z"/>
               </svg>
             </button>
           </div>

@@ -38,25 +38,33 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
   }
 
   return (
-    <div className="border-t border-gray-100 bg-white px-3 py-3 safe-area-pb">
+    <div
+      className="px-3 py-3 safe-area-pb"
+      style={{
+        background: 'rgba(255, 255, 255, 0.88)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(0, 0, 0, 0.04)',
+      }}
+    >
       {/* 첨부 이미지 미리보기 */}
       {uploadedImages.length > 0 && (
         <div className="flex gap-2 mb-2 px-1">
           {uploadedImages.map((url, i) => (
-            <div key={i} className="relative">
-              <img src={url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+            <div key={i} className="relative group">
+              <img src={url} alt="" className="w-14 h-14 object-cover rounded-xl border border-gray-200 shadow-sm" />
               <button
                 onClick={() => onRemoveImage(url)}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full text-xs flex items-center justify-center leading-none"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-800 text-white rounded-full text-xs flex items-center justify-center leading-none shadow-md opacity-90 group-hover:opacity-100 transition-opacity"
               >
-                ×
+                x
               </button>
             </div>
           ))}
           {uploadedImages.length < 3 && (
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xl hover:border-primary-300 hover:text-primary-400 transition-colors"
+              className="w-14 h-14 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 text-xl hover:border-primary-300 hover:text-primary-400 transition-all hover:bg-primary-50/30"
             >
               +
             </button>
@@ -70,14 +78,14 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition-colors flex-shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-400 hover:text-primary-500 hover:bg-primary-50 transition-all flex-shrink-0 active:scale-95"
             aria-label="이미지 첨부"
           >
             {uploading ? (
-              <span className="animate-spin text-sm">⟳</span>
+              <span className="animate-spin text-sm">&#10227;</span>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3" ry="3"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>
                 <polyline points="21,15 16,10 5,21"/>
               </svg>
@@ -85,8 +93,10 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
           </button>
         )}
 
-        {/* 텍스트 입력 */}
-        <div className="flex-1 flex items-end bg-gray-100 rounded-2xl px-4 py-2.5 min-h-[44px]">
+        {/* 텍스트 입력 — 포커스 글로우 */}
+        <div className="flex-1 flex items-end rounded-2xl px-4 py-2.5 min-h-[44px] border border-transparent transition-all duration-200 focus-glow"
+          style={{ background: 'rgba(0, 0, 0, 0.03)' }}
+        >
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -108,11 +118,19 @@ export default function ChatInput({ onSend, onImageUpload, uploadedImages, onRem
           />
         </div>
 
-        {/* 전송 버튼 */}
+        {/* 전송 버튼 — 그래디언트 + 글로우 */}
         <button
           onClick={handleSend}
           disabled={(!text.trim() && uploadedImages.length === 0) || disabled}
-          className="w-10 h-10 flex items-center justify-center rounded-full bg-primary-600 text-white flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-primary-700 transition-colors active:scale-95"
+          className="w-10 h-10 flex items-center justify-center rounded-xl text-white flex-shrink-0 disabled:opacity-25 disabled:cursor-not-allowed transition-all duration-200 active:scale-90"
+          style={{
+            background: (!text.trim() && uploadedImages.length === 0) || disabled
+              ? '#d1d5db'
+              : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+            boxShadow: (!text.trim() && uploadedImages.length === 0) || disabled
+              ? 'none'
+              : '0 2px 12px rgba(91, 79, 207, 0.3)',
+          }}
           aria-label="전송"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

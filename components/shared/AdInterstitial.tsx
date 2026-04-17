@@ -145,14 +145,28 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
   if (mode === 'choose') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-up">
-        <div className="bg-white rounded-2xl shadow-2xl mx-4 max-w-[420px] w-full overflow-hidden">
+        <div className="mx-4 max-w-[420px] w-full overflow-hidden rounded-2xl"
+        style={{
+          background: 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          boxShadow: '0 8px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255,255,255,0.2)',
+        }}
+      >
           {/* 헤더 */}
-          <div className="bg-gradient-to-r from-primary-600 to-primary-500 px-5 py-5 text-white text-center">
-            <p className="text-2xl mb-2">🔍</p>
-            <p className="text-[15px] font-extrabold">
+          <div className="px-5 py-5 text-white text-center relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 50%, #a89bff 100%)',
+            }}
+          >
+            {/* 장식 원 */}
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <p className="text-2xl mb-2 relative z-10">🔍</p>
+            <p className="text-[15px] font-extrabold relative z-10">
               진단 리포트를 준비 중이에요!
             </p>
-            <p className="text-xs opacity-80 mt-1">
+            <p className="text-xs opacity-80 mt-1 relative z-10">
               기다리는 동안 리포트 확인 방법을 선택해 주세요
             </p>
           </div>
@@ -161,16 +175,25 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
             {/* 옵션 1: 즉시 결제 */}
             <button
               onClick={handleChoosePay}
-              className="w-full p-4 border-2 border-primary-200 bg-primary-50/50 rounded-2xl text-left hover:border-primary-400 active:scale-[0.98] transition-all group relative"
+              className="w-full p-4 rounded-2xl text-left active:scale-[0.98] transition-all group relative overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(91,79,207,0.06) 0%, rgba(124,111,224,0.10) 100%)',
+                border: '2px solid rgba(91,79,207,0.15)',
+                boxShadow: '0 2px 12px rgba(91,79,207,0.06)',
+              }}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center gap-3 relative z-10">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #EEF2FF, #E0E7FF)' }}
+                >
                   <span className="text-2xl">⚡</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-[14px] font-extrabold text-gray-900">바로 보기</p>
-                    <span className="px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full">추천</span>
+                    <span className="px-2 py-0.5 text-white text-[10px] font-bold rounded-full"
+                      style={{ background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)' }}
+                    >추천</span>
                   </div>
                   <p className="text-[12px] text-gray-500 mt-0.5">결제 즉시 리포트를 확인할 수 있어요</p>
                 </div>
@@ -181,7 +204,11 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
             {/* 옵션 2: 광고 시청 */}
             <button
               onClick={handleChooseAd}
-              className="w-full p-4 border-2 border-gray-200 bg-gray-50/50 rounded-2xl text-left hover:border-gray-300 active:scale-[0.98] transition-all"
+              className="w-full p-4 rounded-2xl text-left active:scale-[0.98] transition-all"
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '2px solid rgba(0, 0, 0, 0.06)',
+              }}
             >
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -217,13 +244,25 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
   // ── 광고 시청 화면 ──
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-up">
-      <div className="bg-white rounded-2xl shadow-2xl mx-4 max-w-[420px] w-full overflow-hidden">
+      <div className="mx-4 max-w-[420px] w-full overflow-hidden rounded-2xl"
+        style={{
+          background: 'rgba(255, 255, 255, 0.92)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
+          boxShadow: '0 8px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255,255,255,0.2)',
+        }}
+      >
         {/* 헤더 */}
-        <div className="bg-gradient-to-r from-primary-600 to-primary-500 px-5 py-4 text-white">
-          <p className="text-sm font-bold flex items-center gap-2">
+        <div className="px-5 py-4 text-white relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 50%, #a89bff 100%)',
+          }}
+        >
+          <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          <p className="text-sm font-bold flex items-center gap-2 relative z-10">
             🎬 리포트를 준비하고 있어요
           </p>
-          <p className="text-xs opacity-90 mt-1">
+          <p className="text-xs opacity-90 mt-1 relative z-10">
             잠시만 기다려 주시면 진단 결과를 무료로 보실 수 있어요
           </p>
         </div>
@@ -294,7 +333,11 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
             <div className="space-y-2">
               <button
                 disabled
-                className="w-full py-3.5 bg-gray-100 text-gray-400 rounded-xl text-sm font-semibold cursor-not-allowed"
+                className="w-full py-3.5 rounded-xl text-sm font-semibold cursor-not-allowed"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.04)',
+                  color: '#9ca3af',
+                }}
               >
                 {countdown}초 후 진단 결과 확인 가능
               </button>
@@ -309,7 +352,11 @@ export default function AdInterstitial({ isOpen, onComplete, countdownSeconds = 
           ) : (
             <button
               onClick={handleUnlock}
-              className="w-full py-3.5 bg-primary-600 text-white rounded-xl text-sm font-bold hover:bg-primary-700 active:scale-[0.98] transition-all shadow-lg shadow-primary-600/25"
+              className="w-full py-3.5 text-white rounded-xl text-sm font-bold active:scale-[0.98] transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                boxShadow: '0 4px 16px rgba(91, 79, 207, 0.3)',
+              }}
             >
               ✅ 진단 리포트 보기
             </button>
