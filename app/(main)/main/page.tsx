@@ -33,6 +33,7 @@ import MessageBubble from '@/components/chat/MessageBubble'
 import ChatInput from '@/components/chat/ChatInput'
 import TypingIndicator from '@/components/chat/TypingIndicator'
 import AdInterstitial from '@/components/shared/AdInterstitial'
+import CarLocationPicker from '@/components/chat/CarLocationPicker'
 
 // ── 상수 ──────────────────────────────────────────────────────────────────
 const FUEL_LABELS: Record<string, string> = {
@@ -62,6 +63,28 @@ function isGreeting(text: string): boolean {
   if (t.length > 30) return false
   if (SYMPTOM_WORDS.some(w => t.includes(w))) return false
   return GREETING_WORDS.some(w => t.includes(w))
+}
+
+// ── 위치 선택 질문 감지 ────────────────────────────────────────────────────
+const LOCATION_Q_KEYWORDS = [
+  '어느 쪽', '어느 타이어', '어느 바퀴', '어느 위치', '어느 곳',
+  '어디서', '어디에서', '어느 부분', '몇 번 타이어', '어느 휠',
+]
+const LOCATION_CHOICE_PATTERNS = [
+  /앞.*(왼|오른|운전|조수)/,
+  /뒤.*(왼|오른)/,
+  /왼.*(앞|뒤)/,
+  /오른.*(앞|뒤)/,
+  /\bFL\b|\bFR\b|\bRL\b|\bRR\b/,
+  /운전석.*앞/,
+  /조수석.*앞/,
+]
+function isLocationQuestion(q: import('@/types').DiagnosticQuestion): boolean {
+  if (LOCATION_Q_KEYWORDS.some(k => q.question.includes(k))) return true
+  const locCount = q.choices.filter(c =>
+    LOCATION_CHOICE_PATTERNS.some(p => p.test(c))
+  ).length
+  return locCount >= 2
 }
 
 // ── 차량 수정 모달 ────────────────────────────────────────────────────────
@@ -871,27 +894,36 @@ export default function MainPage() {
               </div>
             )}
 
-            {/* 빠른 선택 칩 버튼 (스태거 애니메이션) */}
-            <div className="flex flex-wrap gap-2 stagger-children">
-              {currentQuestion.choices.filter((c, i, arr) => arr.indexOf(c) === i).concat(['잘 모르겠어요']).map((choice, i) => (
-                <button
-                  key={`${currentQuestion.id}-${i}`}
-                  onClick={() => sendMessage(choice, 'answer', currentQuestion.id)}
-                  className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 active:scale-95 ${
-                    choice === '잘 모르겠어요'
-                      ? 'text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-500'
-                      : 'text-primary-700 bg-white hover:text-primary-800'
-                  }`}
-                  style={choice !== '잘 모르겠어요' ? {
-                    border: '1.5px solid rgba(76, 77, 220, 0.15)',
-                    boxShadow: '0 1px 4px rgba(76, 77, 220, 0.06)',
-                  } : undefined}
-                >
-                  {choice}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-gray-400 ml-0.5">선택하거나 아래 입력창에 직접 입력하세요</p>
+            {/* 위치 질문 → 차량 도면 픽커 / 일반 질문 → 칩 버튼 */}
+            {isLocationQuestion(currentQuestion) ? (
+              <CarLocationPicker
+                question={currentQuestion}
+                onSelect={(answer) => sendMessage(answer, 'answer', currentQuestion.id)}
+              />
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2 stagger-children">
+                  {currentQuestion.choices.filter((c, i, arr) => arr.indexOf(c) === i).concat(['잘 모르겠어요']).map((choice, i) => (
+                    <button
+                      key={`${currentQuestion.id}-${i}`}
+                      onClick={() => sendMessage(choice, 'answer', currentQuestion.id)}
+                      className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 active:scale-95 ${
+                        choice === '잘 모르겠어요'
+                          ? 'text-gray-400 border border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-500'
+                          : 'text-primary-700 bg-white hover:text-primary-800'
+                      }`}
+                      style={choice !== '잘 모르겠어요' ? {
+                        border: '1.5px solid rgba(76, 77, 220, 0.15)',
+                        boxShadow: '0 1px 4px rgba(76, 77, 220, 0.06)',
+                      } : undefined}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-400 ml-0.5">선택하거나 아래 입력창에 직접 입력하세요</p>
+              </>
+            )}
           </div>
         )}
 
