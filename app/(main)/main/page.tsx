@@ -567,7 +567,7 @@ export default function MainPage() {
     : []
 
   return (
-    <div className="flex flex-col h-screen bg-surface-50 max-w-[480px] mx-auto">
+    <div className="flex flex-col h-screen bg-white max-w-[480px] mx-auto">
       {/* 광고 인터스티셜 */}
       <AdInterstitial
         isOpen={showAdInterstitial}
@@ -575,15 +575,12 @@ export default function MainPage() {
         countdownSeconds={30}
       />
 
-      {/* ── 헤더 (글래스모피즘) ── */}
+      {/* ── 헤더 ── */}
       <header
         className="px-5 pt-12 pb-4 flex items-start justify-between flex-shrink-0"
         style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
-          boxShadow: '0 1px 12px rgba(0, 0, 0, 0.03)',
+          background: '#ffffff',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
         <div>
@@ -615,7 +612,7 @@ export default function MainPage() {
           <Link href="/profile">
             <div
               className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center overflow-hidden ring-1 ring-primary-200/50 transition-all active:scale-95"
-              style={{ boxShadow: '0 2px 8px rgba(91, 79, 207, 0.1)' }}
+              style={{ boxShadow: '0 2px 8px rgba(76, 77, 220, 0.1)' }}
             >
               {(user as any)?.avatar_url || (user as any)?.avatarUrl ? (
                 <img src={(user as any)?.avatar_url ?? (user as any)?.avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -641,8 +638,8 @@ export default function MainPage() {
                 onClick={() => setShowEditModal(true)}
                 className="w-full text-left relative rounded-3xl p-5 text-white overflow-hidden active:scale-[0.98] transition-all duration-200"
                 style={{
-                  background: 'linear-gradient(135deg, #4a3fb8 0%, #5b4fcf 40%, #7c6fe0 100%)',
-                  boxShadow: '0 8px 30px rgba(91, 79, 207, 0.25), 0 2px 8px rgba(91, 79, 207, 0.15)',
+                  background: 'linear-gradient(135deg, #3c3dbf 0%, #4C4DDC 40%, #6566e5 100%)',
+                  boxShadow: '0 8px 30px rgba(76, 77, 220, 0.25), 0 2px 8px rgba(76, 77, 220, 0.15)',
                 }}
               >
                 {/* shimmer 오버레이 */}
@@ -671,13 +668,13 @@ export default function MainPage() {
               <Link href="/vehicles/new"
                 className="block rounded-3xl p-5 text-center transition-all hover:shadow-md active:scale-[0.98]"
                 style={{
-                  background: 'linear-gradient(135deg, #ffffff 0%, #f8f7ff 100%)',
-                  border: '2px dashed rgba(91, 79, 207, 0.2)',
+                  background: '#ffffff',
+                  border: '2px dashed rgba(76, 77, 220, 0.2)',
                   boxShadow: '0 2px 12px rgba(0, 0, 0, 0.03)',
                 }}
               >
                 <div className="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #f0eeff 0%, #e4e0ff 100%)' }}
+                  style={{ background: 'rgba(76, 77, 220, 0.06)' }}
                 >
                   <span className="text-2xl">🚗</span>
                 </div>
@@ -715,7 +712,7 @@ export default function MainPage() {
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 mt-3">
         <div className="flex items-center gap-2.5 mb-3 px-1">
           <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)' }}
+            style={{ background: '#4C4DDC' }}
           >
             <span className="text-white text-xs font-black">AI</span>
           </div>
@@ -736,9 +733,9 @@ export default function MainPage() {
             <button onClick={() => handleCarType('mine')}
               className="flex-1 py-3.5 px-4 rounded-2xl text-sm font-bold text-primary-700 transition-all active:scale-[0.97]"
               style={{
-                background: 'linear-gradient(135deg, #f8f7ff 0%, #f0eeff 100%)',
-                border: '1.5px solid rgba(91, 79, 207, 0.2)',
-                boxShadow: '0 2px 12px rgba(91, 79, 207, 0.08)',
+                background: '#ffffff',
+                border: '1.5px solid rgba(76, 77, 220, 0.2)',
+                boxShadow: '0 2px 12px rgba(76, 77, 220, 0.06)',
               }}
             >
               🚗 내 차
@@ -746,8 +743,8 @@ export default function MainPage() {
             <button onClick={() => handleCarType('other')}
               className="flex-1 py-3.5 px-4 rounded-2xl text-sm font-semibold text-gray-600 transition-all active:scale-[0.97]"
               style={{
-                background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
-                border: '1.5px solid rgba(0, 0, 0, 0.06)',
+                background: '#ffffff',
+                border: '1.5px solid rgba(0, 0, 0, 0.08)',
                 boxShadow: '0 1px 4px rgba(0, 0, 0, 0.03)',
               }}
             >
@@ -886,8 +883,8 @@ export default function MainPage() {
                       : 'text-primary-700 bg-white hover:text-primary-800'
                   }`}
                   style={choice !== '잘 모르겠어요' ? {
-                    border: '1.5px solid rgba(91, 79, 207, 0.15)',
-                    boxShadow: '0 1px 4px rgba(91, 79, 207, 0.06)',
+                    border: '1.5px solid rgba(76, 77, 220, 0.15)',
+                    boxShadow: '0 1px 4px rgba(76, 77, 220, 0.06)',
                   } : undefined}
                 >
                   {choice}

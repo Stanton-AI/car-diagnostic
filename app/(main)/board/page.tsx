@@ -332,30 +332,27 @@ function BoardPageInner() {
   const isMyPost = selectedPost?.user_id === userId
 
   return (
-    <div className="flex flex-col h-screen max-w-[480px] mx-auto" style={{ background: 'linear-gradient(180deg, #f8f7ff 0%, #f3f2fa 40%, #f5f5f5 100%)' }}>
+    <div className="flex flex-col h-screen max-w-[480px] mx-auto" style={{ background: '#ffffff' }}>
       {/* 헤더 */}
-      <header className="px-5 pt-12 pb-3 flex-shrink-0 sticky top-0 z-20 relative overflow-hidden"
+      <header className="px-5 pt-12 pb-3 flex-shrink-0 sticky top-0 z-20"
         style={{
-          background: 'rgba(255, 255, 255, 0.88)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
+          background: '#ffffff',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(91,79,207,0.06) 0%, transparent 70%)' }} />
-        <h1 className="text-xl font-black text-gray-900 relative z-10">게시판</h1>
-        <p className="text-sm text-gray-400 mt-0.5 relative z-10">정비 정보와 후기를 공유해요</p>
-        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar relative z-10">
+        <h1 className="text-xl font-black text-gray-900">게시판</h1>
+        <p className="text-sm text-gray-400 mt-0.5">정비 정보와 후기를 공유해요</p>
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar">
           {CATEGORIES.map(cat => (
             <button key={cat} onClick={() => setActiveTab(cat)}
               className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-[0.96] ${
-                activeTab === cat ? 'text-white shadow-sm' : 'text-gray-500 hover:bg-gray-100'
+                activeTab === cat ? 'text-white' : 'text-gray-500 hover:bg-gray-100'
               }`}
               style={activeTab === cat ? {
-                background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-                boxShadow: '0 2px 8px rgba(91, 79, 207, 0.3)',
+                background: '#4C4DDC',
+                boxShadow: '0 2px 8px rgba(76,77,220,0.25)',
               } : {
-                background: 'rgba(0, 0, 0, 0.03)',
+                background: 'rgba(0, 0, 0, 0.04)',
               }}
             >{cat}</button>
           ))}
@@ -380,8 +377,9 @@ function BoardPageInner() {
               <button key={post.id} onClick={() => setSelectedPost(post)}
                 className="w-full text-left rounded-2xl px-4 py-3.5 transition-all hover:scale-[1.01] active:scale-[0.99]"
                 style={{
-                  background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
-                  boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+                  background: '#ffffff',
+                  border: '1px solid rgba(0,0,0,0.06)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                 }}
               >
                 <div className="flex items-center gap-2 mb-1.5">
@@ -391,7 +389,7 @@ function BoardPageInner() {
                   <span className="text-xs text-gray-400">{fmtTimeAgo(post.created_at)}</span>
                   {post.user_id === userId && (
                     <span className="text-[10px] font-bold ml-auto px-1.5 py-0.5 rounded-full text-white"
-                      style={{ background: 'linear-gradient(135deg, #5b4fcf, #7c6fe0)' }}>내 글</span>
+                      style={{ background: '#4C4DDC' }}>내 글</span>
                   )}
                 </div>
                 <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-1">{post.title}</p>
@@ -422,8 +420,8 @@ function BoardPageInner() {
           style={{
             bottom: '88px',
             right: 'max(16px, calc(50% - 224px))',
-            background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-            boxShadow: '0 4px 20px rgba(91, 79, 207, 0.4)',
+            background: '#4C4DDC',
+            boxShadow: '0 4px 20px rgba(76,77,220,0.35)',
           }}
         >✏️</button>
       )}
@@ -452,7 +450,7 @@ function BoardPageInner() {
                 {isMyPost && (
                   <>
                     <button onClick={() => { setSelectedPost(null); openWrite(selectedPost) }}
-                      className="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors" style={{ color: '#5b4fcf', background: 'rgba(91,79,207,0.06)' }}>수정</button>
+                      className="text-xs font-bold px-2.5 py-1 rounded-lg transition-colors" style={{ color: '#4C4DDC', background: 'rgba(76,77,220,0.06)' }}>수정</button>
                     <button onClick={() => handleDeletePost(selectedPost)}
                       className="text-xs text-red-400 font-bold px-2.5 py-1 rounded-lg hover:bg-red-50 transition-colors">삭제</button>
                   </>
@@ -486,9 +484,9 @@ function BoardPageInner() {
                 <button onClick={() => handleLike(selectedPost)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold transition-all active:scale-95"
                   style={likedPosts.has(selectedPost.id) ? {
-                    background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
+                    background: '#4C4DDC',
                     color: '#fff',
-                    boxShadow: '0 2px 12px rgba(91, 79, 207, 0.3)',
+                    boxShadow: '0 2px 12px rgba(76,77,220,0.3)',
                   } : {
                     background: 'rgba(0, 0, 0, 0.03)',
                     color: '#6b7280',
@@ -549,7 +547,7 @@ function BoardPageInner() {
 
                         {/* 대댓글 */}
                         {(repliesMap[comment.id] ?? []).map(reply => (
-                          <div key={reply.id} className="ml-4 mt-1.5 rounded-xl px-3 py-2.5 border-l-2" style={{ background: 'rgba(91, 79, 207, 0.03)', borderColor: 'rgba(91, 79, 207, 0.15)' }}>
+                          <div key={reply.id} className="ml-4 mt-1.5 rounded-xl px-3 py-2.5 border-l-2" style={{ background: 'rgba(76,77,220,0.03)', borderColor: 'rgba(76,77,220,0.15)' }}>
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-semibold text-gray-700">
                                 ↩ 🚗 {authorLabel(reply.vehicle_nickname, reply.vehicle_model)}
@@ -616,8 +614,8 @@ function BoardPageInner() {
               <button onClick={handleCommentSubmit} disabled={!commentText.trim() || submittingComment}
                 className="px-4 py-2.5 text-white text-sm font-bold rounded-xl disabled:opacity-40 flex-shrink-0 active:scale-95 transition-all"
                 style={{
-                  background: (!commentText.trim() || submittingComment) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-                  boxShadow: (!commentText.trim() || submittingComment) ? 'none' : '0 2px 8px rgba(91, 79, 207, 0.3)',
+                  background: (!commentText.trim() || submittingComment) ? '#d1d5db' : '#4C4DDC',
+                  boxShadow: (!commentText.trim() || submittingComment) ? 'none' : '0 2px 8px rgba(76,77,220,0.3)',
                 }}>
                 {submittingComment ? '...' : '등록'}
               </button>
@@ -644,7 +642,7 @@ function BoardPageInner() {
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               {/* 작성자 */}
-              <div className="rounded-xl px-4 py-2.5 flex items-center gap-2" style={{ background: 'rgba(91, 79, 207, 0.04)', border: '1px solid rgba(91, 79, 207, 0.08)' }}>
+              <div className="rounded-xl px-4 py-2.5 flex items-center gap-2" style={{ background: 'rgba(76,77,220,0.04)', border: '1px solid rgba(76,77,220,0.08)' }}>
                 <span className="text-xs text-gray-400">작성자</span>
                 <span className="text-xs font-semibold text-gray-700">🚗 {authorLabel(vehicleNickname, vehicleModel)}</span>
               </div>
@@ -658,10 +656,10 @@ function BoardPageInner() {
                         writeCategory === cat ? 'text-white' : 'text-gray-500'
                       }`}
                       style={writeCategory === cat ? {
-                        background: 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-                        boxShadow: '0 2px 8px rgba(91, 79, 207, 0.3)',
+                        background: '#4C4DDC',
+                        boxShadow: '0 2px 8px rgba(76,77,220,0.25)',
                       } : {
-                        background: 'rgba(0, 0, 0, 0.03)',
+                        background: 'rgba(0, 0, 0, 0.04)',
                       }}>{cat}</button>
                   ))}
                 </div>
@@ -712,8 +710,8 @@ function BoardPageInner() {
               <button onClick={handleSubmit} disabled={!writeTitle.trim() || !writeContent.trim() || submitting}
                 className="w-full py-4 text-white font-bold rounded-2xl text-sm disabled:opacity-40 flex items-center justify-center gap-2 active:scale-[0.98] transition-all"
                 style={{
-                  background: (!writeTitle.trim() || !writeContent.trim() || submitting) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-                  boxShadow: (!writeTitle.trim() || !writeContent.trim() || submitting) ? 'none' : '0 4px 16px rgba(91, 79, 207, 0.3)',
+                  background: (!writeTitle.trim() || !writeContent.trim() || submitting) ? '#d1d5db' : '#4C4DDC',
+                  boxShadow: (!writeTitle.trim() || !writeContent.trim() || submitting) ? 'none' : '0 4px 16px rgba(76,77,220,0.3)',
                 }}>
                 {submitting ? <span className="animate-spin">⟳</span> : null}
                 {editingPost ? '수정 완료' : '등록하기'}

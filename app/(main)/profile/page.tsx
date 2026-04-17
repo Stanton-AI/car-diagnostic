@@ -71,43 +71,41 @@ export default function ProfilePage() {
   const initial = displayName[0]?.toUpperCase() ?? 'U'
 
   return (
-    <div className="flex flex-col min-h-screen" style={{ background: 'linear-gradient(180deg, #f8f7ff 0%, #f3f2fa 40%, #f5f5f5 100%)' }}>
+    <div className="flex flex-col min-h-screen" style={{ background: '#ffffff' }}>
       {/* 헤더 */}
-      <header className="px-5 pt-12 pb-4 flex items-center gap-3 sticky top-0 z-20 relative overflow-hidden"
+      <header className="px-5 pt-12 pb-4 flex items-center gap-3 sticky top-0 z-20"
         style={{
-          background: 'rgba(255, 255, 255, 0.88)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.04)',
+          background: '#ffffff',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
         }}
       >
-        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full" style={{ background: 'radial-gradient(circle, rgba(91,79,207,0.06) 0%, transparent 70%)' }} />
-        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100/60 transition-all relative z-10">
+        <button onClick={() => router.back()} className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100/60 transition-all">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-        <h1 className="text-lg font-black text-gray-900 relative z-10">내 프로필</h1>
+        <h1 className="text-lg font-black text-gray-900">내 프로필</h1>
       </header>
 
       <div className="flex-1 px-4 py-6 space-y-4">
         {/* 프로필 카드 */}
         <div className="rounded-2xl p-6 flex items-center gap-4"
           style={{
-            background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
-            boxShadow: '0 2px 16px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+            background: '#ffffff',
+            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
           }}
         >
           <div className="w-16 h-16 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(91,79,207,0.08) 0%, rgba(124,111,224,0.12) 100%)',
-              boxShadow: '0 0 0 2px rgba(91,79,207,0.1), 0 2px 8px rgba(91, 79, 207, 0.1)',
+              background: 'rgba(76,77,220,0.08)',
+              boxShadow: '0 0 0 2px rgba(76,77,220,0.1), 0 2px 8px rgba(76,77,220,0.1)',
             }}
           >
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="font-black text-2xl" style={{ color: '#5b4fcf' }}>{initial}</span>
+              <span className="font-black text-2xl" style={{ color: '#4C4DDC' }}>{initial}</span>
             )}
           </div>
           <div>
@@ -119,8 +117,9 @@ export default function ProfilePage() {
         {/* 메뉴 */}
         <div className="rounded-2xl overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+            background: '#ffffff',
+            border: '1px solid rgba(0,0,0,0.06)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
           }}
         >
           <button
@@ -170,8 +169,9 @@ export default function ProfilePage() {
         {(hasShop || isAdmin) && (
           <div className="rounded-2xl overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, #ffffff 0%, #faf9ff 100%)',
-              boxShadow: '0 2px 12px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02)',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.06)',
+              boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
             }}
           >
             <p className="px-5 pt-4 pb-2 text-xs font-semibold text-gray-400">다른 포털</p>
@@ -283,8 +283,8 @@ export default function ProfilePage() {
                   disabled={feedbackText.trim().length < 5 || feedbackSending}
                   className="w-full py-4 text-white font-bold rounded-2xl text-sm disabled:opacity-40 transition-all active:scale-[0.98]"
                   style={{
-                    background: (feedbackText.trim().length < 5 || feedbackSending) ? '#d1d5db' : 'linear-gradient(135deg, #5b4fcf 0%, #7c6fe0 100%)',
-                    boxShadow: (feedbackText.trim().length < 5 || feedbackSending) ? 'none' : '0 4px 16px rgba(91, 79, 207, 0.3)',
+                    background: (feedbackText.trim().length < 5 || feedbackSending) ? '#d1d5db' : '#4C4DDC',
+                    boxShadow: (feedbackText.trim().length < 5 || feedbackSending) ? 'none' : '0 4px 16px rgba(76,77,220,0.3)',
                   }}
                 >
                   {feedbackSending ? '전송 중...' : '의견 보내기'}
