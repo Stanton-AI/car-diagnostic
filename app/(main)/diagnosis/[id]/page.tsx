@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import DiagnosisResultCard from '@/components/diagnosis/DiagnosisResultCard'
+import KakaoAdFitBanner from '@/components/shared/KakaoAdFitBanner'
 import type { DiagnosisResult, ChatMessage } from '@/types'
 import { createMessage } from '@/lib/utils'
 
@@ -352,6 +353,12 @@ export default function DiagnosisPage() {
         {conversation?.messages && Array.isArray(conversation.messages) && (
           <ConversationHistory messages={conversation.messages as ChatMessage[]} />
         )}
+
+        {/* ── 카카오 애드핏 배너 (수익용, 게이트 아님) ── */}
+        <div className="flex flex-col items-center gap-1.5 py-2">
+          <KakaoAdFitBanner adUnit="DAN-OJrsyYqfdTZfTyOB" width={320} height={50} />
+          <p className="text-[10px] text-gray-300">광고</p>
+        </div>
 
         {/* 하단 액션 */}
         <div className="space-y-2.5 pt-2">
