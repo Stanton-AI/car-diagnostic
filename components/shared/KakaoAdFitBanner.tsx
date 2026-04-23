@@ -14,30 +14,14 @@ interface Props {
 }
 
 /**
- * 카카오 애드핏 SDK 스크립트를 한 번만 로드
- * AdSense 로더(AdInterstitial.tsx)와 동일한 싱글톤 패턴
- */
-let kakaoAdScriptLoading = false
-function loadKakaoAdScript(): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') { resolve(); return }
-    if (document.querySelector('script[src*="t1.kakaocdn.net/kas/static/ba.min.js"]')) {
-      resolve(); return
-    }
-    if (kakaoAdScriptLoading) { resolve(); return }
-    kakaoAdScriptLoading = true
-
-    const script = document.createElement('script')
-    script.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js'
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => resolve()
-    document.head.appendChild(script)
-  })
-}
-
-/**
  * 카카오 애드핏 배너 광고
+ *
+ * 구현 포인트:
+ * - 카카오 AdFit SDK(ba.min.js)는 로드 시점에만 DOM의 `.kakao_ad_area` 를 스캔한다.
+ *   따라서 React에서 `<ins>` 를 나중에 주입하면 스캔 대상이 되지 않아 광고가 안 뜸.
+ * - 해결: 컴포넌트가 마운트될 때마다 `<ins>` 와 `<script>` 를 세트로 재삽입하여
+ *   스크립트가 실행되면서 바로 옆 `<ins>` 를 스캔하도록 한다.
+ * - 이는 카카오 공식 가이드 HTML 구조(<ins> + <script> 이웃)와 동일한 패턴.
  *
  * 사용 예:
  *   <KakaoAdFitBanner adUnit="DAN-OJrsyYqfdTZfTyOB" />
@@ -59,7 +43,10 @@ export default function KakaoAdFitBanner({
     const container = containerRef.current
     if (!container) return
 
-    // React 리렌더 시 중복 삽입 방지 위해 ins 엘리먼트를 매번 새로 생성
+    // 기존 내용 초기화
+    container.innerHTML = ''
+
+    // 1) ins 엘리먼트 생성
     const ins = document.createElement('ins')
     ins.className = 'kakao_ad_area'
     ins.style.display = 'none'
@@ -67,12 +54,15 @@ export default function KakaoAdFitBanner({
     ins.setAttribute('data-ad-width', String(width))
     ins.setAttribute('data-ad-height', String(height))
 
-    container.innerHTML = ''
-    container.appendChild(ins)
+    // 2) 스크립트 엘리먼트 생성 (매번 재주입 → SDK가 옆 ins를 스캔하도록)
+    const script = document.createElement('script')
+    script.type = 'text/javascript'
+    script.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js'
+    script.async = true
 
-    // SDK 로드 (이미 로드됐으면 즉시 resolve)
-    // 스크립트는 DOM 내의 .kakao_ad_area 요소를 자동 스캔함
-    loadKakaoAdScript()
+    // 3) 순서: ins 먼저 → script (공식 가이드와 동일 순서)
+    container.appendChild(ins)
+    container.appendChild(script)
 
     return () => {
       if (container) container.innerHTML = ''
